@@ -1,0 +1,23 @@
+
+# Logs
+logs
+*.log
+
+# Dependency directories
+node_modules/
+
+*.rest
+
+*.db
+*.pem
+
+
+# Optional npm cache directory
+.npm
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variables file
+.env
+.env.test
