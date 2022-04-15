@@ -2,14 +2,13 @@ const router = require('express').Router()
 const fetch = require('node-fetch')
 const mdb = require('../mongooseDB')
 
-const apiUrl = process.env.API_URL
-
+const databaseController = require('../controllers/databaseController')
 
 // Set default API response
 router.get('/', function (req, res) {  res.json({  status: 'Data server active',  message: 'Welcome to SBQC Data API  💻 🖱️ 🦾', data: { APIs: "Alarms, Contact, Devices, heartbeat, users" }   })   })
 
 
-let selectedCollection = "devices"
+let selectedCollection = "heartbeats"
 
 router.get('/database/list', async (req, res, next) => {
     // let skip = Number(req.query.skip) || 0
@@ -21,27 +20,44 @@ router.get('/database/list', async (req, res, next) => {
     skip = skip < 0 ? 0 : skip;
     limit = Math.min(50, Math.max(1, limit))
 
+    // select preconfigured collection if none are queried otherwise update selectedCollection for future use
     if(collection == "")   collection = selectedCollection
     else  selectedCollection = collection
 
     console.log("WANTED", req.query, collection)
  
-    const list = mdb.getCollections()
-    const db =  list[collection]
-    //console.log(db)
+    const db = databaseController.getCollection(collection)
+    db.find({},null,{ skip, limit, sort: {  created: sort === 'desc' ? -1 : 1  } }, (err, data)=>{
+        if(err) console.log(err)
+
+        console.log(data)
+    })
+    console.log(db)
+
+    db.countDocuments({}, (err, data) => {
+        if(err) console.log(err)
+        console.log('Documents count: ', data)
+     
+    })
+
+   /* const list = mdb.getCollections()
+    console.log(list)
+   
+*/
 //  TODO  :  crash si le nom de la collection n'Existe pas dans la BD, ou si il n'y a pas de post dans la collection.
-    if(!db) res.json({})
+    if(!db) res.json({status: "error", message: "collection not found"})
     else {     
 
         Promise.all([
-            db.countDocuments(),
-            db.find({}, {
-                skip,
-                limit,
-                sort: {  created: sort === 'desc' ? -1 : 1     }
-            }).toArray()
+            db.countDocuments({}),
+            db.find({}, {}, {
+                skip,    //  TODO :   check car bug si skip = 0. ( juste quand il y a un seul doc dans collection ou tjrs??  )
+                limit, 
+                sort: {  created: sort === 'desc' ? -1 : 1  }
+            })
         ])
         .then(([ total, data ]) => {
+            //console.log(data)
             res.json({
             data,
             meta: {
