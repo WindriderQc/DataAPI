@@ -27,7 +27,7 @@ const mongooseDB = {
                 console.log('\nMongoose connected to db: ' + url)   
                 console.log("DB collections:")
                 console.log(col) // [{ name: 'dbname.myCollection' }]
-                console.log('\n')
+                console.log('\n')          
 
                 _collections = col
                 isReady = true
@@ -43,7 +43,8 @@ const mongooseDB = {
     },
 
     getCollections: function() {
-        return JSON.stringify(_collections)
+        //return JSON.stringify(_collections)
+        return (_collections)
     }
 
 }
