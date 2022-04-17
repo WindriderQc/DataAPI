@@ -30,6 +30,18 @@ function getCollection(colName) {
       
 }
 
+function getCollectionsName(req, res) {
+    
+   
+router.get('/database/collectionList',  (req, res) => {
+    const list = mdb.getCollections()
+    console.log('Sending collection list to client: ', JSON.parse(list))
+    res.json( list)
+})
+
+      
+}
+
 
 module.exports = {      getCollection, countDocuments       }
 
