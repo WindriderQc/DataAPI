@@ -75,7 +75,7 @@ router.get('/database/list', async (req, res, next) => {
 
 router.get('/database/collectionList',  (req, res) => {
     const list = mdb.getCollections()
-    console.log('Sending collection list to client: ', JSON.parse(list))
+    console.log('Sending collection list to client: ', list)
     res.json( list)
 })
 
