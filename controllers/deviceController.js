@@ -20,7 +20,7 @@ function update(req, res) {
     const update = { type : req.body.type, lastBoot: req.body.lastBoot, connected: req.body.connected, config: req.body.config    }
 
     Device.findOneAndUpdate(query, update, { upsert: true, new: true, setDefaultsOnInsert: true }, (err, doc) => {
-        errorCheck(err, res, { message: 'Device registration Info updated/created', data: doc  }) 
+        errorCheck(err, res, { status: "success", message: 'Device registration Info updated/created', data: doc  }) 
     })
 }
 
@@ -42,7 +42,7 @@ module.exports = {      index,      readOne,    update,     deleteOne,      dele
 
 // helper method
 errorCheck = (err, res, successMsg) =>{
-    if (err) res.json({ status: "error", message: err }) 
+    if (err) res.json({ status: "error", message: err, data: null }) 
     else     res.json(successMsg)    
 }
 
