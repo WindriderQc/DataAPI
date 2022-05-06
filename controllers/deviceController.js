@@ -17,9 +17,9 @@ function readOne(req, res) {
 function update(req, res) {
 
     const query = { id: req.body.id }
-    const update = { type : req.body.type, configName : req.body.configName, lastBoot: req.body.lastBoot    }
+    const update = { type : req.body.type, lastBoot: req.body.lastBoot, connected: req.body.connected, config: req.body.config    }
 
-    Device.findOneAndUpdate(query,update, { upsert: true, new: true, setDefaultsOnInsert: true }, (err, doc) => {
+    Device.findOneAndUpdate(query, update, { upsert: true, new: true, setDefaultsOnInsert: true }, (err, doc) => {
         errorCheck(err, res, { message: 'Device registration Info updated/created', data: doc  }) 
     })
 }

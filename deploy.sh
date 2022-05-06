@@ -11,6 +11,8 @@ cd servers
 
 sudo npm install -g pm2
 pm2 status
+pm2 startup
+pm2 save
 sudo apt install git
 git clone https://github.com/WindriderQc/iGrow.git
 cd iGrow
