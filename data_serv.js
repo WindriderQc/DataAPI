@@ -4,7 +4,7 @@ require('dotenv').config();
 const mdb = require('./mongooseDB') // mongoose with local DB
 
 
-const PORT = 3001 
+const PORT = 3003 
 
 
 const app = express()
