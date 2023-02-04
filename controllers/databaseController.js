@@ -17,31 +17,28 @@ async function countDocuments(req, res) {
 
 function getCollection(colName) {
     
+    console.log( colName)
     let collection
-        if (colName == "devices")    collection= Device
-        if (colName == "hearbeats")  collection= Heartbeat
-        if (colName == "users")      collection= User
-        if (colName == "alarms")     collection= Alarm
-        if (colName == "posts")      collection = Heartbeat
-         else  collection= Device
+        if (colName == "devices")    collection = Device
+        else if (colName == "heartbeats")  collection = Heartbeat
+        else if (colName == "users")      collection = User
+        else if (colName == "alarms")     collection = Alarm
+        //else if (colName == "posts")      collection = posts
+        else  collection = Device
 
     console.log("selecting:",colName, collection)
         return collection
       
 }
 
-function getCollectionsName(req, res) {
+/*function getCollectionsName(req, res) {
     
-   
-router.get('/database/collectionList',  (req, res) => {
-    const list = mdb.getCollections()
-    console.log('Sending collection list to client: ', JSON.parse(list))
-    res.json( list)
-})
-
-      
-}
-
+    router.get('/database/collectionList',  (req, res) => {
+        const list = mdb.getCollections()
+        console.log('Sending collection list to client: ', JSON.parse(list))
+        res.json( list)
+    })
+}*/
 
 module.exports = {      getCollection, countDocuments       }
 

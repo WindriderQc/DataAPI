@@ -1,6 +1,11 @@
 const mongoose = require('mongoose')
   
-const url = process.env.MONGO_URL ? process.env.MONGO_URL : "mongodb://127.0.0.1:27017/IoT"   //  attempt at local database if no cloud URL defined, prevent crash if no .env file is found nor url defined
+const url =  "mongodb://" 
+            + process.env.USER 
+            + ":" 
+            + process.env.PASSWORD 
+            + "@192.168.0.33/iGrow?authSource=admin"
+//const url = process.env.MONGO_URL ? process.env.MONGO_URL : "mongodb://127.0.0.1:27017/IoT"   //  attempt at local database if no cloud URL defined, prevent crash if no .env file is found nor url defined
 
 let _collections = []
 let isReady = false
