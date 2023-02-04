@@ -3,8 +3,8 @@ const cors = require('cors')
 require('dotenv').config();
 const mdb = require('./mongooseDB') // mongoose with local DB
 
-const IN_PROD = process.env.NODE_ENV === 'production'  // for https channel...  IN_PROD will be true if in production environment
-const PORT = process.env.PORT || 5000
+
+const PORT = 3001 
 
 
 const app = express()
