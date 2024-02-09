@@ -1,55 +1,37 @@
 const mongoose = require('mongoose')
-  
-const url =  "mongodb://" 
-            + process.env.USER 
-            + ":" 
-            + process.env.PASSWORD 
-            + "@192.168.0.33/iGrow?authSource=admin"
+
+const databaseName = "iGrow"
+const url =  "mongodb://" + process.env.USER + ":" + process.env.PASSWORD + "@127.0.0.1:27017/" + databaseName + "?retryWrites=true&w=majority&authMechanism=DEFAULT&authSource=admin"
 //const url = process.env.MONGO_URL ? process.env.MONGO_URL : "mongodb://127.0.0.1:27017/IoT"   //  attempt at local database if no cloud URL defined, prevent crash if no .env file is found nor url defined
 
-let _collections = []
-let isReady = false
-
+let _db
 
 const mongooseDB = {
 
     
-    init: function(callback) {
+    init: async function(callback) {
         
-        isReady = false
-
         // mongoose with local DB
-        mongoose.connect( url,  { family: 4, useNewUrlParser: true, useUnifiedTopology: true }, (err)=>{ if (err) console.log(err)})// family: 4    skip  default IPV6 connection  and accelerate connection.
+        mongoose.connect( url,  { family: 4, useNewUrlParser: true, useUnifiedTopology: true }, (err)=>{ if (err)  console.log("Error at Mongoose Connect:  "+ url + "\n" + err)}) // family: 4 -> skip  default IPV6 connection  and accelerate connection.
 
         mongoose.connection.on('error', console.error.bind(console, 'conn error:'))
 
-        mongoose.connection.once('open', function() { 
-            
-        
-            mongoose.connection.db.listCollections().toArray( (err, col) => {   //trying to get collection names
-                if(err) console.log(err)
-            
-                console.log('\nMongoose connected to db: ' + url)   
-                console.log("DB collections:")
-                console.log(col) // [{ name: 'dbname.myCollection' }]
-                console.log('\n')          
+        mongoose.connection.once('open', async () =>  { 
+         
+            console.log('\nMongoose connected to:', databaseName, "\n", url, "\n" )  
 
-                _collections = col
-                isReady = true
-                if(callback) callback()
-                //module.exports.Collections = _collections;
-            })
+            _db = mongoose.connection.db;
 
+            if(callback) callback() 
         })
     }, 
 
-    isReady: function() {
-        return isReady
-    },
-
-    getCollections: function() {
+    getCollections: async function() {
         //return JSON.stringify(_collections)
-        return (_collections)
+        console.log('Getting collections.... ')
+        const col = await _db.listCollections().toArray() 
+        //module.exports.Collections = col;
+        return (col)
     }
 
 }

@@ -3,7 +3,32 @@ const Device = require('../models/deviceModel')
 
 // Gets back all the devices
 function index(req, res) {   
-    Device.find({}, (err, devices) => { errorCheck(err, res, { status: "success", message: 'Devices retrieved successfully', data: devices  })    })
+   // Device.find({}, (err, devices) => { errorCheck(err, res, { status: "success", message: 'Devices retrieved successfully', data: devices  })    })
+
+
+    console.log("Requesting devices:", req.query)
+    let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/devices?skip=0&limit=25&sort=desc
+    skip = parseInt(skip) || 0
+    limit = parseInt(limit) || 10
+
+    skip = skip < 0 ? 0 : skip;
+    limit = Math.min(50, Math.max(1, limit))
+
+
+    Promise.all([
+        Device.countDocuments({}),
+        Device.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  }      })
+    ])
+    .then(([ total, data ]) => {
+        res.json({  status: "success", message: 'Devices retrieved successfully', 
+                    data: data, 
+                    meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }  
+                })
+    })  
+    .catch(err => {  res.json({ status:'error', message: err, data: null}) }) 
+
+
+
 }
 
 

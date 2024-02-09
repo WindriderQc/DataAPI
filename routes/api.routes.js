@@ -1,7 +1,20 @@
 let router = require('express').Router()
 
 // Set route default response
-router.get('/', function (req, res) {    res.json({        status: 'dbServ API active',        message: 'Welcome to SBQC API'    })})
+router.get('/', function (req, res) { 
+    res.json({  status: 'Data server connected to iGrow database',  
+                message: 'Welcome to SBQC Data API  💻 🖱️ 🦾   Try 192.168.1.33:3003/.....', 
+                data: { APIs: "db, alarms, contact, devices, heartbeat, users" }   
+            })})
+
+
+
+const databaseController = require('../controllers/databaseController')
+
+router.route("/db").get(databaseController.index)
+router.route("/db/collectionList").get(databaseController.getCollectionList)
+router.route("/db/countDocuments").get(databaseController.countDocuments)
+
 
 
 const contactController = require('../controllers/contactController')
@@ -80,12 +93,6 @@ router.route('/alarms')
 router.route('/alarms/:espID,io').get(alarmController.getEspIO)
 router.route('/alarms/:espID').get(alarmController.getbyEsp)
 
-
-
-
-
-
-
-
+ 
 // Export API routes
 module.exports = router
