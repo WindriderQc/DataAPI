@@ -4,10 +4,27 @@ const Heartbeat = require('../models/heartbeatModel')
 // Gets back all the posts
 exports.index = (req, res)=> {   
 
-    Heartbeat.find({}, (err, posts) => {
-        if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'Heartbeats retrieved successfully', data: posts  })
-    })
+    console.log("Requesting:", req.query)
+    let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/heartbeats?skip=0&limit=25&sort=desc
+    skip = parseInt(skip) || 0
+    limit = parseInt(limit) || 10
+
+    skip = skip < 0 ? 0 : skip;
+    limit = Math.min(50, Math.max(1, limit))
+
+
+    Promise.all([
+        Heartbeat.countDocuments({}),
+        Heartbeat.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  }      })
+    ])
+    .then(([ total, data ]) => {
+        res.json({  status: "success", message: 'Heartbeats retrieved successfully', 
+                    data: data, 
+                    meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }  
+                })
+    })  
+    .catch(err => {  res.json({ status:'error', message: err, data: null}) })  
+
 }
 
 

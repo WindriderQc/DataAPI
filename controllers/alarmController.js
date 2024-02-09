@@ -2,7 +2,7 @@ const Alarm = require('../models/alarmModel')
 
 exports.index = async (req, res) => {
 
-    try{
+   /* try{
         const alarms = await Alarm.find()
         res.json(alarms)
         //res.json({
@@ -13,6 +13,33 @@ exports.index = async (req, res) => {
     }catch(err) {
         res.json({ status: "error", message:err })
     }
+*/
+
+
+    console.log("Requesting devices:", req.query)
+    let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/alarms?skip=0&limit=25&sort=desc
+    skip = parseInt(skip) || 0
+    limit = parseInt(limit) || 10
+
+    skip = skip < 0 ? 0 : skip;
+    limit = Math.min(50, Math.max(1, limit))
+
+
+    Promise.all([
+        Alarm.countDocuments({}),
+        Alarm.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  }      })
+    ])
+    .then(([ total, data ]) => {
+        res.json({  status: "success", message: 'Alarms retrieved successfully', 
+                    data: data, 
+                    meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }  
+                })
+    })  
+    .catch(err => {  res.json({ status:'error', message: err, data: null}) }) 
+
+
+
+
 }
 
 
@@ -78,7 +105,8 @@ exports.getEspIO =  (req, res) => {
     })
 }
 
-exports.getAll = async () => {
+/*
+exports.getAll = async () => {    //   TODO : difference avec index???
     try{
         const alarms = await Alarm.find()
         return alarms
@@ -86,4 +114,4 @@ exports.getAll = async () => {
     }catch(err) {
         return { status: "error", message:err }
     }
-}
+}*/
