@@ -72,17 +72,17 @@ exports.deleteAll = (req, res) => {
 
 
 // get list of all devices that posted 
-exports.devices = (req, res) => {   
+exports.sendersDistinct = (req, res) => {   
 
     Heartbeat.distinct('sender', (err, devices) => {
         if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'Latest heartbeater devices retrieved', data: devices  })
+        res.json({ status: "success", message: 'Latest heartbeaters retrieved', data: devices  })
     })     
 }
 
 
 // get last post for a specific device
-exports.deviceLatest = async (req, res) => {
+exports.senderLatest = async (req, res) => {
     try {
         const latest = await Heartbeat.find({"sender": req.params.esp}).sort({ _id: -1 }).limit(1)
         res.json({ status: "success", message: 'Latest heartbeat retreived', data: latest  })
@@ -92,7 +92,7 @@ exports.deviceLatest = async (req, res) => {
 
 
 // get first post for a specific device
-exports.deviceOldest = async (req, res) => {
+exports.senderOldest = async (req, res) => {
     try {
         const oldest = await Heartbeat.find({"sender": req.params.esp}).sort({ _id: 1 }).limit(1)
         res.json({ status: "success", message: 'Oldest heartbeat retreived', data: oldest  })
@@ -129,63 +129,3 @@ exports.data = async (req, res) => {
     }
     catch (err) {  res.json({ status:'error', message: err})  }
 }
-
-
-
-
-
-
-
-/*
-
-
-router.get('/data/latest/:options', verify, async (req, res) => {
-
-    const options = req.params.options.split(',')
-    console.log(options)
-    const samplingRatio = options[0]
-    const espID = options[1]
-    const startDate = options[2]
-    const ratio = Number(samplingRatio)
-    console.log({ ratio, espID, startDate })
-
-
-    
-
-    for(i=0; i < options.length(); i++)
-    {
-        const data = await HeartbeatDB.find({
-            sender: espID,
-            time: { $gt: startDate }
-        }).sort({ time: 1 }).limit(50000)
-
-        console.log("\nSending data...")
-
-    }
-
-
-
-
-
-    try {
-        const data = await HeartbeatDB.find({
-            sender: espID,
-            time: { $gt: startDate }
-        }).sort({ time: 1 }).limit(50000)
-
-        console.log("\nSending data...")
-
-        let ret = [];
-
-        for (let i = 0, len = data.length; i < len; i++) {
-            if (i % ratio === 0) {
-                ret.push(data[i]);
-            }
-        }
-        res.json(ret)
-    }
-    catch (err) {
-        res.json({ message: err })
-    }
-})
-*/
