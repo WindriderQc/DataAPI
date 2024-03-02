@@ -72,9 +72,9 @@ router.route('/heartbeats')
     .post(heartbeatController.new)
 
 router.route('/heartbeats/deleteAll').get(heartbeatController.deleteAll)    
-router.route('/heartbeats/devices').get(heartbeatController.devices)
-router.route('/heartbeats/deviceLatest/:esp').get(heartbeatController.deviceLatest)
-router.route('/heartbeats/deviceOldest/:esp').get(heartbeatController.deviceOldest)
+router.route('/heartbeats/senders').get(heartbeatController.sendersDistinct)
+router.route('/heartbeats/senderLatest/:esp').get(heartbeatController.senderLatest)
+router.route('/heartbeats/senderOldest/:esp').get(heartbeatController.senderOldest)
 router.route('/heartbeats/data/:options').get(heartbeatController.data)
 
 router.route('/heartbeats/:post_id')
