@@ -26,7 +26,7 @@ exports.countDocuments_ = async () =>
 exports.index = async (req, res) => 
 {
     Promise.all([
-        countDocuments_(),
+        this.countDocuments_(),
         mdb.getCollections()
     ])
     .then((counts, list) =>  res.json({  status: 'success',  message: 'Welcome to SBQC Data API  💻 🖱️ 🦾 ', data: { data: counts, Collections: list}   }))
@@ -66,5 +66,4 @@ function getCollection(colName) {
       
 }*/
 
-module.exports = {  index, countDocuments, getCollectionList       }
 

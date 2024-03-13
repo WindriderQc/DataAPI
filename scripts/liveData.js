@@ -92,6 +92,7 @@ async function getZonAnn()
 
 
 
+
 function init()
 {
     console.log('about to fetch ZoneAnn')
@@ -101,6 +102,7 @@ function init()
         console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", path);
         getQuakes()
     }
+    else console.log('quakes file found')
 
     getISS()
 }

@@ -8,12 +8,12 @@ const QuakeSchema = mongoose.Schema({
     },
     latitude: {
         type: Number, 
-        default: "0.0000",
+        default: "0.0",
         required: true
     },
     longitude: {
         type: Number, 
-        default: "0.0000",
+        default: "0.0",
         required: true
     },
     depth: {
