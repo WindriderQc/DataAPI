@@ -39,6 +39,6 @@ const DeviceSchema = mongoose.Schema({
         }
 })
 
-
-module.exports = mongoose.model('Device', DeviceSchema)
+const myDB = mongoose.connection.useDb('iGrow')
+module.exports = myDB.model('Device', DeviceSchema)
 

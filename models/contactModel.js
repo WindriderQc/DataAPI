@@ -17,6 +17,9 @@ const contactSchema = mongoose.Schema({
         default: Date.now
     }
 });
+
+
+const myDB = mongoose.connection.useDb('IDs')
 // Export Contact model
-let Contact = module.exports = mongoose.model('contact', contactSchema);
+let Contact = module.exports = myDB.model('contact', contactSchema);
 module.exports.get =  (callback, limit) =>  Contact.find(callback).limit(limit);

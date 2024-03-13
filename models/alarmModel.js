@@ -20,5 +20,5 @@ const AlarmSchema = mongoose.Schema({
 
 })
 
-
-module.exports = mongoose.model('Alarms', AlarmSchema)
+const myDB = mongoose.connection.useDb('iGrow')
+module.exports = myDB.model('Alarms', AlarmSchema)
