@@ -131,8 +131,6 @@ router.route('/alarms/:espID').get(alarmController.getbyEsp)
 
 
 
-
-
 const liveDatasController = require('../controllers/liveDataController')
 router.route('/iss').get(liveDatasController.iss)
 router.route('/quakes').get(liveDatasController.quakes)
