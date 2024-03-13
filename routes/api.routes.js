@@ -1,11 +1,19 @@
 let router = require('express').Router()
 
+const Device = require('../models/deviceModel')
+const Heartbeat = require('../models/heartbeatModel')
+const User = require('../models/userModel')
+const Alarm = require('../models/alarmModel')
+
+
 // Set route default response
-router.get('/', function (req, res) { 
-    res.json({  status: 'Data server connected to iGrow database',  
-                message: 'Welcome to SBQC Data API  💻 🖱️ 🦾   Try 192.168.1.33:3003/.....', 
-                data: { APIs: "db, alarms, contact, devices, heartbeat, users" }   
-            })})
+router.get('/', async function (req, res) { 
+
+   res.redirect('/db')
+
+})
+
+
 
 
 
@@ -14,6 +22,9 @@ const databaseController = require('../controllers/databaseController')
 router.route("/db").get(databaseController.index)
 router.route("/db/collectionList").get(databaseController.getCollectionList)
 router.route("/db/countDocuments").get(databaseController.countDocuments)
+
+
+
 
 
 
@@ -31,11 +42,13 @@ router.route('/contacts/:contact_id')
 
 
 
+
+
 const userController = require('../controllers/userController')
 
 router.post("/users/test", async (req, res) => {
     console.log("test");
-    res.header("auth-test", "yoyo").send("test good");  //  testing custom header 
+    res.header("auth-test", "yoyo").send("test good");  //  testing custom header    //  TODO :  finish test and clean up! :)
     })
 
 router.route('/users')
@@ -49,19 +62,37 @@ router.route('/users/:user_id')
     .delete(userController.delete)
 
 
+
+
     
 const deviceController = require('../controllers/deviceController')
 
 router.route('/devices')
     .get(deviceController.index)
- //   .post(deviceController.new)  //  use patch instead which will create or update
 
-router.route('/devices/:id')
+router.route('/device/:id')
     .get(deviceController.readOne)
-    .patch(deviceController.update)
+    .patch(deviceController.update)   //  use patch instead of post which will create or update
     .delete(deviceController.deleteOne)
 
 router.route('/devices/deleteAll').get(deviceController.deleteAll)    
+
+
+
+
+
+const profileController = require('../controllers/profileController')
+
+router.route('/profiles').get(profileController.index)
+router.route('/profile/:profileName').get(profileController.getFromProfileName)
+
+router.route('/profile/:id')
+    .get(profileController.readOne)
+    .patch(profileController.update)
+    .delete(profileController.deleteOne)
+
+router.route('/profiles/deleteAll').get(profileController.deleteAll)    
+
 
 
 
@@ -83,6 +114,8 @@ router.route('/heartbeats/:post_id')
 
 
 
+
+
 const alarmController = require('../controllers/alarmController')
 
 router.route('/alarms')
@@ -94,5 +127,22 @@ router.route('/alarms/:espID,io').get(alarmController.getEspIO)
 router.route('/alarms/:espID').get(alarmController.getbyEsp)
 
  
+
+
+
+
+
+
+const liveDatasController = require('../controllers/liveDataController')
+router.route('/iss').get(liveDatasController.iss)
+router.route('/quakes').get(liveDatasController.quakes)
+router.route('/deleteAllIss').get(liveDatasController.deleteAllIss)
+router.route('/deleteAllQuakes').get(liveDatasController.deleteAllQuakes)   
+
+
+///////////////////////////////////////////////////////////////////////////////
+
 // Export API routes
 module.exports = router
+
+///////////////////////////////////////////////////////////////////////////////

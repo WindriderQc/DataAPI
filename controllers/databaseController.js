@@ -1,41 +1,52 @@
-
 const mdb = require('../mongooseDB')
 const Device = require('../models/deviceModel')
 const Heartbeat = require('../models/heartbeatModel')
 const User = require('../models/userModel')
 const Alarm = require('../models/alarmModel')
+const Contact = require('../models/contactModel')
+const Iss = require('../models/issModel')
+const Quake = require('../models/quakeModel')
 
 
-async function index(req, res) {
 
+exports.countDocuments_ = async () => 
+{
     let counts = {}
     counts["devices"] = await Device.countDocuments()
     counts["heartbeats"] = await Heartbeat.countDocuments()
     counts["users"] = await User.countDocuments()
     counts["alarms"] = await Alarm.countDocuments()
-    
-    const list = await mdb.getCollections()
-
-    res.json({ status: "success", message: 'Database API reached.', data: counts, list  })
+    counts["contacts"] = await Contact.countDocuments()
+    counts["isses"] = await Iss.countDocuments()
+    counts["quakes"] = await Quake.countDocuments()
+    return counts
 }
 
-async function countDocuments(req, res) {
-    let counts = {}
-    counts["devices"] = await Device.countDocuments()
-    counts["heartbeats"] = await Heartbeat.countDocuments()
-    counts["users"] = await User.countDocuments()
-    counts["alarms"] = await Alarm.countDocuments()
- 
-    console.log("Counting Documents:", counts)
-    
-    //if (err)  res.json({ status:'error', message: err})
-    res.json({ status: "success", message: 'Documents counts retrieved successfully', data: counts  })
+
+exports.index = async (req, res) => 
+{
+    Promise.all([
+        countDocuments_(),
+        mdb.getCollections()
+    ])
+    .then((counts, list) =>  res.json({  status: 'success',  message: 'Welcome to SBQC Data API  💻 🖱️ 🦾 ', data: { data: counts, Collections: list}   }))
+    .catch(err =>  res.json({ status:'error', message: err}) )
 }
 
-async function getCollectionList(req, res) {
-    const list = await mdb.getCollections()
-    console.log('Sending collection list to client: ', list)
-    res.json( list)
+
+exports.countDocuments = async (req, res) =>  
+{
+    countDocuments_()
+    .then(counts =>  res.json({ status: "success", message: 'Documents counts retrieved successfully', data: counts  })   )
+    .catch(err => res.json({ status:'error', message: err}))
+}
+
+
+exports.getCollectionList = async (req, res) => 
+{
+    mdb.getCollections()
+    .then(list =>   res.json(list) )
+    .catch(err => res.json({ status:'error', message: err}))
 }
 
 /*

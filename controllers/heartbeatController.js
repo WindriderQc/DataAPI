@@ -1,4 +1,5 @@
 const Heartbeat = require('../models/heartbeatModel')
+const mongoose = require('mongoose')
 
 
 // Gets back all the posts
@@ -39,7 +40,9 @@ exports.byId = (req, res) => {
 
 
 // Submits a post
-exports.new = (req, res) => {
+exports.new = async (req, res) => {
+
+    mongoose.connection.useDb('iGrow');
 
     const post = new Heartbeat(req.body)
 

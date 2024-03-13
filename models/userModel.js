@@ -39,5 +39,7 @@ const userSchema = mongoose.Schema({
 })
 
 
-let User = module.exports = mongoose.model('user', userSchema)
+const myDB = mongoose.connection.useDb('iGrow')
+
+let User = module.exports = myDB.model('user', userSchema)
 module.exports.get =  (callback, limit) =>  User.find(callback).limit(limit)

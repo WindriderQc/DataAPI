@@ -75,5 +75,7 @@ const HeartbeatSchema = mongoose.Schema({
 })
 
 
-module.exports = mongoose.model('Heartbeat', HeartbeatSchema)
+const myDB = mongoose.connection.useDb('datas')
+
+module.exports = myDB.model('Heartbeat', HeartbeatSchema)
 
