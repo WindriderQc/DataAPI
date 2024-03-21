@@ -6,7 +6,7 @@ function index(req, res) {
    // Device.find({}, (err, devices) => { errorCheck(err, res, { status: "success", message: 'Devices retrieved successfully', data: devices  })    })
 
 
-    console.log("Requesting devices:", req.query)
+   // console.log("Requesting devices:", req.query)
     let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/devices?skip=0&limit=25&sort=desc
     skip = parseInt(skip) || 0
     limit = parseInt(limit) || 10
