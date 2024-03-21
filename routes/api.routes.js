@@ -55,12 +55,14 @@ router.route('/users')
     .get(userController.index)
     .post(userController.new)  
 
-router.route('/users/:user_id')
+
+router.route('/users/fromEmail/:email').get(userController.fromEmail)
+
+router.route('/user/:user_id')
     .get(userController.view)
     .patch(userController.update)
     .put(userController.update)
     .delete(userController.delete)
-
 
 
 
@@ -84,7 +86,7 @@ router.route('/devices/deleteAll').get(deviceController.deleteAll)
 const profileController = require('../controllers/profileController')
 
 router.route('/profiles').get(profileController.index)
-router.route('/profile/:profileName').get(profileController.getFromProfileName)
+router.route('/profileFromName/:profileName').get(profileController.getFromProfileName)
 
 router.route('/profile/:id')
     .get(profileController.readOne)

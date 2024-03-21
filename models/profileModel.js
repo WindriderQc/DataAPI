@@ -4,7 +4,7 @@ const mongoose = require('mongoose')
 const ProfileSchema = mongoose.Schema({
     profileName: {
         type: String, 
-        default: "default",
+        default: "default_ESP32",
         required: true
     },
     id: {

@@ -32,9 +32,10 @@ exports.index = (req, res) =>{
 // create  
 exports.new = (req, res) =>{
 
-    var user = new User();
+    let user = new User();
     user.name = req.body.name ? req.body.name : user.name
     user.email = req.body.email
+    user.password = req.body.password
     
     user.save( (err) => { errorCheck(err, res, { message: 'New contact created!', data: user })     })
 }
@@ -44,6 +45,12 @@ exports.new = (req, res) =>{
 exports.view = (req, res) =>{
 
     User.findById(req.params.user_id, (err, user) =>{ errorCheck(err, res, { message: 'User details loading..', data: user })   })
+}
+
+// from Email  
+exports.fromEmail = (req, res) =>{
+
+    User.find({email:req.params.email}, (err, user) =>{ errorCheck(err, res, { message: 'User details loading..', data: user })   })
 }
 
 

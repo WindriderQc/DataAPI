@@ -15,6 +15,7 @@ function readOne(req, res) {
 
 //Get a  specific  '/:profileName'
 function getFromProfileName(req, res) {
+    console.log(req.params.profileName)
     Profiles.find({ profileName: req.params.profileName }, (err, post) =>{ errorCheck(err, res, { status: "success", message: 'Profile Config retrieved successfully from Name', data: post  })      })   
 }
 
