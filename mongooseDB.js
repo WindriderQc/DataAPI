@@ -9,13 +9,9 @@ const mongooseDB = {
     
 
 
-    init: async function(selectedDatabase, callback) {
+    init: async function(url, selectedDatabase, callback) {
         
-        const url =  "mongodb://" + process.env.USER + ":" + process.env.PASSWORD + "@127.0.0.1:27017/" + selectedDatabase + "?retryWrites=true&w=majority&authMechanism=DEFAULT&authSource=admin"
-        //const url = process.env.MONGO_URL ? process.env.MONGO_URL : "mongodb://127.0.0.1:27017/IoT"   //  attempt at local database if no cloud URL defined, prevent crash if no .env file is found nor url defined
-
-        // mongoose with local DB
-        mongoose.connect( url,  { family: 4, useNewUrlParser: true, useUnifiedTopology: true }, (err)=>{ if (err)  console.log("Error at Mongoose Connect:  "+ url + "\n" + err)}) // family: 4 -> skip  default IPV6 connection  and accelerate connection.
+        mongoose.connect( url,  { family: 4, useNewUrlParser: true, useUnifiedTopology: true }) // family: 4 -> skip  default IPV6 connection  and accelerate connection.
 
         mongoose.connection.on('error', console.error.bind(console, 'conn error:'))
 

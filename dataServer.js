@@ -1,7 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 require('dotenv').config();
-const mdb = require('./mongooseDB') // mongoose with local DB
+const mdb = require('./mongooseDB') // mongoose with process.env.MONGO_CLOUD=mongodb+srv://user:password@cluster/collection?retryWrites=true&w=majority&authSource=admin
 
 
 const PORT = process.env.PORT || 3003 
@@ -9,9 +9,10 @@ const PORT = process.env.PORT || 3003
 
 async function startDatabase() 
 {
+    const url =  process.env.MONGO_CLOUD
 
     try {
-        await mdb.init("datas", async ()=>{    console.log("Collections: ", await mdb.getCollections())   })
+        await mdb.init(url, "datas", async ()=>{    console.log("Collections: ", await mdb.getCollections())   })
         startServer()
     } catch (err) {
         console.log('Failed to initialize database:', err)

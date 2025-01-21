@@ -6,7 +6,7 @@ const mongoClient = require("mongodb").MongoClient
 const mongo = {
     connectDb: (url, dbName, callback) => 
     {            
-        mongoClient.connect(url,  { useNewUrlParser: true, useUnifiedTopology: true })//  TODO  passer l'URL en param pour enlever dépendance a dotenv
+        mongoClient.connect(url,  { useNewUrlParser: true, useUnifiedTopology: true })
         .then(client =>{
             
         

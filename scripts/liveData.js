@@ -31,7 +31,7 @@ async function getISS()
         mongoose.connection.useDb('datas');
 
         const post = new Iss(data)
-        post.save((err) =>{  if (err)  console.log('Error saving Iss location to database   err: ', err, data)        })
+        post.save()
     } 
     catch (error) {        console.log(error, 'Better luck next time...  Keep Rolling! ')    } 
 }
