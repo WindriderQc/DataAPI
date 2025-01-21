@@ -42,7 +42,7 @@ exports.byId = (req, res) => {
 // Submits a post
 exports.new = async (req, res) => {
 
-    mongoose.connection.useDb('iGrow');
+    mongoose.connection.useDb('datas');
 
     const post = new Heartbeat(req.body)
 
