@@ -54,33 +54,29 @@ exports.new = async (req, res) => {
 
 
 //Delete a specific post
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
    
-    Heartbeat.deleteOne({ _id: req.params.post_id }, (err, ack) => {
-        if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'Post deleted', data: ack  })
-        })
+    const ack = await Heartbeat.findById(req.params.post_id)
+    if (!ack) {  res.json({ status:'error', message: 'Post not found'})  }
+    res.json({ status: "success", message: 'Post deleted', data: ack  })
 }
 
 
 // delete all the posts
-exports.deleteAll = (req, res) => { 
+exports.deleteAll = async (req, res) => { 
   
-    Heartbeat.deleteMany({}, (err, ack) => {
-        if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'All Heartbeats deleted', data: ack  })
-        })
-
+    const ack = await Heartbeat.deleteMany({})
+    if (!ack)  res.json({ status:'error', message: 'Error deleting'})
+    res.json({ status: "success", message: 'All Heartbeats deleted', data: ack  })
 }
 
 
 // get list of all devices that posted 
-exports.sendersDistinct = (req, res) => {   
+exports.sendersDistinct = async (req, res) => {   
 
-    Heartbeat.distinct('sender', (err, devices) => {
-        if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'Latest heartbeaters retrieved', data: devices  })
-    })     
+    const devices = await Heartbeat.distinct('sender')
+    if (!devices)  res.json({ status:'error', message: "error retrieving devices"})
+    res.json({ status: "success", message: 'Latest heartbeaters retrieved', data: devices  })   
 }
 
 

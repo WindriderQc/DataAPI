@@ -33,32 +33,49 @@ function index(req, res) {
 
 
 //Get a  device  '/:id'
-function readOne(req, res) {
-    Device.find({ id: req.params.id }, (err, post) =>{ errorCheck(err, res, { status: "success", message: 'Device retrieved successfully', data: post  })      })   
+async function readOne(req, res) {
+    try {
+        const post = await Device.find({ id: req.params.id });
+        res.json({ status: "success", message: 'Device retrieved successfully', data: post });
+    } catch (err) {
+        res.json({ status: "error", message: err, data: null });
+    }
 }
 
 
 // update  
-function update(req, res) {
+async function update(req, res) {
+    const query = { id: req.body.id };
+    const update = { type: req.body.type, lastBoot: req.body.lastBoot, connected: req.body.connected, config: req.body.config  };
 
-    const query = { id: req.body.id }
-    const update = { type : req.body.type, lastBoot: req.body.lastBoot, connected: req.body.connected, config: req.body.config    }
-
-    Device.findOneAndUpdate(query, update, { upsert: true, new: true, setDefaultsOnInsert: true }, (err, doc) => {
-        errorCheck(err, res, { status: "success", message: 'Device registration Info updated/created', data: doc  }) 
-    })
+    try {
+        const doc = await Device.findOneAndUpdate(query, update, { upsert: true,  new: true, setDefaultsOnInsert: true });
+        res.status(200).json({ status: "success", message: 'Device registration Info updated/created', data: doc });
+    } catch (err) {
+        res.status(500).json({ status: "error", message: err.message });
+    }
 }
 
 
 //Delete a specific device
-function deleteOne(req, res) {
-    Device.deleteOne({ id: req.params.id }, (err, ack) => { errorCheck(err, res, { status: "success", message: 'Device ' + id + ' deleted', data: ack  })     })
+async function deleteOne(req, res) {
+    try {
+        const ack = await Device.deleteOne({ id: req.params.id });
+        res.json({ status: "success", message: 'Device ' + req.params.id + ' deleted', data: ack });
+    } catch (err) {
+        res.json({ status: "error", message: err, data: null });
+    }
 }
 
 
 // delete all the posts
-function deleteAll(req, res) { 
-    Device.deleteMany({}, (err, ack) => { errorCheck(err, res, { status: "success", message: 'All registered Devices deleted', data: ack  })      })
+async function deleteAll(req, res) { 
+    try {
+        const ack = await Device.deleteMany({});
+        res.json({ status: "success", message: 'All registered Devices deleted', data: ack });
+    } catch (err) {
+        res.json({ status: "error", message: err, data: null });
+    }
 }
 
 
