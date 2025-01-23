@@ -30,12 +30,11 @@ exports.index = (req, res)=> {
 
 
 //Get a  post  '/:post_id'
-exports.byId = (req, res) => {
-    Heartbeat.findById(req.params.post_id, (err, post) =>{
-        console.log()
-        if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'Heartbeat retrieved successfully', data: post  })
-    })   
+exports.byId = async (req, res) => {
+    
+    const post = await Heartbeat.findById(req.params.post_id)
+    if (!post)  res.json({ status:'error', message: 'Post not found'})
+    res.json({ status: "success", message: 'Heartbeat retrieved successfully', data: post  })
 }
 
 
@@ -45,11 +44,9 @@ exports.new = async (req, res) => {
     mongoose.connection.useDb('datas');
 
     const post = new Heartbeat(req.body)
-
-    post.save((err) =>{
-        if (err)  res.json({ status:'error', message: err})
-        res.json({ status: "success", message: 'Heartbeat loggged successfully', data: post  })
-    })
+    const ack = await post.save()
+    if (!ack) {  res.json({ status:'error', message: 'heartbeat not saved'})  }
+    res.json({ status: "success", message: 'Heartbeat loggged successfully', data: post  })
 }
 
 

@@ -3,12 +3,12 @@ const nodeTools = require('nodetools') //nodeTools.readFile("greetings.txt")
 const CSVToJSON = require('csvtojson')
 //const moment = require('moment')
 
-const quakes_url = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.csv'
+const quakes_url = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.csv'
 const quakesPath = "./data/quakes.csv";
 
 
 
-const Iss = require('../models/issModel')
+//const Iss = require('../models/issModel')
 const Quake = require('../models/quakeModel')
 
 const mongoose = require('mongoose')
@@ -21,13 +21,16 @@ async function getISS()
 {
     const iss_api_url = 'https://api.wheretheiss.at/v1/satellites/25544';
 
-    try {
+    try {  
+        console.log( 'IS THERE AN ERROR!!! ', iss_api_url)
         const response = await fetch(iss_api_url)
+       
         let data = await response.json()
+       
         const { latitude, longitude } = data
         const timeStamp = new Date()
         data = { latitude, longitude, timeStamp }
-       
+      
         mongoose.connection.useDb('datas');
 
         const post = new Iss(data)
@@ -71,7 +74,7 @@ async function getQuakes()
 
 async function getZonAnn() 
 {
-    const response = await fetch('https://data.giss.nasa.gov/gistemp/tabledata_v4/ZonAnn.Ts+dSST.csv')
+    const response = await fetch('http://data.giss.nasa.gov/gistemp/tabledata_v4/ZonAnn.Ts+dSST.csv')
     const data = await response.text()
   
     const table = data.split('\n').slice(1)   //  slice delete line 1
@@ -104,7 +107,7 @@ function init()
     }
     else console.log('quakes file found')
 
-    getISS()
+    //getISS()
 }
 
 
@@ -115,11 +118,11 @@ function setAutoUpdate(intervals, updateNow = false)   //  update is done during
 {
     if(updateNow) {
         getQuakes()
-        getISS()
+        //getISS()
     }
 
     setInterval(getQuakes,intervals.quakes) // 24*60*60*1000)  // daily
-    setInterval(getISS, intervals.iss) //10*1000)             // every 10sec
+    //setInterval(getISS, intervals.iss) //10*1000)             // every 10sec
 
     console.log("LiveData configured  -  Intervals: ", intervals )
 }
