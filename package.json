@@ -4,8 +4,8 @@
   "description": "",
   "main": "dataServer.js",
   "scripts": {
-    "dev": "nodemon dataServer.js",
-    "start": "node  dataServer.js"
+    "dev": "nodemon data_serv.js",
+    "start": "node  data_serv.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +27,7 @@
     "mongodb": "^3.7.2",
     "mongoose": "^8.9.5",
     "nodemon": "^3.1.9",
-    "nodetools": "github:WindriderQc/nodeTools"
+    "nodetools": "github:WindriderQc/nodeTools",
+    "socket.io": "^4.8.1"
   }
 }

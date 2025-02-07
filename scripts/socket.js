@@ -12,7 +12,7 @@ function init(server)
     const io  = socket(server, { cors: { origin: '*' } })
        
     io.on('connection', (socket) => {
-        console.log('New Connection: ', socket.id )
+        console.log('New Socket Connection: ', socket.id )
     
         socket_ = socket
         

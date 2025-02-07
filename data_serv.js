@@ -4,8 +4,13 @@ require('dotenv').config();
 const mdb = require('./mongooseDB') // mongoose with process.env.MONGO_CLOUD=mongodb+srv://user:password@cluster/collection?retryWrites=true&w=majority&authSource=admin
 
 
+
 const PORT = process.env.PORT || 3003 
 
+const liveDatas = require('./scripts/liveData.js')
+
+
+let server = null
 
 async function startDatabase() 
 {
@@ -24,8 +29,12 @@ async function startDatabase()
             .use(express.json({limit:'10mb'})) // To parse the incoming requests with JSON payloads
             //.use(rateLimit({ windowMs: 30 * 1000, max: 1 }))  //  prevents a user to crash server with too many request, altough with ESP32 sending heartbeat fast.. this cannot be set
             .use('/', require("./routes/api.routes"))
-            .listen(PORT, () => {  console.log(`\n\nData API Server running at port ${PORT}`)    })
-
+            .listen(PORT, (server) => {  
+                console.log(`\n\nData API Server running at port ${PORT}`)    
+                liveDatas.init(server)
+                console.log("Setting live data  :  v" + liveDatas.version)
+                console.log("Intervals: ", liveDatas.intervals)   
+        })
 
     } catch (err) {
         console.log('Failed to initialize database:', err)
@@ -34,3 +43,6 @@ async function startDatabase()
 }
 
 startDatabase()
+
+
+
