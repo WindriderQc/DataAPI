@@ -57,9 +57,8 @@ exports.post = async (req, res) => {
    
        
                 
-        console.log("Updated Alarm:\n")
-        console.log(als)
-        res.json(als )
+        console.log("Updated Alarm:\n", als)
+        res.json(als )   //  TODO    API - Pkoi ca retourne pas le meme standard de format de donnees?
        /* res.json({
                 status: 'Success',
                 message: 'Alarm Info updated',
@@ -104,14 +103,3 @@ exports.getEspIO =  (req, res) => {
         res.json(alarm)
     })
 }
-
-/*
-exports.getAll = async () => {    //   TODO : difference avec index???
-    try{
-        const alarms = await Alarm.find()
-        return alarms
-       
-    }catch(err) {
-        return { status: "error", message:err }
-    }
-}*/

@@ -18,7 +18,7 @@ node -v
 
 sudo apt install mosquitto
 mosquitto -d     ->  -d Run mosquitto in the background as a daemon
-yb@flyinghq:~$ mosquitto_sub -t "test"
+@flyinghq:~$ mosquitto_sub -t "test"
 mosquitto_pub -m "message from mosquitto_pub client" -t "test"
 
 sudo mosquitto_passwd -c passwordfile user              -> Create passwordfile and add user
@@ -60,6 +60,14 @@ mkdir Servers
 cd Servers
 git clone https://github.com/WindriderQc/DataAPI.git
 cd DataAPI
+
+/* // Create .env file
+USER=
+PASSWORD=
+
+PORT = 3003
+*/
+
 npm install
 npm audit fix 
 npm start

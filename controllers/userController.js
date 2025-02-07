@@ -2,10 +2,9 @@ const User = require('../models/userModel')
 
 
 // index 
-exports.index = (req, res) =>{
-
+exports.index = (req, res) =>
+{
    // User.get( (err, users) =>{ errorCheck(err, res, { status: "success", message: "Users retrieved successfully", data: users })     })
-
    console.log("Requesting users:", req.query)
    let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/users?skip=0&limit=25&sort=desc
    skip = parseInt(skip) || 0
@@ -17,7 +16,7 @@ exports.index = (req, res) =>{
 
    Promise.all([
         User.countDocuments({}),
-        User.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  }      })
+        User.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  } })
    ])
    .then(([ total, data ]) => {
        res.json({  status: "success", message: 'Users retrieved successfully', 
@@ -30,54 +29,70 @@ exports.index = (req, res) =>{
 
 
 // create  
-exports.new = (req, res) =>{
-
+exports.new = (req, res) =>
+{
     let user = new User();
     user.name = req.body.name ? req.body.name : user.name
     user.email = req.body.email
     user.password = req.body.password
+    user.gender = req.body.gender ? req.body.gender : user.gender
+    user.email = req.body.email ? req.body.email : user.email
+    user.phone = req.body.phone ? req.body.phone : user.phone
+    user.lon = req.body.lon ? req.body.lon : user.lon
+    user.lat = req.body.lat ? req.body.lat : user.lat
+    user.lastConnectDate = req.body.lastConnectDate ? req.body.lastConnectDate : user.lastConnectDate
     
-    user.save( (err) => { errorCheck(err, res, { message: 'New contact created!', data: user })     })
+    user.save( (err) => { errorCheck(err, res, { message: 'New contact created!', data: user }) })
 }
 
 
 // view  
-exports.view = (req, res) =>{
-
-    User.findById(req.params.user_id, (err, user) =>{ errorCheck(err, res, { message: 'User details loading..', data: user })   })
+exports.view = (req, res) =>
+{
+    User.findById(req.params.user_id, (err, user) =>{ errorCheck(err, res, { status: 'success', message: 'User details loading..', data: user }) })
 }
 
 // from Email  
-exports.fromEmail = (req, res) =>{
-
-    User.find({email:req.params.email}, (err, user) =>{ errorCheck(err, res, { message: 'User details loading..', data: user })   })
+exports.fromEmail = (req, res) =>
+{
+    User.find({email:req.params.email}, (err, user) =>{ errorCheck(err, res, { status: 'success', message: 'User details loading..', data: user }) })
 }
 
 
 // update  
-exports.update = (req, res) =>{
+exports.update = (req, res) =>
+{
+    try{
+        console.log('update request: ', )
+        User.findById(req.body._id, (err, user) =>{
+            if (err) res.json({ status: 'error', message: err }) 
+            console.log("user: ", user)
+            user.name = req.body.name ? req.body.name : user.name
+            user.gender = req.body.gender ? req.body.gender : user.gender
+            user.email = req.body.email ? req.body.email : user.email
+            user.phone = req.body.phone ? req.body.phone : user.phone
+            
+            user.lon = req.body.lon ? req.body.lon : user.lon
+            user.lat = req.body.lat ? req.body.lat : user.lat
+            user.lastConnectDate = req.body.lastConnectDate ? req.body.lastConnectDate : user.lastConnectDate
+            
+            user.save((err) =>{  errorCheck(err, res, { status: 'success', message: 'User Info updated', data: user  }) })
+        })
 
-    User.findById(req.params.user_id, (err, user) =>{
-       
-        user.name = req.body.name ? req.body.name : user.name
-        user.gender = req.body.gender
-        user.email = req.body.email
-        user.phone = req.body.phone
-        if (err) res.send(err)
-        user.save((err) =>{  errorCheck(err, res, { message: 'User Info updated', data: user  })   })
-    })
+    } catch (err) { console.log ( 'error updating user by id: ', err)}
 }
 
 
 // delete 
-exports.delete =  (req, res) =>{
-
-    User.remove({  _id: req.params.user_id }, (err, contact) =>{  errorCheck(err, res, { status: "success",  message: 'User deleted' })     })
+exports.delete =  (req, res) =>
+{
+    User.remove({  _id: req.params.user_id }, (err, contact) =>{  errorCheck(err, res, { status: 'success',  message: 'User deleted' }) })
 }
 
 
 // helper method
-errorCheck = (err, res, successMsg) =>{
-    if (err) res.json({ status: "error", message: err }) 
+errorCheck = (err, res, successMsg) =>
+{
+    if (err) res.json({ status: 'error', message: err }) 
     else     res.json(successMsg)    
 }

@@ -1,11 +1,7 @@
-const liveDatas = require('../scripts/liveData.js')
 const Iss = require('../models/issModel')
 const Quake = require('../models/quakeModel')
 
 
-const intervals = { quakes:1000*60*60*24*7, iss: 1000*10 }   //   weekly ,  each 10 sec
-liveDatas.init()
-liveDatas.setAutoUpdate(intervals, false)
 
 
 
