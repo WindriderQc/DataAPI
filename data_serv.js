@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 3003
 const liveDatas = require('./scripts/liveData.js')
 
 
-let server = null
 
 async function startDatabase() 
 {
@@ -32,8 +31,7 @@ async function startDatabase()
             .listen(PORT, (server) => {  
                 console.log(`\n\nData API Server running at port ${PORT}`)    
                 liveDatas.init(server)
-                console.log("Setting live data  :  v" + liveDatas.version)
-                console.log("Intervals: ", liveDatas.intervals)   
+                console.log("LiveData  -  v" + liveDatas.version) 
         })
 
     } catch (err) {
