@@ -3,6 +3,12 @@ const mongoose = require('mongoose')
 const CSVToJSON = require('csvtojson')
 const socketio = require('./socket')
 
+// Get datas from various API at reccurent intervals, and post actualization on socketio
+//  to be used in the front end
+
+//  TODO  add a function to get the data from the database and send it to the mqtt instead of socket IO??
+
+
 const Iss = require('../models/issModel')
 const Quake = require('../models/quakeModel')
 
@@ -10,11 +16,16 @@ const quakes_url = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all
 const quakesPath = "./data/quakes.csv";
 
 
+
+
+
+
 let io = null
 
 let datas = { version: 1.0 }
 const version = datas.version
-const intervals = { quakes:1000*60*60*24*7, iss: 1000*5 }   //   weekly ,  each 10 sec
+const intervals = { quakes:1000*60*60*24*7, iss: 1000*20 }   //   weekly ,  each 20 sec
+const maxISSlogs = 2000
 
 
 async function getISS() 
@@ -33,10 +44,19 @@ async function getISS()
 
         mongoose.connection.useDb('datas');
 
+        const collection = mongoose.connection.collection('iss'); // Access the collection directly
+        const count = await collection.countDocuments();
+
+        if (count >= maxISSlogs) {
+            // Delete the oldest document
+            await Iss.findOneAndDelete({}, { sort: { timeStamp: 1 } });
+        }
+
+
         const post = new Iss(datas.iss)
-        post.save()
+        await post.save()
     } 
-    catch (error) {        console.log(error, 'Better luck next time...  Keep Rolling! ')    } 
+    catch (error) {        console.log(error, 'Better luck next time getting ISS location...  Keep Rolling! ')    } 
 }
 
 
@@ -73,30 +93,59 @@ async function getQuakes()
 
         });
     
-    } catch (error) {    console.log(error, 'Better luck next time...  Keep Rolling! ')     }
+    } catch (error) {    console.log(error, 'Better luck next time getting quakes...  Keep Rolling! ')     }
 
 }
 
-async function getZonAnn() 
-{
-    const response = await fetch('http://data.giss.nasa.gov/gistemp/tabledata_v4/ZonAnn.Ts+dSST.csv')
-    const data = await response.text()
-  
-    const table = data.split('\n').slice(1)   //  slice delete line 1
-    
-    let temps = {}
+async function getZonAnn() {
+    const url = 'http://data.giss.nasa.gov/gistemp/tabledata_v4/ZonAnn.Ts+dSST.csv';
+    const timeout = 5000; // Set timeout in milliseconds
 
-    table.forEach(row => {
-        const columns = row.split(',')
-        const year = columns[0]
-        const temp = columns[1]
-    
-        //console.log(year, temp)
-        temps.yearTemp = {year, temp}
+    const controller = new AbortController();
+    const signal = controller.signal;
 
-        return (temps.yearTemp)  //  TODO:  mais...    ca va retourner juste la premiere ligne du tableau!?
-    })
+    // Set a timeout to abort the fetch request
+    const fetchTimeout = setTimeout(() => {
+        controller.abort();
+    }, timeout);
+
+    try {
+        const response = await fetch(url, { lol });
+        clearTimeout(fetchTimeout); // Clear the timeout if fetch is successful
+        const data = await response.text();
+
+        const table = data.split('\n').slice(1); // slice deletes line 1
+
+        let temps = {};
+
+        table.forEach(row => {
+            const columns = row.split(',');
+            const year = columns[0];
+            const temp = columns[1];
+
+            //console.log(year, temp)
+            temps[year] = temp;
+        });
+
+        return temps; // Return the complete temps object
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('Fetch request timed out');
+        } else {
+            console.error('Fetch request failed', error);
+        }
+        return null; // Return null or handle the error as needed
+    }
 }
+
+// Example usage
+/*getZonAnn().then(temps => {
+    if (temps) {
+        console.log('Temperature data:', temps);
+    } else {
+        console.log('Failed to fetch temperature data');
+    }
+});*/
 
 
 
