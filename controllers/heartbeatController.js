@@ -41,8 +41,6 @@ exports.byId = async (req, res) => {
 // Submits a post
 exports.new = async (req, res) => {
 
-    mongoose.connection.useDb('datas');
-
     const post = new Heartbeat(req.body)
     const ack = await post.save()
     if (!ack) {  res.json({ status:'error', message: 'heartbeat not saved'})  }

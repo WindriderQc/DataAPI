@@ -20,5 +20,7 @@ const AlarmSchema = mongoose.Schema({
 
 })
 
-const myDB = mongoose.connection.useDb('datas')
+const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
+const myDB = mongoose.connection.useDb(dbName)
+
 module.exports = myDB.model('Alarms', AlarmSchema)

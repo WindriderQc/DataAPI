@@ -43,7 +43,6 @@ async function getISS()
         if(io) io.sockets.emit('iss', datas.iss)
 
         mongoose.connection.useDb('datas');
-
         const collection = mongoose.connection.collection('iss'); // Access the collection directly
         const count = await collection.countDocuments();
 
@@ -70,8 +69,8 @@ async function getQuakes()
         nodeTools.saveFile( data, quakesPath)
         const quakes = await CSVToJSON().fromString(data);  // converts to JSON array
 
-        mongoose.connection.useDb('datas');
-
+       // mongoose.connection.useDb('datas');   TODO  not needed here, but in the model
+      
         quakes.forEach(async (quakeData) => {
             const post = new Quake({
               time: quakeData.time,
@@ -79,17 +78,15 @@ async function getQuakes()
               longitude: quakeData.longitude,
               depth: quakeData.depth,
               mag: quakeData.mag,
-              // ... other fields ...
+              // TODO  ... other fields ...
             });
-          
 
-              try {
+            try {
                     const ack = await  post.save();
-                    // console.log('Quake location saved successfully.');
+                    console.log('Quake location saved successfully:', ack);
                 } catch (err) {
                     console.log('Error saving Quake location to database err: ', err);
                 }
-
 
         });
     
@@ -174,9 +171,6 @@ function init(server)
 function setAutoUpdate(intervals, updateNow = false)   //  update is done during init.  updateNow is useful is changing the interval from long to short and want current data at runtime
 {
     
-   
-    
-
     if(updateNow) {
         getQuakes()
         getISS()
