@@ -39,7 +39,8 @@ const userSchema = mongoose.Schema({
 })
 
 
-const myDB = mongoose.connection.useDb('datas')
+const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
+const myDB = mongoose.connection.useDb(dbName)
 
 let User = module.exports = myDB.model('user', userSchema)
 module.exports.get =  (callback, limit) =>  User.find(callback).limit(limit)
