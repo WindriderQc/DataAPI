@@ -43,15 +43,27 @@ async function getISS()
         if(io) io.sockets.emit('iss', datas.iss)
 
         mongoose.connection.useDb('datas');
-        const collection = mongoose.connection.collection('iss'); // Access the collection directly
-        const count = await collection.countDocuments();
+        const collection = mongoose.connection.collection('isses'); // Access the collection directly
+       
+        console.log('Using database:', mongoose.connection.name);
 
-        if (count >= maxISSlogs) {
-            // Delete the oldest document
-            await Iss.findOneAndDelete({}, { sort: { timeStamp: 1 } });
-        }
+         // Log the count before deletion
+         const countBefore = await collection.countDocuments();
+         console.log(`Count before deletion: ${countBefore}`);
+ 
+         if (countBefore >= maxISSlogs) {
+             // Delete the oldest document
+             const deletedDoc = await Iss.findOneAndDelete({}, null, { sort: { timeStamp: 1 } });
+             //const deletedDoc = await Iss.findOneAndDelete({}, { sort: { timeStamp: 1 } });
+             console.log('Deleted document:', deletedDoc);
+         }
+ 
+         // Log the count after deletion
+         const countAfter = await collection.countDocuments();
+         console.log(`Count after deletion: ${countAfter}`);
+ 
 
-
+    // Save the new post
         const post = new Iss(datas.iss)
         await post.save()
     } 
@@ -83,7 +95,7 @@ async function getQuakes()
 
             try {
                     const ack = await  post.save();
-                    console.log('Quake location saved successfully:', ack);
+                    //console.log('Quake location saved successfully:', ack);
                 } catch (err) {
                     console.log('Error saving Quake location to database err: ', err);
                 }
@@ -107,7 +119,7 @@ async function getZonAnn() {
     }, timeout);
 
     try {
-        const response = await fetch(url, { lol });
+        const response = await fetch(url);
         clearTimeout(fetchTimeout); // Clear the timeout if fetch is successful
         const data = await response.text();
 
