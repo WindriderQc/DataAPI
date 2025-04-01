@@ -11,7 +11,7 @@ const mongooseDB = {
 
     init: async function(url, selectedDatabase, callback) {
         
-        mongoose.connect( url,  { family: 4, useNewUrlParser: true, useUnifiedTopology: true }) // family: 4 -> skip  default IPV6 connection  and accelerate connection.
+        mongoose.connect( url,  { family: 4 }) // family: 4 -> skip  default IPV6 connection  and accelerate connection.
 
         mongoose.connection.on('error', console.error.bind(console, 'conn error:'))
 
