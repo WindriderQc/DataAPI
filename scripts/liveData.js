@@ -41,33 +41,21 @@ async function getISS()
      
         datas.iss = { latitude, longitude, timeStamp }
         if(io) io.sockets.emit('iss', datas.iss)
-
-
-        /*const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
-        //console.log('dbName:', dbName)
-
-        const db = mongoose.connection.useDb(dbName);
-        //console.log('Using database:', db.name);
-
-        const collection = db.collection('isses'); // Access the collection directly*/
-       
-        // Log the count before deletion
+      
         const countBefore = await Iss.countDocuments();
-        console.log(`Count before deletion: ${countBefore}`);
 
         if (countBefore >= maxISSlogs) {
             // Delete the oldest document
             const deletedDoc = await Iss.findOneAndDelete({},{ sort: { timeStamp: 1 } });
-            //const deletedDoc = await Iss.findOneAndDelete({}, { sort: { timeStamp: 1 } });
-            console.log('Deleted document:', deletedDoc);
+            //console.log('Deleted document:', deletedDoc);
         }
  
          // Log the count after deletion
-         const countAfter = await Iss.countDocuments();
-         console.log(`Count after deletion: ${countAfter}`);
+         //const countAfter = await Iss.countDocuments();
+         //console.log(`Count before deletion: ${countBefore}  -  Count after deletion: ${countAfter}`);
  
 
-    // Save the new post
+        // Save the new post
         const post = new Iss(datas.iss)
         await post.save()
     } 
@@ -80,11 +68,17 @@ async function getQuakes()
 {
     try 
     {
+
         const response = await fetch(quakes_url)
         const data = await response.text()
         nodeTools.saveFile( data, quakesPath)
         const quakes = await CSVToJSON().fromString(data);  // converts to JSON array
       
+        // Flush the collection by deleting all documents
+        console.log('Flushing the Quake collection...');
+        await Quake.deleteMany({});
+        console.log('Quake collection flushed.');
+
         quakes.forEach(async (quakeData) => {
             const post = new Quake({
               time: quakeData.time,
@@ -175,7 +169,7 @@ function init(server)
 
     //setTimeout(() => setAutoUpdate(intervals, false),10000) // 24*60*60*1000)  
     
-    setAutoUpdate(intervals, false)
+    setAutoUpdate(intervals, true)
 
  
 }
@@ -189,7 +183,7 @@ function setAutoUpdate(intervals, updateNow = false)   //  update is done during
     
     if(updateNow) {
         getQuakes()
-        getISS()
+        //getISS()
     }
 
     setInterval(getQuakes,intervals.quakes) // 24*60*60*1000)  
