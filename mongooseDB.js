@@ -17,7 +17,8 @@ const mongooseDB = {
 
         mongoose.connection.once('open', async () =>  { 
          
-            console.log('\nMongoose connected to:', selectedDatabase, "\n", url, "\n" )  
+            const db = mongoose.connection.useDb(selectedDatabase);
+            console.log('\nMongoose connected to:', db.name, "\n", url, "\n" )  
 
             _db = mongoose.connection.db
             _connection = mongoose.connection

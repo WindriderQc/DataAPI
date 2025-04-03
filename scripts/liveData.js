@@ -1,5 +1,5 @@
 const nodeTools = require('nodetools') 
-const mongoose = require('mongoose')
+//const mongoose = require('mongoose')
 const CSVToJSON = require('csvtojson')
 const socketio = require('./socket')
 
@@ -25,7 +25,7 @@ let io = null
 let datas = { version: 1.0 }
 const version = datas.version
 const intervals = { quakes:1000*60*60*24*7, iss: 1000*20 }   //   weekly ,  each 20 sec
-const maxISSlogs = 2000
+const maxISSlogs = 5
 
 
 async function getISS() 
@@ -42,24 +42,28 @@ async function getISS()
         datas.iss = { latitude, longitude, timeStamp }
         if(io) io.sockets.emit('iss', datas.iss)
 
-        mongoose.connection.useDb('datas');
-        const collection = mongoose.connection.collection('isses'); // Access the collection directly
-       
-        console.log('Using database:', mongoose.connection.name);
 
-         // Log the count before deletion
-         const countBefore = await collection.countDocuments();
-         console.log(`Count before deletion: ${countBefore}`);
- 
-         if (countBefore >= maxISSlogs) {
-             // Delete the oldest document
-             const deletedDoc = await Iss.findOneAndDelete({}, null, { sort: { timeStamp: 1 } });
-             //const deletedDoc = await Iss.findOneAndDelete({}, { sort: { timeStamp: 1 } });
-             console.log('Deleted document:', deletedDoc);
-         }
+        /*const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
+        //console.log('dbName:', dbName)
+
+        const db = mongoose.connection.useDb(dbName);
+        //console.log('Using database:', db.name);
+
+        const collection = db.collection('isses'); // Access the collection directly*/
+       
+        // Log the count before deletion
+        const countBefore = await Iss.countDocuments();
+        console.log(`Count before deletion: ${countBefore}`);
+
+        if (countBefore >= maxISSlogs) {
+            // Delete the oldest document
+            const deletedDoc = await Iss.findOneAndDelete({},{ sort: { timeStamp: 1 } });
+            //const deletedDoc = await Iss.findOneAndDelete({}, { sort: { timeStamp: 1 } });
+            console.log('Deleted document:', deletedDoc);
+        }
  
          // Log the count after deletion
-         const countAfter = await collection.countDocuments();
+         const countAfter = await Iss.countDocuments();
          console.log(`Count after deletion: ${countAfter}`);
  
 
@@ -80,8 +84,6 @@ async function getQuakes()
         const data = await response.text()
         nodeTools.saveFile( data, quakesPath)
         const quakes = await CSVToJSON().fromString(data);  // converts to JSON array
-
-       // mongoose.connection.useDb('datas');   TODO  not needed here, but in the model
       
         quakes.forEach(async (quakeData) => {
             const post = new Quake({
@@ -171,7 +173,9 @@ function init(server)
 
     io = socketio.init(server)     //  TODO  required?  or just use io from socketio.js   
 
-    setAutoUpdate(intervals, true)
+    //setTimeout(() => setAutoUpdate(intervals, false),10000) // 24*60*60*1000)  
+    
+    setAutoUpdate(intervals, false)
 
  
 }
