@@ -25,7 +25,7 @@ let io = null
 let datas = { version: 1.0 }
 const version = datas.version
 const intervals = { quakes:1000*60*60*24*7, iss: 1000*20 }   //   weekly ,  each 20 sec
-const maxISSlogs = 5
+const maxISSlogs = 4320  //  //  24hrs of data at 20 sec interval = 4320 logs
 
 
 async function getISS() 
