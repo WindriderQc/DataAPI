@@ -12,7 +12,7 @@ async function startDatabase()
 {
     //const url =  process.env.MONGO_CLOUD
     const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
-    const mongourl = process.env.MONGO_URL + dbName + process.env.MONGO_OPTIONS  // MONGO_URL=mongodb+srv://yb:zigzag@cluster0-b2xaf.mongodb.net/     //   MONGO_OPTIONS=?retryWrites=true&w=majority&authSource=admin
+    const mongourl = process.env.MONGO_URL + dbName + process.env.MONGO_OPTIONS  // MONGO_URL=mongodb+srv://user:pasword@cluster0-xxxxx.mongodb.net/     //   MONGO_OPTIONS=?retryWrites=true&w=majority&authSource=admin
     
     try {
         await mdb.init(mongourl, dbName, async ()=>{    console.log("Collections: ", await mdb.getCollections())   })
