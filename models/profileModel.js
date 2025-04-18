@@ -7,10 +7,6 @@ const ProfileSchema = mongoose.Schema({
         default: "default_ESP32",
         required: true
     },
-    id: {
-        type: String, 
-        required: true
-    }, 
     config: {
         type: Array,
         default: [  
