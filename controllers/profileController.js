@@ -53,4 +53,4 @@ async function deleteAll(req, res) {
     }
 }
 
-module.exports = { index, readOne, getFromProfileName, update, deleteOne, deleteAll };
+module.exports = { index, getFromProfileName, update, deleteOne, deleteAll };
