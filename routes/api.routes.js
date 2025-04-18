@@ -86,10 +86,9 @@ router.route('/devices/deleteAll').get(deviceController.deleteAll)
 const profileController = require('../controllers/profileController')
 
 router.route('/profiles').get(profileController.index)
-router.route('/profileFromName/:profileName').get(profileController.getFromProfileName)
 
-router.route('/profile/:id')
-    .get(profileController.readOne)
+router.route('/profile/:profileName')
+    .get(profileController.getFromProfileName)
     .patch(profileController.update)
     .delete(profileController.deleteOne)
 

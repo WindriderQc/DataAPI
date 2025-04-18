@@ -10,15 +10,6 @@ async function index(req, res) {
     }
 }
 
-// Get a specific profile by ID
-async function readOne(req, res) {
-    try {
-        const profile = await Profiles.findOne({ id: req.params.id });
-        res.json({ status: "success", message: 'ProfilesConfig retrieved successfully from ID', data: profile });
-    } catch (err) {
-        res.status(500).json({ status: "error", message: err.message });
-    }
-}
 
 // Get a specific profile by profileName
 async function getFromProfileName(req, res) {
@@ -30,10 +21,10 @@ async function getFromProfileName(req, res) {
     }
 }
 
-// Update a specific profile by ID
+// Update a specific profile by profileName
 async function update(req, res) {
-    const query = { id: req.body.id };
-    const update = { profileName: req.body.profileName, config: req.body.config };
+    const query = { profileName: req.body.profileName };
+    const update = { config: req.body.config };
     try {
         const doc = await Profiles.findOneAndUpdate(query, update, { upsert: true, new: true, setDefaultsOnInsert: true });
         res.status(200).json({ status: "success", message: 'ProfilesConfig updated/created', data: doc });
@@ -42,11 +33,11 @@ async function update(req, res) {
     }
 }
 
-// Delete a specific profile by ID
+// Delete a specific profile by profileName
 async function deleteOne(req, res) {
     try {
-        const ack = await Profiles.deleteOne({ id: req.params.id });
-        res.json({ status: "success", message: `ProfilesConfig ${req.params.id} deleted`, data: ack });
+        const ack = await Profiles.deleteOne({ profileName: req.params.profileName });
+        res.json({ status: "success", message: `ProfilesConfig ${req.params.profileName} deleted`, data: ack });
     } catch (err) {
         res.status(500).json({ status: "error", message: err.message });
     }
