@@ -27,9 +27,9 @@ async function startDatabase()
             .use(express.json({limit:'10mb'})) // To parse the incoming requests with JSON payloads
             //.use(rateLimit({ windowMs: 30 * 1000, max: 1 }))  //  prevents a user to crash server with too many request, altough with ESP32 sending heartbeat fast.. this cannot be set
             .use('/', require("./routes/api.routes"))
-            .listen(PORT, (server) => {  
+            .listen(PORT, () => {
                 console.log(`\n\nData API Server running at port ${PORT}`)    
-                liveDatas.init(server)
+                liveDatas.init()
                 console.log("LiveData  -  v" + liveDatas.version) 
         })
 

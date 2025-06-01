@@ -2,6 +2,7 @@ const nodeTools = require('nodetools')
 //const mongoose = require('mongoose')
 const CSVToJSON = require('csvtojson')
 const socketio = require('./socket')
+const mqttClient = require('./mqttClient.js')
 
 // Get datas from various API at reccurent intervals, and post actualization on socketio
 //  to be used in the front end
@@ -20,7 +21,7 @@ const quakesPath = "./data/quakes.csv";
 
 
 
-let io = null
+// let io = null
 
 let datas = { version: 1.0 }
 const version = datas.version
@@ -40,7 +41,9 @@ async function getISS()
         const timeStamp = new Date()
      
         datas.iss = { latitude, longitude, timeStamp }
-        if(io) io.sockets.emit('iss', datas.iss)
+        // if(io) io.sockets.emit('iss', datas.iss)
+        const topic = process.env.MQTT_ISS_TOPIC || 'liveData/iss';
+        mqttClient.publish(topic, datas.iss);
       
         const countBefore = await Iss.countDocuments();
 
@@ -155,7 +158,7 @@ async function getZonAnn() {
 
 
 
-function init(server)
+function init()
 {
     console.log('about to fetch ZoneAnn')
     datas.yearTemps = getZonAnn() 
@@ -165,10 +168,10 @@ function init(server)
     }
     else console.log('quakes file found')
 
-    io = socketio.init(server)     //  TODO  required?  or just use io from socketio.js   
+    // io = socketio.init(server)     //  TODO  required?  or just use io from socketio.js
 
     //setTimeout(() => setAutoUpdate(intervals, false),10000) // 24*60*60*1000)  
-    
+    mqttClient.init();
     setAutoUpdate(intervals, true)
 
  
