@@ -1,13 +1,11 @@
 const nodeTools = require('nodetools') 
 //const mongoose = require('mongoose')
 const CSVToJSON = require('csvtojson')
-const socketio = require('./socket')
+
 const mqttClient = require('./mqttClient.js')
 
-// Get datas from various API at reccurent intervals, and post actualization on socketio
-//  to be used in the front end
+// Get datas from various API at reccurent intervals, save to mongodb and post actualization on mqtt
 
-//  TODO  add a function to get the data from the database and send it to the mqtt instead of socket IO??
 
 
 const Iss = require('../models/issModel')
@@ -25,7 +23,7 @@ const quakesPath = "./data/quakes.csv";
 
 let datas = { version: 1.0 }
 const version = datas.version
-const intervals = { quakes:1000*60*60*24*7, iss: 1000*20 }   //   weekly ,  each 20 sec
+const intervals = { quakes:1000*60*60*24*7, iss: 1000*5 }   //   weekly ,  each 5 sec
 const maxISSlogs = 4320  //  //  24hrs of data at 20 sec interval = 4320 logs
 
 
@@ -41,8 +39,7 @@ async function getISS()
         const timeStamp = new Date()
      
         datas.iss = { latitude, longitude, timeStamp }
-        // if(io) io.sockets.emit('iss', datas.iss)
-        const topic = process.env.MQTT_ISS_TOPIC || 'liveData/iss';
+        const topic = process.env.MQTT_ISS_TOPIC || 'sbqc/iss';
         mqttClient.publish(topic, datas.iss);
       
         const countBefore = await Iss.countDocuments();
@@ -146,6 +143,8 @@ async function getZonAnn() {
     }
 }
 
+//  TODO   Standardiser cette méthode d'usage
+
 // Example usage
 /*getZonAnn().then(temps => {
     if (temps) {
@@ -168,13 +167,8 @@ function init()
     }
     else console.log('quakes file found')
 
-    // io = socketio.init(server)     //  TODO  required?  or just use io from socketio.js
-
-    //setTimeout(() => setAutoUpdate(intervals, false),10000) // 24*60*60*1000)  
     mqttClient.init();
     setAutoUpdate(intervals, true)
-
- 
 }
 
 
@@ -186,7 +180,7 @@ function setAutoUpdate(intervals, updateNow = false)   //  update is done during
     
     if(updateNow) {
         getQuakes()
-        //getISS()
+        getISS()
     }
 
     setInterval(getQuakes,intervals.quakes) // 24*60*60*1000)  
