@@ -128,3 +128,48 @@ sudo apt install mongodb-org
 sudo systemctl enable mongod
 sudo systemctl start mongod
 mongosh     //  test if working
+
+
+## Live ISS Data via MQTT
+
+Live International Space Station (ISS) location data is broadcast via MQTT. You can subscribe to this data stream using any MQTT client.
+
+### Configuration
+
+The following environment variables are used to configure the MQTT connection:
+
+- `MQTT_BROKER_URL`: The URL of the MQTT broker (e.g., `mqtt://localhost:1883`). This is required.
+- `MQTT_USERNAME`: The username for MQTT broker authentication (optional).
+- `MQTT_PASSWORD`: The password for MQTT broker authentication (optional).
+- `MQTT_ISS_TOPIC`: The MQTT topic to subscribe to for ISS data. Defaults to `liveData/iss` if not set (e.g., `liveData/iss`).
+
+### Example Subscription (using Node.js `mqtt` library)
+
+```javascript
+const mqtt = require('mqtt');
+
+const brokerUrl = 'mqtt://localhost:1883'; // Or your configured MQTT_BROKER_URL
+const topic = 'liveData/iss'; // Or your configured MQTT_ISS_TOPIC
+
+const client = mqtt.connect(brokerUrl);
+
+client.on('connect', () => {
+  console.log(`Connected to MQTT broker at ${brokerUrl}`);
+  client.subscribe(topic, (err) => {
+    if (err) {
+      console.error('Subscription error:', err);
+    } else {
+      console.log(`Subscribed to topic: ${topic}`);
+    }
+  });
+});
+
+client.on('message', (receivedTopic, message) => {
+  console.log(`Received message on topic ${receivedTopic}: ${message.toString()}`);
+  // Example message: {"latitude":-20.745707393033,"longitude":-14.018700344334,"timeStamp":"2024-07-15T10:30:00.000Z"}
+});
+
+client.on('error', (error) => {
+  console.error('MQTT client error:', error);
+});
+```
