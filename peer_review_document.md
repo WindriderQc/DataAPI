@@ -511,3 +511,54 @@ Beyond these critical issues, a range of medium and low-priority recommendations
 By systematically addressing the identified issues, starting with the high-priority items, the development team can significantly enhance the Data Service API, making it more secure, reliable, scalable, and easier to maintain. The existing codebase is a good starting point, and incorporating these recommendations will contribute to building a more mature and professional application.
 
 This review aims to provide constructive feedback for improving the overall quality and maintainability of the Data Service API.
+
+### Appendix: Alternative DB Connection using Native Driver
+
+The following code from the (now removed) `mongoClientDB.js` file is preserved here for documentation purposes. It demonstrates how to connect to MongoDB using the native driver, which can be useful in scenarios where Mongoose's schema validation is not desired.
+
+```javascript
+//  Mongoose has more functionality but requires rigid data model, while native mongodb driver does not restrict data model
+
+const mongoClient = require("mongodb").MongoClient
+
+
+const mongo = {
+    connectDb: (url, dbName, callback) =>
+    {
+        mongoClient.connect(url,  { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(client =>{
+
+
+            client.db().admin().listDatabases().then(dbs => {
+                console.log('\nMongoDB client connected to db: ' + url + '\nDatabases:')
+                console.log(dbs.databases)
+                console.log()
+            })
+
+            this.db = client.db(dbName);
+
+            callback(this.db)
+        })
+
+
+    },
+
+    getCollectionsList:  async () =>
+    {
+        try {
+            const collInfos =  await this.db.listCollections().toArray()
+            return collInfos
+        }
+        catch(e) { console.log(e) }
+
+    },
+
+    getDb: (collectionToGet) =>
+    {
+        return this.db.collection(collectionToGet)
+    }
+
+}
+
+module.exports = mongo
+```
