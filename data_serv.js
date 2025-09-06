@@ -1,7 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 require('dotenv').config();
-const mdb = require('./mongooseDB') // mongoose with process.env.MONGO_CLOUD=mongodb+srv://user:password@cluster/collection?retryWrites=true&w=majority&authSource=admin
+const mdb = require('./mongooseDB')
 
 const liveDatas = require('./scripts/liveData.js')
 
@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 3003
 
 async function startDatabase() 
 {
-    //const url =  process.env.MONGO_CLOUD
     const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
     const mongourl = process.env.MONGO_URL + dbName + process.env.MONGO_OPTIONS  // MONGO_URL=mongodb+srv://user:pasword@cluster0-xxxxx.mongodb.net/     //   MONGO_OPTIONS=?retryWrites=true&w=majority&authSource=admin
     
