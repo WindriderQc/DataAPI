@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Profiles = require('../models/profileModel');
+const { NotFoundError, BadRequest } = require('../utils/errors');
 
 exports.index = async (req, res, next) => {
     try {
@@ -14,7 +15,7 @@ exports.getFromProfileName = async (req, res, next) => {
     try {
         const profile = await Profiles.findOne({ profileName: req.params.profileName });
         if (!profile) {
-            return res.status(404).json({ status: 'error', message: 'Profile not found' });
+            return next(new NotFoundError('Profile not found'));
         }
         res.json({ status: "success", message: 'Profile Config retrieved successfully from Name', data: profile });
     } catch (err) {
@@ -25,7 +26,7 @@ exports.getFromProfileName = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ status: "error", errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
@@ -42,7 +43,7 @@ exports.deleteOne = async (req, res, next) => {
     try {
         const result = await Profiles.deleteOne({ profileName: req.params.profileName });
         if (result.deletedCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'Profile not found' });
+            return next(new NotFoundError('Profile not found'));
         }
         res.json({ status: "success", message: `ProfilesConfig ${req.params.profileName} deleted` });
     } catch (err) {

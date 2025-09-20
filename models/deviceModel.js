@@ -28,6 +28,10 @@ const DeviceSchema = mongoose.Schema({
                  ,{ io: "36", mode: "IN", lbl: "A4",  isA: "0", name: "" }
                  ,{ io: "4", mode: "OUT", lbl: "A5",  isA: "1", name: "Fan" }
                  ,{ io: "13", mode: "OUT", lbl: "A12",  isA: "0", name: "BUILTINLED" }] 
+    },
+    payload: {
+        type: String,
+        default: ""
     }
 })
 
