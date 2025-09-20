@@ -2,7 +2,7 @@ const router = require('express').Router();
 const User = require('../models/userModel');
 const Device = require('../models/deviceModel');
 
-router.get('/frontend', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const users = await User.find();
         const devices = await Device.find();

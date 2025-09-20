@@ -32,7 +32,7 @@ app.use(rateLimit({
     },
 }));
 app.use('/', require("./routes/web.routes"));
-app.use('/api', require("./routes/api.routes"));
+app.use('/api/v1', require("./routes/api.routes"));
 
 const { GeneralError } = require('./utils/errors');
 
