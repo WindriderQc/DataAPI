@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+//const rateLimit = require('express-rate-limit');    TODO  rate Limiting is creating issue, maybe because of nginx
 require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
@@ -18,7 +18,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(rateLimit({
+/*app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
     standardHeaders: true,
@@ -30,7 +30,7 @@ app.use(rateLimit({
         }
         return req.ip;
     },
-}));
+}));*/
 app.use('/', require("./routes/api.routes"));
 
 const { GeneralError } = require('./utils/errors');
