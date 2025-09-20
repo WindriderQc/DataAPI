@@ -1,9 +1,11 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const PORT = process.env.PORT || 3003;
 
@@ -11,8 +13,11 @@ const app = express();
 
 // Middlewares & routes
 app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
@@ -56,11 +61,27 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
     const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
-    const mongourl = process.env.MONGO_URL + dbName + process.env.MONGO_OPTIONS;
+    let mongourl;
+
+    if (process.env.NODE_ENV !== 'production') {
+        const mongoServer = await MongoMemoryServer.create();
+        mongourl = mongoServer.getUri();
+        console.log("Using in-memory MongoDB server at", mongourl);
+    } else {
+        if (!process.env.MONGO_URL) {
+            console.error('MONGO_URL environment variable is not set for production environment.');
+            process.exit(1);
+        }
+        mongourl = process.env.MONGO_URL + dbName + (process.env.MONGO_OPTIONS || '');
+    }
 
     try {
         await mdb.init(mongourl, dbName, async () => {
-            console.log("Collections: ", await mdb.getCollections());
+            try {
+                console.log("Collections: ", await mdb.getCollections());
+            } catch (e) {
+                // ignore
+            }
         });
 
         app.listen(PORT, () => {
