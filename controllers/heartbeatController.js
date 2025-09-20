@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Heartbeat = require('../models/heartbeatModel');
+const { NotFoundError, BadRequest } = require('../utils/errors');
 
 exports.index = async (req, res, next) => {
     try {
@@ -29,7 +30,7 @@ exports.byId = async (req, res, next) => {
     try {
         const post = await Heartbeat.findById(req.params.post_id);
         if (!post) {
-            return res.status(404).json({ status: 'error', message: 'Post not found' });
+            return next(new NotFoundError('Post not found'));
         }
         res.json({ status: "success", message: 'Heartbeat retrieved successfully', data: post });
     } catch (err) {
@@ -40,7 +41,7 @@ exports.byId = async (req, res, next) => {
 exports.new = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ status: "error", errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
@@ -56,7 +57,7 @@ exports.delete = async (req, res, next) => {
     try {
         const result = await Heartbeat.deleteOne({ _id: req.params.post_id });
         if (result.deletedCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'Post not found' });
+            return next(new NotFoundError('Post not found'));
         }
         res.json({ status: "success", message: 'Post deleted' });
     } catch (err) {

@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Contact = require('../models/contactModel');
+const { NotFoundError, BadRequest } = require('../utils/errors');
 
 exports.index = async (req, res, next) => {
     try {
@@ -28,7 +29,7 @@ exports.index = async (req, res, next) => {
 exports.new = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ status: "error", errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
@@ -44,7 +45,7 @@ exports.view = async (req, res, next) => {
     try {
         const contact = await Contact.findById(req.params.contact_id);
         if (!contact) {
-            return res.status(404).json({ status: 'error', message: 'Contact not found' });
+            return next(new NotFoundError('Contact not found'));
         }
         res.json({ status: 'success', message: 'Contact details loading..', data: contact });
     } catch (err) {
@@ -55,13 +56,13 @@ exports.view = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ status: "error", errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
         const contact = await Contact.findById(req.params.contact_id);
         if (!contact) {
-            return res.status(404).json({ status: 'error', message: 'Contact not found' });
+            return next(new NotFoundError('Contact not found'));
         }
 
         Object.assign(contact, req.body);
@@ -77,7 +78,7 @@ exports.delete = async (req, res, next) => {
     try {
         const result = await Contact.deleteOne({ _id: req.params.contact_id });
         if (result.deletedCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'Contact not found' });
+            return next(new NotFoundError('Contact not found'));
         }
         res.json({ status: 'success', message: 'Contact deleted' });
     } catch (err) {
