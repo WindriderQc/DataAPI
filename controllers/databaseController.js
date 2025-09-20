@@ -25,6 +25,7 @@ exports.countDocuments_ = async () =>
 
 exports.index = async (req, res) => 
 {
+    console.log("DB Info requested")
     Promise.all([
         this.countDocuments_(),
         mdb.getCollections()
