@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const bcrypt = require('bcrypt');
 const User = require('../models/userModel');
 const { NotFoundError, BadRequest } = require('../utils/errors');
 
@@ -27,6 +28,16 @@ exports.index = async (req, res, next) => {
     }
 };
 
+// Helper function to pick allowed fields from an object
+const pick = (obj, keys) => {
+    return keys.reduce((acc, key) => {
+        if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
+            acc[key] = obj[key];
+        }
+        return acc;
+    }, {});
+};
+
 // create
 exports.new = async (req, res, next) => {
     const errors = validationResult(req);
@@ -35,11 +46,39 @@ exports.new = async (req, res, next) => {
     }
 
     try {
-        const user = new User(req.body);
+        const allowedFields = ['name', 'email', 'password', 'gender', 'phone', 'lon', 'lat'];
+        const userData = pick(req.body, allowedFields);
+
+        // Hash the password
+        const salt = await bcrypt.genSalt(10);
+        userData.password = await bcrypt.hash(userData.password, salt);
+
+        const user = new User(userData);
         await user.save();
         const userObject = user.toObject();
         delete userObject.password;
         res.status(201).json({ message: 'New user created!', data: userObject });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// login
+exports.login = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+        if (!user) {
+            return next(new NotFoundError('User not found'));
+        }
+
+        const validPassword = await bcrypt.compare(req.body.password, user.password);
+        if (!validPassword) {
+            return next(new BadRequest('Invalid password'));
+        }
+
+        const userObject = user.toObject();
+        delete userObject.password;
+        res.json({ status: 'success', message: 'Login successful', data: userObject });
     } catch (err) {
         next(err);
     }
@@ -79,22 +118,19 @@ exports.update = async (req, res, next) => {
     }
 
     try {
-        const user = await User.findById(req.body._id);
+        const user = await User.findById(req.params.user_id);
         if (!user) {
             return next(new NotFoundError('User not found'));
         }
 
-        // Use Object.assign for cleaner updates
         const allowedUpdates = ['name', 'gender', 'email', 'phone', 'lon', 'lat', 'lastConnectDate'];
-        Object.keys(req.body).forEach(key => {
-            if (allowedUpdates.includes(key)) {
-                if (key === 'lat' || key === 'lon') {
-                    user[key] = parseFloat(req.body[key]);
-                } else {
-                    user[key] = req.body[key];
-                }
-            }
-        });
+        const updates = pick(req.body, allowedUpdates);
+
+        // Special handling for numeric types
+        if (updates.lat) updates.lat = parseFloat(updates.lat);
+        if (updates.lon) updates.lon = parseFloat(updates.lon);
+
+        Object.assign(user, updates);
 
         await user.save();
         res.json({ status: 'success', message: 'User Info updated', data: user });
