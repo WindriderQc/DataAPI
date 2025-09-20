@@ -44,16 +44,3 @@ exports.deleteAllQuakes = async (req, res, next) => {
         next(err);
     }
 };
-
-exports.zonann = async (req, res, next) => {
-    try {
-        const temps = await liveData.getZonAnn();
-        if (temps) {
-            res.json({ status: "success", message: 'Zonal Annual Means retrieved successfully', data: temps });
-        } else {
-            return next(new NotFoundError('Failed to fetch temperature data'));
-        }
-    } catch (error) {
-        next(error);
-    }
-};
