@@ -98,7 +98,7 @@
             <div class="col-sm-8 mx-auto">
                 <div class="card my-5 ">
                 <div class="card-body ">
-                    <form class="form-signin" action ="/user/deleteViaEmail" method="post" enctype="application/json" >
+                    <form class="form-signin" action ="/api/user/deleteViaEmail" method="post" enctype="application/json" >
                         <div class="input-group">
                             <input type="email" class="form-control"  name='email' id="email_id" placeholder="Email address" required autofocus>
                             <span class="input-group-btn mx-2">
@@ -110,7 +110,7 @@
 
                 <div class='card text-center'>
                     <div class='card-body'>
-                        <form action="/resetDB">
+                        <form action="/api/resetDB">
                             <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">!!!!  Reset DB !!!!</button>
                         </form>
                     </div>
