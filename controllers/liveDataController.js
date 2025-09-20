@@ -1,5 +1,6 @@
 const Iss = require('../models/issModel')
 const Quake = require('../models/quakeModel')
+const liveData = require('../scripts/liveData')
 
 
 
@@ -40,4 +41,18 @@ exports.deleteAllQuakes = (req, res) =>
     Quake.deleteMany({})
     .then( ack =>  res.json({ status: "success", message: 'All Quakes deleted', data: ack  }) )
     .catch( err =>  res.json({ status:'error', message: err}))
+}
+
+exports.zonann = async (req, res) =>
+{
+    try {
+        const temps = await liveData.getZonAnn();
+        if (temps) {
+            res.json({ status: "success", message: 'Zonal Annual Means retrieved successfully', data: temps });
+        } else {
+            res.status(500).json({ status: "error", message: 'Failed to fetch temperature data' });
+        }
+    } catch (error) {
+        res.status(500).json({ status: "error", message: 'An error occurred while fetching temperature data', details: error.message });
+    }
 }
