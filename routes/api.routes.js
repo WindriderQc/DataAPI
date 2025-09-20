@@ -62,7 +62,13 @@ router.route('/users')
         body('email').isEmail().withMessage('Please provide a valid email address.'),
         body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long.'),
         userController.new
-    )
+    );
+
+router.route('/users/login').post(
+    body('email').isEmail().withMessage('Please provide a valid email address.'),
+    body('password').notEmpty().withMessage('Password is required.'),
+    userController.login
+);
 
 
 router.route('/users/fromEmail/:email').get(userController.fromEmail)
@@ -88,7 +94,7 @@ router.route('/devices')
     .get(deviceController.index)
     .delete(deviceController.deleteAll);
 
-router.route('/device/:id')
+router.route('/devices/:id')
     .get(deviceController.readOne)
     .patch(
         body('payload').notEmpty().withMessage('Payload is required.'),
@@ -102,7 +108,7 @@ router.route('/profiles')
     .get(profileController.index)
     .delete(profileController.deleteAll);
 
-router.route('/profile/:profileName')
+router.route('/profiles/:profileName')
     .get(profileController.getFromProfileName)
     .patch(
         body('content').notEmpty().withMessage('Content is required.'),
@@ -160,7 +166,6 @@ router.route('/iss').get(liveDatasController.iss)
 router.route('/quakes').get(liveDatasController.quakes)
 router.route('/iss/all').delete(liveDatasController.deleteAllIss)
 router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
-router.route('/zonann').get(liveDatasController.zonann)
 
 
 ///////////////////////////////////////////////////////////////////////////////

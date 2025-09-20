@@ -49,11 +49,18 @@ describe('User Routes', () => {
             expect(dbUser).not.toBeNull();
             expect(dbUser.password).not.toEqual('password123');
 
-            // Verify the comparePassword method works
-            const isMatch = await dbUser.comparePassword('password123');
-            expect(isMatch).toBe(true);
-            const isNotMatch = await dbUser.comparePassword('wrongpassword');
-            expect(isNotMatch).toBe(false);
+            // Verify the login route works with the correct password
+            const loginRes = await request(app)
+                .post('/users/login')
+                .send({ email: 'test@example.com', password: 'password123' });
+            expect(loginRes.statusCode).toEqual(200);
+            expect(loginRes.body.data.email).toEqual('test@example.com');
+
+            // Verify the login route fails with the wrong password
+            const wrongLoginRes = await request(app)
+                .post('/users/login')
+                .send({ email: 'test@example.com', password: 'wrongpassword' });
+            expect(wrongLoginRes.statusCode).toEqual(400);
         });
 
         it('should fail to create a user with invalid data', async () => {
