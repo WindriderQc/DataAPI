@@ -1,125 +1,124 @@
-const Heartbeat = require('../models/heartbeatModel')
-const mongoose = require('mongoose')
+const { validationResult } = require('express-validator');
+const Heartbeat = require('../models/heartbeatModel');
 
-
-// Gets back all the posts
-exports.index = (req, res)=> {   
-
-    console.log("Requesting:", req.query)
-    let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/heartbeats?skip=0&limit=25&sort=desc
-    skip = parseInt(skip) || 0
-    limit = parseInt(limit) || 10
-
-    skip = skip < 0 ? 0 : skip;
-    limit = Math.min(50, Math.max(1, limit))
-
-
-    Promise.all([
-        Heartbeat.countDocuments({}),
-        Heartbeat.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  }      })
-    ])
-    .then(([ total, data ]) => {
-        res.json({  status: "success", message: 'Heartbeats retrieved successfully', 
-                    data: data, 
-                    meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }  
-                })
-    })  
-    .catch(err => {  res.json({ status:'error', message: err, data: null}) })  
-
-}
-
-
-//Get a  post  '/:post_id'
-exports.byId = async (req, res) => {
-    
-    const post = await Heartbeat.findById(req.params.post_id)
-    if (!post)  res.json({ status:'error', message: 'Post not found'})
-    res.json({ status: "success", message: 'Heartbeat retrieved successfully', data: post  })
-}
-
-
-// Submits a post
-exports.new = async (req, res) => {
-
-    const post = new Heartbeat(req.body)
-    const ack = await post.save()
-    if (!ack) {  res.json({ status:'error', message: 'heartbeat not saved'})  }
-    res.json({ status: "success", message: 'Heartbeat loggged successfully', data: post  })
-}
-
-
-//Delete a specific post
-exports.delete = async (req, res) => {
-   
-    const ack = await Heartbeat.findById(req.params.post_id)
-    if (!ack) {  res.json({ status:'error', message: 'Post not found'})  }
-    res.json({ status: "success", message: 'Post deleted', data: ack  })
-}
-
-
-// delete all the posts
-exports.deleteAll = async (req, res) => { 
-  
-    const ack = await Heartbeat.deleteMany({})
-    if (!ack)  res.json({ status:'error', message: 'Error deleting'})
-    res.json({ status: "success", message: 'All Heartbeats deleted', data: ack  })
-}
-
-
-// get list of all devices that posted 
-exports.sendersDistinct = async (req, res) => {   
-
-    const devices = await Heartbeat.distinct('sender')
-    if (!devices)  res.json({ status:'error', message: "error retrieving devices"})
-    res.json({ status: "success", message: 'Latest heartbeaters retrieved', data: devices  })   
-}
-
-
-// get last post for a specific device
-exports.senderLatest = async (req, res) => {
+exports.index = async (req, res, next) => {
     try {
-        const latest = await Heartbeat.find({"sender": req.params.esp}).sort({ _id: -1 }).limit(1)
-        res.json({ status: "success", message: 'Latest heartbeat retreived', data: latest  })
-    } 
-    catch (err) {  res.json({ status:'error', message: err})  }
-}
+        let { skip = 0, limit = 5, sort = 'desc' } = req.query;
+        skip = parseInt(skip) || 0;
+        limit = parseInt(limit) || 10;
+        skip = skip < 0 ? 0 : skip;
+        limit = Math.min(50, Math.max(1, limit));
 
+        const [total, data] = await Promise.all([
+            Heartbeat.countDocuments({}),
+            Heartbeat.find({}, {}, { sort: { created: sort === 'desc' ? -1 : 1 } }).skip(skip).limit(limit)
+        ]);
 
-// get first post for a specific device
-exports.senderOldest = async (req, res) => {
-    try {
-        const oldest = await Heartbeat.find({"sender": req.params.esp}).sort({ _id: 1 }).limit(1)
-        res.json({ status: "success", message: 'Oldest heartbeat retreived', data: oldest  })
+        res.json({
+            status: "success",
+            message: 'Heartbeats retrieved successfully',
+            data: data,
+            meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }
+        });
+    } catch (err) {
+        next(err);
     }
-    catch (err) { res.json({ message: err })  }
-}
+};
 
+exports.byId = async (req, res, next) => {
+    try {
+        const post = await Heartbeat.findById(req.params.post_id);
+        if (!post) {
+            return res.status(404).json({ status: 'error', message: 'Post not found' });
+        }
+        res.json({ status: "success", message: 'Heartbeat retrieved successfully', data: post });
+    } catch (err) {
+        next(err);
+    }
+};
 
-
-// get a data sample via params
-exports.data = async (req, res) => {
-
-    const options = req.params.options.split(',')
-    console.log(options)
-    const ratio = Number(options[0])
-    const espID = options[1]
-    const startDate = options[2]
-    const opt = { ratio, espID, startDate }
-
+exports.new = async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ status: "error", errors: errors.array() });
+    }
 
     try {
-        const data = await Heartbeat.find({ sender: espID, time: { $gt: startDate } }).sort({ time: 1 }).limit(50000)
-   
-        let ret = [];
+        const post = new Heartbeat(req.body);
+        await post.save();
+        res.status(201).json({ status: "success", message: 'Heartbeat logged successfully', data: post });
+    } catch (err) {
+        next(err);
+    }
+};
 
+exports.delete = async (req, res, next) => {
+    try {
+        const result = await Heartbeat.deleteOne({ _id: req.params.post_id });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ status: 'error', message: 'Post not found' });
+        }
+        res.json({ status: "success", message: 'Post deleted' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.deleteAll = async (req, res, next) => {
+    try {
+        const ack = await Heartbeat.deleteMany({});
+        res.json({ status: "success", message: 'All Heartbeats deleted', data: ack });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.sendersDistinct = async (req, res, next) => {
+    try {
+        const devices = await Heartbeat.distinct('sender');
+        res.json({ status: "success", message: 'Latest heartbeaters retrieved', data: devices });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.senderLatest = async (req, res, next) => {
+    try {
+        const latest = await Heartbeat.find({ "sender": req.params.esp }).sort({ _id: -1 }).limit(1);
+        res.json({ status: "success", message: 'Latest heartbeat retreived', data: latest });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.senderOldest = async (req, res, next) => {
+    try {
+        const oldest = await Heartbeat.find({ "sender": req.params.esp }).sort({ _id: 1 }).limit(1);
+        res.json({ status: "success", message: 'Oldest heartbeat retreived', data: oldest });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.data = async (req, res, next) => {
+    try {
+        const options = req.params.options.split(',');
+        const ratio = Number(options[0]);
+        const espID = options[1];
+        const startDate = options[2];
+        const opt = { ratio, espID, startDate };
+
+        const data = await Heartbeat.find({ sender: espID, time: { $gt: startDate } }).sort({ time: 1 }).limit(50000);
+
+        let ret = [];
         for (let i = 0, len = data.length; i < len; i++) {
             if (i % ratio === 0) {
                 ret.push(data[i]);
             }
         }
 
-        console.log("\nSending data...")
-        res.json({ status: "success", message: `Data with options ${JSON.stringify(opt)} retreived`, data: ret  })
+        res.json({ status: "success", message: `Data with options ${JSON.stringify(opt)} retreived`, data: ret });
+    } catch (err) {
+        next(err);
     }
-    catch (err) {  res.json({ status:'error', message: err})  }
-}
+};
