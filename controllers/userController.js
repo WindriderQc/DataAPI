@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const User = require('../models/userModel');
+const { NotFoundError, BadRequest } = require('../utils/errors');
 
 // index
 exports.index = async (req, res, next) => {
@@ -30,7 +31,7 @@ exports.index = async (req, res, next) => {
 exports.new = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ status: "error", errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
@@ -49,7 +50,7 @@ exports.view = async (req, res, next) => {
     try {
         const user = await User.findById(req.params.user_id);
         if (!user) {
-            return res.status(404).json({ status: 'error', message: 'User not found' });
+            return next(new NotFoundError('User not found'));
         }
         res.json({ status: 'success', message: 'User details loading..', data: user });
     } catch (err) {
@@ -62,7 +63,7 @@ exports.fromEmail = async (req, res, next) => {
     try {
         const user = await User.findOne({ email: req.params.email });
         if (!user) {
-            return res.status(404).json({ status: 'error', message: 'User not found' });
+            return next(new NotFoundError('User not found'));
         }
         res.json({ status: 'success', message: 'User details loading..', data: user });
     } catch (err) {
@@ -74,13 +75,13 @@ exports.fromEmail = async (req, res, next) => {
 exports.update = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ status: "error", errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
         const user = await User.findById(req.body._id);
         if (!user) {
-            return res.status(404).json({ status: 'error', message: 'User not found' });
+            return next(new NotFoundError('User not found'));
         }
 
         // Use Object.assign for cleaner updates
@@ -108,7 +109,7 @@ exports.delete = async (req, res, next) => {
         // Note: .remove() is deprecated. Using deleteOne() instead.
         const result = await User.deleteOne({ _id: req.params.user_id });
         if (result.deletedCount === 0) {
-            return res.status(404).json({ status: 'error', message: 'User not found' });
+            return next(new NotFoundError('User not found'));
         }
         res.json({ status: 'success', message: 'User deleted' });
     } catch (err) {

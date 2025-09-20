@@ -9,6 +9,9 @@ const PORT = process.env.PORT || 3003;
 
 const app = express();
 
+// Set trust proxy to 1 to trust the first proxy in front of the app
+app.set('trust proxy', 1);
+
 // Middlewares & routes
 app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -21,12 +24,29 @@ app.use(rateLimit({
 }));
 app.use('/', require("./routes/api.routes"));
 
+const { GeneralError } = require('./utils/errors');
+
 // Global error handler middleware
 app.use((err, req, res, next) => {
+    if (res.headersSent) {
+        return next(err);
+    }
+
+    if (err instanceof GeneralError) {
+        const responseJson = {
+            status: 'error',
+            message: err.message
+        };
+        if (err.errors) {
+            responseJson.errors = err.errors;
+        }
+        return res.status(err.getCode()).json(responseJson);
+    }
+
     console.error(err.stack);
-    res.status(500).json({
+    return res.status(500).json({
         status: 'error',
-        message: 'An internal server error occurred.',
+        message: 'An internal server error occurred.'
     });
 });
 
