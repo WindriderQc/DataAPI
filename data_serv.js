@@ -9,9 +9,6 @@ const PORT = process.env.PORT || 3003;
 
 const app = express();
 
-// Set trust proxy to 1 to trust the first proxy in front of the app
-app.set('trust proxy', 1);
-
 // Middlewares & routes
 app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -21,6 +18,13 @@ app.use(rateLimit({
     max: 100, // Limit each IP to 100 requests per windowMs
     standardHeaders: true,
     legacyHeaders: false,
+    keyGenerator: (req) => {
+        const xff = req.headers['x-forwarded-for'];
+        if (xff) {
+            return xff.split(',')[0].trim();
+        }
+        return req.ip;
+    },
 }));
 app.use('/', require("./routes/api.routes"));
 
