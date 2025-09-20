@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-//const rateLimit = require('express-rate-limit');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
@@ -13,12 +13,12 @@ const app = express();
 app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
-/*app.use(rateLimit({
+app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per windowMs
     standardHeaders: true,
     legacyHeaders: false,
-}));*/
+}));
 app.use('/', require("./routes/api.routes"));
 
 // Global error handler middleware
