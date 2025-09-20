@@ -6,12 +6,13 @@ const User = require('../models/userModel')
 const Alarm = require('../models/alarmModel')
 
 
-// Set route default response
-router.get('/', async function (req, res) { 
-
-   res.redirect('/db')
-
-})
+// A default API response to check if the API is up
+router.get('/', (req, res) => {
+    res.json({
+        status: 'API Its Working',
+        message: 'Welcome to the DataAPI!',
+    });
+});
 
 
 

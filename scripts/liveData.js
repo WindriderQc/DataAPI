@@ -148,10 +148,6 @@ async function getZonAnn() {
     }
 }
 
-
-
-
-
 function init()
 {
     if (!fs.existsSync(quakesPath)) {
