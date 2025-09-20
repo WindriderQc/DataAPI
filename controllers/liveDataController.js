@@ -1,6 +1,7 @@
 const Iss = require('../models/issModel');
 const Quake = require('../models/quakeModel');
 const liveData = require('../scripts/liveData');
+const { NotFoundError } = require('../utils/errors');
 
 exports.quakes = async (req, res, next) => {
     try {
@@ -50,7 +51,7 @@ exports.zonann = async (req, res, next) => {
         if (temps) {
             res.json({ status: "success", message: 'Zonal Annual Means retrieved successfully', data: temps });
         } else {
-            res.status(500).json({ status: "error", message: 'Failed to fetch temperature data' });
+            return next(new NotFoundError('Failed to fetch temperature data'));
         }
     } catch (error) {
         next(error);
