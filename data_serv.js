@@ -31,7 +31,8 @@ app.use(rateLimit({
         return req.ip;
     },
 }));
-app.use('/', require("./routes/api.routes"));
+app.use('/', require("./routes/web.routes"));
+app.use('/api', require("./routes/api.routes"));
 
 const { GeneralError } = require('./utils/errors');
 
