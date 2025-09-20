@@ -36,7 +36,9 @@ exports.new = async (req, res, next) => {
     try {
         const user = new User(req.body);
         await user.save();
-        res.status(201).json({ message: 'New user created!', data: user });
+        const userObject = user.toObject();
+        delete userObject.password;
+        res.status(201).json({ message: 'New user created!', data: userObject });
     } catch (err) {
         next(err);
     }
