@@ -15,19 +15,6 @@ router.get('/', (req, res) => {
     });
 });
 
-router.get('/frontend', async (req, res) => {
-    try {
-        const users = await User.find();
-        const devices = await Device.find();
-        res.render('index', {
-            users: users,
-            devices: devices,
-            alarms: []
-        });
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
 
 
 

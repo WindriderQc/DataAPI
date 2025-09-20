@@ -30,8 +30,9 @@ app.use(express.static(path.join(__dirname, 'public')));
         }
         return req.ip;
     },
-}));*/
-app.use('/', require("./routes/api.routes"));
+}));
+app.use('/', require("./routes/web.routes"));
+app.use('/api/v1', require("./routes/api.routes"));
 
 const { GeneralError } = require('./utils/errors');
 
