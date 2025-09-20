@@ -87,7 +87,11 @@ exports.update = async (req, res, next) => {
         const allowedUpdates = ['name', 'gender', 'email', 'phone', 'lon', 'lat', 'lastConnectDate'];
         Object.keys(req.body).forEach(key => {
             if (allowedUpdates.includes(key)) {
-                user[key] = req.body[key];
+                if (key === 'lat' || key === 'lon') {
+                    user[key] = parseFloat(req.body[key]);
+                } else {
+                    user[key] = req.body[key];
+                }
             }
         });
 

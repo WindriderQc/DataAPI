@@ -1,4 +1,5 @@
 let router = require('express').Router()
+const { body } = require('express-validator');
 
 const Device = require('../models/deviceModel')
 const Heartbeat = require('../models/heartbeatModel')
@@ -33,19 +34,24 @@ const contactController = require('../controllers/contactController')
 
 router.route('/contacts')
     .get(contactController.index)
-    .post(contactController.new)
+    .post(
+        body('name').notEmpty().withMessage('Name is required.'),
+        body('email').isEmail().withMessage('Please provide a valid email address.'),
+        contactController.new
+    )
 
 router.route('/contacts/:contact_id')
     .get(contactController.view)
-    .patch(contactController.update)
-    .put(contactController.update)
+    .patch(
+        body('email').optional().isEmail().withMessage('Please provide a valid email address.'),
+        contactController.update
+    )
+    .put(
+        body('email').optional().isEmail().withMessage('Please provide a valid email address.'),
+        contactController.update
+    )
     .delete(contactController.delete)
 
-
-
-
-
-const { body } = require('express-validator');
 const userController = require('../controllers/userController')
 
 router.route('/users')
@@ -83,7 +89,10 @@ router.route('/devices')
 
 router.route('/device/:id')
     .get(deviceController.readOne)
-    .patch(deviceController.update)   //  use patch instead of post which will create or update
+    .patch(
+        body('payload').notEmpty().withMessage('Payload is required.'),
+        deviceController.update
+    )   //  use patch instead of post which will create or update
     .delete(deviceController.deleteOne)
 
 const profileController = require('../controllers/profileController')
@@ -94,14 +103,21 @@ router.route('/profiles')
 
 router.route('/profile/:profileName')
     .get(profileController.getFromProfileName)
-    .patch(profileController.update)
+    .patch(
+        body('content').notEmpty().withMessage('Content is required.'),
+        profileController.update
+    )
     .delete(profileController.deleteOne)
 
 const heartbeatController = require('../controllers/heartbeatController')
 
 router.route('/heartbeats')
     .get(heartbeatController.index)
-    .post(heartbeatController.new)
+    .post(
+        body('sender').notEmpty().withMessage('Sender is required.'),
+        body('type').notEmpty().withMessage('Type is required.'),
+        heartbeatController.new
+    )
     .delete(heartbeatController.deleteAll);
 
 router.route('/heartbeats/:post_id')
@@ -120,8 +136,15 @@ const alarmController = require('../controllers/alarmController')
 
 router.route('/alarms')
     .get(alarmController.index)
-    .post(alarmController.post)  
-    .patch(alarmController.update)
+    .post(
+        body('espID').notEmpty().withMessage('espID is required.'),
+        body('io').notEmpty().withMessage('io is required.'),
+        alarmController.post
+    )
+    .patch(
+        body('enabled').isBoolean().withMessage('enabled must be a boolean.'),
+        alarmController.update
+    )
 
 router.route('/alarms/:espID,io').get(alarmController.getEspIO)
 router.route('/alarms/:espID').get(alarmController.getbyEsp)
