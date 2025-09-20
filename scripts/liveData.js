@@ -1,4 +1,4 @@
-const nodeTools = require('nodetools') 
+const fs = require('fs');
 //const mongoose = require('mongoose')
 const CSVToJSON = require('csvtojson')
 
@@ -71,7 +71,7 @@ async function getQuakes()
 
         const response = await fetch(quakes_url)
         const data = await response.text()
-        nodeTools.saveFile( data, quakesPath)
+        fs.writeFileSync(quakesPath, data);
         const quakes = await CSVToJSON().fromString(data);  // converts to JSON array
       
         // Flush the collection by deleting all documents
@@ -86,7 +86,12 @@ async function getQuakes()
               longitude: quakeData.longitude,
               depth: quakeData.depth,
               mag: quakeData.mag,
-              // TODO  ... other fields ...
+              magType: quakeData.magType,
+              place: quakeData.place,
+              type: quakeData.type,
+              status: quakeData.status,
+              locationSource: quakeData.locationSource,
+              magSource: quakeData.magSource
             });
 
             try {
@@ -143,27 +148,14 @@ async function getZonAnn() {
     }
 }
 
-//  TODO   Standardiser cette méthode d'usage
-
-// Example usage
-/*getZonAnn().then(temps => {
-    if (temps) {
-        console.log('Temperature data:', temps);
-    } else {
-        console.log('Failed to fetch temperature data');
-    }
-});*/
 
 
 
 
 function init()
 {
-    console.log('about to fetch ZoneAnn')
-    datas.yearTemps = getZonAnn() 
-
-    if (!nodeTools.isExisting(quakesPath)) {
-        console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", path , "interval:", intervals.quakes);
+    if (!fs.existsSync(quakesPath)) {
+        console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", quakesPath , "interval:", intervals.quakes);
     }
     else console.log('quakes file found')
 
@@ -194,5 +186,6 @@ module.exports = {
     init,
     setAutoUpdate, 
     version, 
-    intervals
+    intervals,
+    getZonAnn
   };

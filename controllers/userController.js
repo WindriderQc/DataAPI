@@ -1,98 +1,113 @@
-const User = require('../models/userModel')
+const { validationResult } = require('express-validator');
+const User = require('../models/userModel');
 
+// index
+exports.index = async (req, res, next) => {
+    try {
+        let { skip = 0, limit = 5, sort = 'desc' } = req.query;
+        skip = parseInt(skip) || 0;
+        limit = parseInt(limit) || 10;
+        skip = skip < 0 ? 0 : skip;
+        limit = Math.min(50, Math.max(1, limit));
 
-// index 
-exports.index = (req, res) =>
-{
-   // User.get( (err, users) =>{ errorCheck(err, res, { status: "success", message: "Users retrieved successfully", data: users })     })
-   console.log("Requesting users:", req.query)
-   let { skip = 0, limit = 5, sort = 'desc' }  = req.query  //  http://192.168.0.33:3003/users?skip=0&limit=25&sort=desc
-   skip = parseInt(skip) || 0
-   limit = parseInt(limit) || 10
+        const [total, data] = await Promise.all([
+            User.countDocuments({}),
+            User.find({}, {}, { sort: { created: sort === 'desc' ? -1 : 1 } }).skip(skip).limit(limit)
+        ]);
 
-   skip = skip < 0 ? 0 : skip;
-   limit = Math.min(50, Math.max(1, limit))
+        res.json({
+            status: "success",
+            message: 'Users retrieved successfully',
+            data: data,
+            meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
+// create
+exports.new = async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ status: "error", errors: errors.array() });
+    }
 
-   Promise.all([
-        User.countDocuments({}),
-        User.find({}, {}, { sort: {  created: sort === 'desc' ? -1 : 1  } })
-   ])
-   .then(([ total, data ]) => {
-       res.json({  status: "success", message: 'Users retrieved successfully', 
-                   data: data, 
-                   meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }  
-               })
-   })  
-   .catch(err => {  res.json({ status:'error', message: err, data: null}) })  
-}
+    try {
+        const user = new User(req.body);
+        await user.save();
+        const userObject = user.toObject();
+        delete userObject.password;
+        res.status(201).json({ message: 'New user created!', data: userObject });
+    } catch (err) {
+        next(err);
+    }
+};
 
+// view
+exports.view = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.params.user_id);
+        if (!user) {
+            return res.status(404).json({ status: 'error', message: 'User not found' });
+        }
+        res.json({ status: 'success', message: 'User details loading..', data: user });
+    } catch (err) {
+        next(err);
+    }
+};
 
-// create  
-exports.new = (req, res) =>
-{
-    let user = new User();
-    user.name = req.body.name ? req.body.name : user.name
-    user.email = req.body.email
-    user.password = req.body.password
-    user.gender = req.body.gender ? req.body.gender : user.gender
-    user.email = req.body.email ? req.body.email : user.email
-    user.phone = req.body.phone ? req.body.phone : user.phone
-    user.lon = req.body.lon ? req.body.lon : user.lon
-    user.lat = req.body.lat ? req.body.lat : user.lat
-    user.lastConnectDate = req.body.lastConnectDate ? req.body.lastConnectDate : user.lastConnectDate
-    
-    user.save( (err) => { errorCheck(err, res, { message: 'New contact created!', data: user }) })
-}
+// from Email
+exports.fromEmail = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ email: req.params.email });
+        if (!user) {
+            return res.status(404).json({ status: 'error', message: 'User not found' });
+        }
+        res.json({ status: 'success', message: 'User details loading..', data: user });
+    } catch (err) {
+        next(err);
+    }
+};
 
+// update
+exports.update = async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ status: "error", errors: errors.array() });
+    }
 
-// view  
-exports.view = (req, res) =>
-{
-    User.findById(req.params.user_id, (err, user) =>{ errorCheck(err, res, { status: 'success', message: 'User details loading..', data: user }) })
-}
+    try {
+        const user = await User.findById(req.body._id);
+        if (!user) {
+            return res.status(404).json({ status: 'error', message: 'User not found' });
+        }
 
-// from Email  
-exports.fromEmail = (req, res) =>
-{
-    User.find({email:req.params.email}, (err, user) =>{ errorCheck(err, res, { status: 'success', message: 'User details loading..', data: user }) })
-}
+        // Use Object.assign for cleaner updates
+        const allowedUpdates = ['name', 'gender', 'email', 'phone', 'lon', 'lat', 'lastConnectDate'];
+        Object.keys(req.body).forEach(key => {
+            if (allowedUpdates.includes(key)) {
+                user[key] = req.body[key];
+            }
+        });
 
+        await user.save();
+        res.json({ status: 'success', message: 'User Info updated', data: user });
+    } catch (err) {
+        next(err);
+    }
+};
 
-// update  
-exports.update = (req, res) =>
-{
-    try{
-        console.log('update request: ', )
-        User.findById(req.body._id, (err, user) =>{
-            if (err) res.json({ status: 'error', message: err }) 
-            console.log("user: ", user)
-            user.name = req.body.name ? req.body.name : user.name
-            user.gender = req.body.gender ? req.body.gender : user.gender
-            user.email = req.body.email ? req.body.email : user.email
-            user.phone = req.body.phone ? req.body.phone : user.phone
-            
-            user.lon = req.body.lon ? req.body.lon : user.lon
-            user.lat = req.body.lat ? req.body.lat : user.lat
-            user.lastConnectDate = req.body.lastConnectDate ? req.body.lastConnectDate : user.lastConnectDate
-            
-            user.save((err) =>{  errorCheck(err, res, { status: 'success', message: 'User Info updated', data: user  }) })
-        })
-
-    } catch (err) { console.log ( 'error updating user by id: ', err)}
-}
-
-
-// delete 
-exports.delete =  (req, res) =>
-{
-    User.remove({  _id: req.params.user_id }, (err, contact) =>{  errorCheck(err, res, { status: 'success',  message: 'User deleted' }) })
-}
-
-
-// helper method
-errorCheck = (err, res, successMsg) =>
-{
-    if (err) res.json({ status: 'error', message: err }) 
-    else     res.json(successMsg)    
-}
+// delete
+exports.delete = async (req, res, next) => {
+    try {
+        // Note: .remove() is deprecated. Using deleteOne() instead.
+        const result = await User.deleteOne({ _id: req.params.user_id });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ status: 'error', message: 'User not found' });
+        }
+        res.json({ status: 'success', message: 'User deleted' });
+    } catch (err) {
+        next(err);
+    }
+};
