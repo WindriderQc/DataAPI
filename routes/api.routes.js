@@ -44,24 +44,31 @@ router.route('/contacts/:contact_id')
 
 
 
+const { body } = require('express-validator');
 const userController = require('../controllers/userController')
-
-router.post("/users/test", async (req, res) => {
-    console.log("test");
-    res.header("auth-test", "yoyo").send("test good");  //  testing custom header    //  TODO :  finish test and clean up! :)
-    })
 
 router.route('/users')
     .get(userController.index)
-    .post(userController.new)  
+    .post(
+        body('name').notEmpty().withMessage('Name is required.'),
+        body('email').isEmail().withMessage('Please provide a valid email address.'),
+        body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long.'),
+        userController.new
+    )
 
 
 router.route('/users/fromEmail/:email').get(userController.fromEmail)
 
-router.route('/user/:user_id')
+router.route('/users/:user_id')
     .get(userController.view)
-    .patch(userController.update)
-    .put(userController.update)
+    .patch(
+        body('email').optional().isEmail().withMessage('Please provide a valid email address.'),
+        userController.update
+    )
+    .put(
+        body('email').optional().isEmail().withMessage('Please provide a valid email address.'),
+        userController.update
+    )
     .delete(userController.delete)
 
 
@@ -71,43 +78,35 @@ const deviceController = require('../controllers/deviceController')
 
 router.route('/devices')
     .get(deviceController.index)
+    .delete(deviceController.deleteAll);
 
 router.route('/device/:id')
     .get(deviceController.readOne)
     .patch(deviceController.update)   //  use patch instead of post which will create or update
     .delete(deviceController.deleteOne)
 
-router.route('/devices/deleteAll').get(deviceController.deleteAll)    
-
-
-
-
-
 const profileController = require('../controllers/profileController')
 
-router.route('/profiles').get(profileController.index)
+router.route('/profiles')
+    .get(profileController.index)
+    .delete(profileController.deleteAll);
 
 router.route('/profile/:profileName')
     .get(profileController.getFromProfileName)
     .patch(profileController.update)
     .delete(profileController.deleteOne)
 
-router.route('/profiles/deleteAll').get(profileController.deleteAll)    
-
-
-
-
 const heartbeatController = require('../controllers/heartbeatController')
 
 router.route('/heartbeats')
     .get(heartbeatController.index)
     .post(heartbeatController.new)
+    .delete(heartbeatController.deleteAll);
 
 router.route('/heartbeats/:post_id')
     .get(heartbeatController.byId)
     .delete(heartbeatController.delete)
 
-router.route('/heartbeats/deleteAll').get(heartbeatController.deleteAll)    
 router.route('/heartbeats/senders').get(heartbeatController.sendersDistinct)
 router.route('/heartbeats/senderLatest/:esp').get(heartbeatController.senderLatest)
 router.route('/heartbeats/senderOldest/:esp').get(heartbeatController.senderOldest)
@@ -134,8 +133,9 @@ router.route('/alarms/:espID').get(alarmController.getbyEsp)
 const liveDatasController = require('../controllers/liveDataController')
 router.route('/iss').get(liveDatasController.iss)
 router.route('/quakes').get(liveDatasController.quakes)
-router.route('/deleteAllIss').get(liveDatasController.deleteAllIss)
-router.route('/deleteAllQuakes').get(liveDatasController.deleteAllQuakes)   
+router.route('/iss/all').delete(liveDatasController.deleteAllIss)
+router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
+router.route('/zonann').get(liveDatasController.zonann)
 
 
 ///////////////////////////////////////////////////////////////////////////////

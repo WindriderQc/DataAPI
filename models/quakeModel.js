@@ -25,8 +25,25 @@ const QuakeSchema = mongoose.Schema({
         type: Number, 
         default: "0.0",
        
+    },
+    magType: {
+        type: String
+    },
+    place: {
+        type: String
+    },
+    type: {
+        type: String
+    },
+    status: {
+        type: String
+    },
+    locationSource: {
+        type: String
+    },
+    magSource: {
+        type: String
     }
-
 })
 
 const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
