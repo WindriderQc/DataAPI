@@ -25,7 +25,7 @@ describe('User Routes', () => {
         await User.deleteMany({});
     });
 
-    describe('POST /users', () => {
+    describe('POST /api/v1/users', () => {
         it('should create a new user successfully and hash the password', async () => {
             const userData = {
                 name: 'Test User',
@@ -34,7 +34,7 @@ describe('User Routes', () => {
             };
 
             const res = await request(app)
-                .post('/users')
+                .post('/api/v1/users')
                 .send(userData);
 
             expect(res.statusCode).toEqual(201);
@@ -51,14 +51,14 @@ describe('User Routes', () => {
 
             // Verify the login route works with the correct password
             const loginRes = await request(app)
-                .post('/users/login')
+                .post('/api/v1/users/login')
                 .send({ email: 'test@example.com', password: 'password123' });
             expect(loginRes.statusCode).toEqual(200);
             expect(loginRes.body.data.email).toEqual('test@example.com');
 
             // Verify the login route fails with the wrong password
             const wrongLoginRes = await request(app)
-                .post('/users/login')
+                .post('/api/v1/users/login')
                 .send({ email: 'test@example.com', password: 'wrongpassword' });
             expect(wrongLoginRes.statusCode).toEqual(400);
         });
@@ -71,7 +71,7 @@ describe('User Routes', () => {
             };
 
             const res = await request(app)
-                .post('/users')
+                .post('/api/v1/users')
                 .send(userData);
 
             expect(res.statusCode).toEqual(400);
