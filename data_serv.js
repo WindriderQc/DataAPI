@@ -5,11 +5,15 @@ require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const pjson = require('./package.json');
 
 const PORT = process.env.PORT || 3003;
 const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';  
 
 const app = express();
+
+// Make version available in all templates
+app.locals.appVersion = pjson.version;
 
 // Middlewares & routes
 app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
