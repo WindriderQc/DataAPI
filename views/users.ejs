@@ -3,6 +3,9 @@
 
 <head>
     <%- include('partials/mainHead', { title: title }) %>
+
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+
 </head>
 
 <body class="fixed-nav sticky-footer bg-light sidenav-toggled" id="page-top">
@@ -10,15 +13,17 @@
     <%- include('partials/nav') %>
 
     <div class="content-wrapper">
-        <div class="container-fluid">
+        <div class="container-fluid mt-5 pt-2">
 
-            <!-- Breadcrumbs-->
+            <!-- Breadcrumbs
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">
                     <a href="/">Dashboard</a>
                 </li>
                 <li class="breadcrumb-item active">Users</li>
-            </ol>
+            </ol>-->
+            
+            
 
             <div class="row">
                 <div class="col-12">
@@ -115,6 +120,58 @@
             }
         });
     </script>
+
+
+
+   
+        <div id="main-container" class="container">
+                      <div id="pixel-canvas"></div>
+        </div>
+                      
+        
+                 
+        <script>  
+                 
+                let lastUpdateTime = 0;
+                let delay = 1000; // 1 second delay
+
+                function setup() 
+                {    
+                    const canvas = createCanvas(800, 600);
+                    canvas.parent('pixel-canvas');  
+                  
+
+                }
+                function draw() 
+                {
+                   
+
+                      if (millis() - lastUpdateTime > delay) {
+                            // Code to be executed less frequently
+                            squares();
+                            lastUpdateTime = millis();
+                        }
+                    
+
+                }
+                  
+                
+                function squares() {
+                     background(180);
+                     
+                        for (let y = 0; y < height; y=y+15) {
+                                    for (let x = 0; x < width; x=x+10) {
+                                            fill(random(255), random(255), random(255));       
+                                                rect(x, y, 8, 8);      
+                                        }
+                        }
+                    
+                }
+        </script>
+
+
+
+
 
 </body>
 
