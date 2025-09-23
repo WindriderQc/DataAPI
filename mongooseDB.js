@@ -1,54 +1,79 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
-
-let _db
-let _connection
+let _db;
+let _connection;
 
 const mongooseDB = {
+    init: async function() {
+        if (_connection) {
+            return;
+        }
 
-    
+        const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
+        let mongourl;
 
+        if (process.env.NODE_ENV !== 'production') {
+            const mongoServer = await MongoMemoryServer.create();
+            mongourl = mongoServer.getUri();
+            console.log("Using in-memory MongoDB server at", mongourl);
+        } else {
+            if (!process.env.MONGO_URL) {
+                throw new Error('MONGO_URL environment variable is not set for production environment.');
+            }
+            mongourl = process.env.MONGO_URL;
+        }
 
-    init: async function(url, selectedDatabase, callback) {
-        
-        mongoose.connect( url,  { family: 4 }) // family: 4 -> skip  default IPV6 connection  and accelerate connection.
+        try {
+            const conn = await mongoose.connect(mongourl, {
+                dbName: dbName,
+                family: 4,
+            });
 
-        mongoose.connection.on('error', console.error.bind(console, 'conn error:'))
+            _connection = conn.connection;
+            _db = _connection.db;
 
-        mongoose.connection.once('open', async () =>  { 
-         
-            const db = mongoose.connection.useDb(selectedDatabase);
-            console.log('\nMongoose connected to:', db.name, "\n", url, "\n" )  
+            console.log(`\nMongoose connected to: ${_db.databaseName}\n`);
 
-            _db = mongoose.connection.db
-            _connection = mongoose.connection
-
-            if(callback) callback() 
-        })
-    }, 
-
+            _connection.on('error', (err) => {
+                console.error('Mongoose connection error:', err);
+                process.exit(1);
+            });
+        } catch (error) {
+            console.error('Failed to connect to MongoDB during init:', error);
+            process.exit(1);
+        }
+    },
 
     getCollections: async function() {
-          
-        const col = await _db.listCollections().toArray() 
-        
-        return (col) //module.exports.Collections = col;
+        if (!_db) {
+            throw new Error("Database not initialized. Call init() first.");
+        }
+        const col = await _db.listCollections().toArray();
+        return col;
     },
 
     changeDb: function(dbName) {
-        const newDbConnection = _connection.useDb(dbName)
-        _db = newDbConnection.db
+        if (!_connection) {
+            throw new Error("Database not initialized. Call init() first.");
+        }
+        const newDbConnection = _connection.useDb(dbName);
+        _db = newDbConnection.db;
     },
 
     getDb: function() {
-
-        return _db
+        if (!_db) {
+            throw new Error("Database not initialized. Call init() first.");
+        }
+        return _db;
     },
 
-    getCollection: function() {
-        return collection_
+    getCollection: function(name) {
+        if (!_db) {
+            throw new Error("Database not initialized. Call init() first.");
+        }
+        return _db.collection(name);
     }
+};
 
-}
-
-module.exports = mongooseDB
+module.exports = mongooseDB;
