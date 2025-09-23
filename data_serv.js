@@ -1,13 +1,13 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-//const rateLimit = require('express-rate-limit');    TODO  rate Limiting is creating issue, maybe because of nginx
 require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const PORT = process.env.PORT || 3003;
+const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';  
 
 const app = express();
 
@@ -18,19 +18,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-/*app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-        const xff = req.headers['x-forwarded-for'];
-        if (xff) {
-            return xff.split(',')[0].trim();
-        }
-        return req.ip;
-    },
-}));*/
+
 
 app.use('/', require("./routes/web.routes"));
 app.use('/api/v1', require("./routes/api.routes"));
@@ -65,6 +53,7 @@ async function startServer() {
     try {
         await mdb.init();
 
+
         // The `getCollections` call seems to be for debugging/logging,
         // let's keep it here but with proper error handling.
         try {
@@ -86,7 +75,7 @@ async function startServer() {
 
 // Start the server only if the file is run directly
 if (require.main === module) {
-    startServer();
+    startServer(dbCollectionName);
 }
 
 module.exports = app; // Export the app for testing
