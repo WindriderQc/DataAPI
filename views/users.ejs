@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include('partials/mainHead', { title: title }) %>
+
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+
+</head>
+
+<body class="fixed-nav sticky-footer bg-light sidenav-toggled" id="page-top">
+
+    <%- include('partials/nav') %>
+
+    <div class="content-wrapper">
+        <div class="container-fluid mt-5 pt-2">
+
+            <!-- Breadcrumbs
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/">Dashboard</a>
+                </li>
+                <li class="breadcrumb-item active">Users</li>
+            </ol>-->
+            
+            
+
+            <div class="row">
+                <div class="col-12">
+                    <h1><%= title %></h1>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fa fa-user-plus"></i> Create New User
+                </div>
+                <div class="card-body">
+                    <form id="createUserForm">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="name">Name</label>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="Name" required>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="email">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label for="password">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create User</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fa fa-users"></i> Existing Users
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% users.forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.name %></td>
+                                        <td><%= user.email %></td>
+                                        <td><%= user.created %></td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <!-- /.container-fluid-->
+    </div>
+    <!-- /.content-wrapper-->
+
+    <%- include('partials/footer') %>
+
+    <script>
+        document.getElementById('createUserForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/api/v1/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.message}`);
+                }
+            } catch (error) {
+                console.error('Error creating user:', error);
+                alert('An error occurred while creating the user.');
+            }
+        });
+    </script>
+
+
+
+   
+        <div id="main-container" class="container">
+                      <div id="pixel-canvas"></div>
+        </div>
+                      
+        
+                 
+        <script>  
+                 
+                let lastUpdateTime = 0;
+                let delay = 1000; // 1 second delay
+
+                function setup() 
+                {    
+                    const canvas = createCanvas(800, 600);
+                    canvas.parent('pixel-canvas');  
+                  
+
+                }
+                function draw() 
+                {
+                   
+
+                      if (millis() - lastUpdateTime > delay) {
+                            // Code to be executed less frequently
+                            squares();
+                            lastUpdateTime = millis();
+                        }
+                    
+
+                }
+                  
+                
+                function squares() {
+                     background(180);
+                     
+                        for (let y = 0; y < height; y=y+15) {
+                                    for (let x = 0; x < width; x=x+10) {
+                                            fill(random(255), random(255), random(255));       
+                                                rect(x, y, 8, 8);      
+                                        }
+                        }
+                    
+                }
+        </script>
+
+
+
+
+
+</body>
+
+</html>
