@@ -1,0 +1,24 @@
+name: 🚀 Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Déploiement SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📡 Connexion SSH et déploiement
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /code/DataAPI
+            git pull origin main
+            npm install
+            pm2 restart data_serv
