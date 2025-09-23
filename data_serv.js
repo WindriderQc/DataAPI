@@ -62,29 +62,16 @@ app.use((err, req, res, next) => {
 });
 
 async function startServer() {
-    const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
-    let mongourl;
-
-    if (process.env.NODE_ENV !== 'production') {
-        const mongoServer = await MongoMemoryServer.create();
-        mongourl = mongoServer.getUri();
-        console.log("Using in-memory MongoDB server at", mongourl);
-    } else {
-        if (!process.env.MONGO_URL) {
-            console.error('MONGO_URL environment variable is not set for production environment.');
-            process.exit(1);
-        }
-        mongourl = process.env.MONGO_URL + dbName + (process.env.MONGO_OPTIONS || '');
-    }
-
     try {
-        await mdb.init(mongourl, dbName, async () => {
-            try {
-                console.log("Collections: ", await mdb.getCollections());
-            } catch (e) {
-                // ignore
-            }
-        });
+        await mdb.init();
+
+        // The `getCollections` call seems to be for debugging/logging,
+        // let's keep it here but with proper error handling.
+        try {
+            console.log("Collections: ", await mdb.getCollections());
+        } catch (e) {
+            console.warn("Could not retrieve collection list on startup:", e.message);
+        }
 
         app.listen(PORT, () => {
             console.log(`\n\nData API Server running at port ${PORT}`);
@@ -92,7 +79,8 @@ async function startServer() {
             console.log("LiveData  -  v" + liveDatas.version);
         });
     } catch (err) {
-        console.log('Failed to initialize database:', err);
+        console.error('Failed to initialize database:', err);
+        process.exit(1);
     }
 }
 
