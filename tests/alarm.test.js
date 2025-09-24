@@ -5,8 +5,7 @@ const Alarm = require('../models/alarmModel');
 let app;
 
 beforeAll(async () => {
-  await mdb.init();
-  app = require('../data_serv');
+  app = await require('../data_serv')();
 });
 
 afterAll(async () => {

@@ -16,24 +16,6 @@ const { attachUser } = require('./utils/auth');
 
 const app = express();
 
-// Session configuration
-app.use(session({
-    name: process.env.SESS_NAME || 'sid',
-    secret: process.env.SESS_SECRET || 'default-secret',
-    resave: false,
-    saveUninitialized: false,
-    store: new MongoStore({
-        mongooseConnection: mdb.getConnection(),
-        collection: 'sessions',
-        ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
-    }),
-    cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
-    }
-}));
-
 // Make version available in all templates
 app.locals.appVersion = pjson.version;
 
@@ -44,25 +26,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.use(attachUser);
-
-const rateLimit = require('express-rate-limit');
-
-// Apply rate limiting to all API requests
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-
-app.use('/api/', apiLimiter);
-
-
-app.use('/', require("./routes/auth.routes"));
-app.use('/', require("./routes/web.routes"));
-app.use('/api/v1', require("./routes/api.routes"));
 
 const { GeneralError } = require('./utils/errors');
 
@@ -94,6 +57,24 @@ async function startServer() {
     try {
         await mdb.init();
 
+        // Session configuration
+        app.use(session({
+            name: process.env.SESS_NAME || 'sid',
+            secret: process.env.SESS_SECRET || 'default-secret',
+            resave: false,
+            saveUninitialized: false,
+            store: new MongoStore({
+                mongooseConnection: mdb.getConnection(),
+                collection: 'sessions',
+                ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
+            }),
+            cookie: {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
+            }
+        }));
+
 
         // The `getCollections` call seems to be for debugging/logging,
         // let's keep it here but with proper error handling.
@@ -103,11 +84,46 @@ async function startServer() {
             console.warn("Could not retrieve collection list on startup:", e.message);
         }
 
-        app.listen(PORT, () => {
-            console.log(`\n\nData API Server running at port ${PORT}`);
-            liveDatas.init();
-            console.log("LiveData  -  v" + liveDatas.version);
+        // Apply attachUser middleware
+        app.use(attachUser);
+
+        // Apply rate limiting and routes
+        const rateLimit = require('express-rate-limit');
+        const apiLimiter = rateLimit({
+            windowMs: 15 * 60 * 1000, // 15 minutes
+            max: 100,
+            standardHeaders: true,
+            legacyHeaders: false,
         });
+        app.use('/api/', apiLimiter);
+        app.use('/', require("./routes/auth.routes"));
+        app.use('/', require("./routes/web.routes"));
+        app.use('/api/v1', require("./routes/api.routes"));
+
+        // Global error handler should be last
+        app.use((err, req, res, next) => {
+            if (res.headersSent) {
+                return next(err);
+            }
+            if (err instanceof GeneralError) {
+                const responseJson = { status: 'error', message: err.message };
+                if (err.errors) {
+                    responseJson.errors = err.errors;
+                }
+                return res.status(err.getCode()).json(responseJson);
+            }
+            console.error(err.stack);
+            return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
+        });
+
+        if (process.env.NODE_ENV !== 'test') {
+            app.listen(PORT, () => {
+                console.log(`\n\nData API Server running at port ${PORT}`);
+                liveDatas.init();
+                console.log("LiveData  -  v" + liveDatas.version);
+            });
+        }
+        return app;
     } catch (err) {
         console.error('Failed to initialize database:', err);
         process.exit(1);
@@ -116,7 +132,7 @@ async function startServer() {
 
 // Start the server only if the file is run directly
 if (require.main === module) {
-    startServer(dbCollectionName);
+    startServer();
 }
 
-module.exports = app; // Export the app for testing
+module.exports = startServer;
