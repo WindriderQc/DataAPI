@@ -78,7 +78,11 @@ exports.getbyEsp = async (req, res, next) => {
 
 exports.getEspIO = async (req, res, next) => {
     try {
-        const alarm = await Alarm.findOne({ espID: req.params.espID, io: req.params.io });
+        const { espID, io } = req.query;
+        if (!espID || !io) {
+            return next(new BadRequest('Both espID and io query parameters are required.'));
+        }
+        const alarm = await Alarm.findOne({ espID, io });
         if (!alarm) {
             return next(new NotFoundError('Alarm not found'));
         }
