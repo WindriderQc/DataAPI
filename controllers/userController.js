@@ -49,10 +49,6 @@ exports.new = async (req, res, next) => {
         const allowedFields = ['name', 'email', 'password', 'gender', 'phone', 'lon', 'lat'];
         const userData = pick(req.body, allowedFields);
 
-        // Hash the password
-        const salt = await bcrypt.genSalt(10);
-        userData.password = await bcrypt.hash(userData.password, salt);
-
         const user = new User(userData);
         await user.save();
         const userObject = user.toObject();
@@ -71,7 +67,7 @@ exports.login = async (req, res, next) => {
             return next(new NotFoundError('User not found'));
         }
 
-        const validPassword = await bcrypt.compare(req.body.password, user.password);
+        const validPassword = await user.comparePassword(req.body.password);
         if (!validPassword) {
             return next(new BadRequest('Invalid password'));
         }

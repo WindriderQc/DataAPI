@@ -153,7 +153,7 @@ router.route('/alarms')
         alarmController.update
     )
 
-router.route('/alarms/:espID,io').get(alarmController.getEspIO)
+router.route('/alarms/by-esp-io').get(alarmController.getEspIO);
 router.route('/alarms/:espID').get(alarmController.getbyEsp)
 
  
