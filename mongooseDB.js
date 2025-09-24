@@ -3,6 +3,7 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 
 let _db;
 let _connection;
+let mongoServer;
 
 const mongooseDB = {
     init: async function() {
@@ -14,7 +15,7 @@ const mongooseDB = {
         let mongourl;
 
         if (process.env.NODE_ENV !== 'production') {
-            const mongoServer = await MongoMemoryServer.create();
+            mongoServer = await MongoMemoryServer.create();
             mongourl = mongoServer.getUri();
             console.log("Using in-memory MongoDB server at", mongourl);
         } else {
@@ -73,6 +74,25 @@ const mongooseDB = {
             throw new Error("Database not initialized. Call init() first.");
         }
         return _db.collection(name);
+    },
+
+    getConnection: function() {
+        if (!_connection) {
+            throw new Error("Database not initialized. Call init() first.");
+        }
+        return _connection;
+    },
+
+    close: async function() {
+        if (_connection) {
+            await _connection.close();
+            _connection = null;
+            _db = null;
+        }
+        if (mongoServer) {
+            await mongoServer.stop();
+            mongoServer = null;
+        }
     }
 };
 

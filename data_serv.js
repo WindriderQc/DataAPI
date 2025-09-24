@@ -4,13 +4,35 @@ const cors = require('cors');
 require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const pjson = require('./package.json');
 
 const PORT = process.env.PORT || 3003;
 const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';  
 
+const { attachUser } = require('./utils/auth');
+
 const app = express();
+
+// Session configuration
+app.use(session({
+    name: process.env.SESS_NAME || 'sid',
+    secret: process.env.SESS_SECRET || 'default-secret',
+    resave: false,
+    saveUninitialized: false,
+    store: new MongoStore({
+        mongooseConnection: mdb.getConnection(),
+        collection: 'sessions',
+        ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
+    }),
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
+    }
+}));
 
 // Make version available in all templates
 app.locals.appVersion = pjson.version;
@@ -23,6 +45,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(attachUser);
 
 const rateLimit = require('express-rate-limit');
 
@@ -37,6 +60,7 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 
+app.use('/', require("./routes/auth.routes"));
 app.use('/', require("./routes/web.routes"));
 app.use('/api/v1', require("./routes/api.routes"));
 
