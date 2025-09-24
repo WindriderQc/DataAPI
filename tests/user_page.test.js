@@ -6,8 +6,7 @@ let app;
 
 describe('User Page', () => {
     beforeAll(async () => {
-        await mdb.init();
-        app = require('../data_serv.js');
+        app = await require('../data_serv.js')();
     });
 
     afterAll(async () => {
