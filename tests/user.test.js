@@ -7,8 +7,7 @@ let app;
 describe('User Routes', () => {
     // Connect to a test database before all tests
     beforeAll(async () => {
-        await mdb.init();
-        app = require('../data_serv.js');
+        app = await require('../data_serv.js')();
     });
 
     // Disconnect from the database after all tests
