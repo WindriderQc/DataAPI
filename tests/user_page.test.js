@@ -1,34 +1,27 @@
 const request = require('supertest');
-const app = require('../data_serv.js'); // Adjust this path if needed
+const mdb = require('../mongooseDB');
 const User = require('../models/userModel');
-const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+
+let app;
 
 describe('User Page', () => {
-    let mongoServer;
-
     beforeAll(async () => {
-        mongoServer = await MongoMemoryServer.create();
-        const mongoUri = mongoServer.getUri();
-        await mongoose.connect(mongoUri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        await mdb.init();
+        app = require('../data_serv.js');
     });
 
     afterAll(async () => {
-        await mongoose.disconnect();
-        await mongoServer.stop();
+        await mdb.close();
     });
 
     beforeEach(async () => {
         await User.deleteMany({});
     });
 
-    it('should return 200 OK and render the user management page', async () => {
+    it('should redirect to login when accessing the user management page without being authenticated', async () => {
         const res = await request(app).get('/users');
-        expect(res.statusCode).toEqual(200);
-        expect(res.text).toContain('User Management');
+        expect(res.statusCode).toEqual(302);
+        expect(res.headers.location).toBe('/login');
     });
 
     it('should create a new user and return a 201 status code', async () => {

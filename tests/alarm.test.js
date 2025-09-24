@@ -1,23 +1,16 @@
 const request = require('supertest');
-const app = require('../data_serv');
-const mongoose = require('mongoose');
+const mdb = require('../mongooseDB');
 const Alarm = require('../models/alarmModel');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 
-let mongoServer;
+let app;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-  await mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  await mdb.init();
+  app = require('../data_serv');
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await mdb.close();
 });
 
 beforeEach(async () => {

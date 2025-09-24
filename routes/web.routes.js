@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const User = require('../models/userModel');
 const Device = require('../models/deviceModel');
+const { requireAuth } = require('../utils/auth');
 
 router.get('/', async (req, res) => {
     try {
@@ -16,7 +17,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.get('/users', async (req, res) => {
+router.get('/users', requireAuth, async (req, res) => {
     try {
         const users = await User.find();
         res.render('users', {

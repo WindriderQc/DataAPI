@@ -1,23 +1,19 @@
 const request = require('supertest');
-const app = require('../data_serv.js');
-const mongoose = require('mongoose');
+const mdb = require('../mongooseDB');
 const User = require('../models/userModel');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+
+let app;
 
 describe('User Routes', () => {
-    let mongoServer;
-
     // Connect to a test database before all tests
     beforeAll(async () => {
-        mongoServer = await MongoMemoryServer.create();
-        const mongoUri = mongoServer.getUri();
-        await mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
+        await mdb.init();
+        app = require('../data_serv.js');
     });
 
     // Disconnect from the database after all tests
     afterAll(async () => {
-        await mongoose.disconnect();
-        await mongoServer.stop();
+        await mdb.close();
     });
 
     // Clear the User collection after each test
