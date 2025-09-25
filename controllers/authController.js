@@ -36,9 +36,18 @@ exports.login = async (req, res, next) => {
 
         console.log(`[AUTH] Login successful for user: ${user._id}. Storing userId in session.`);
         req.session.userId = user._id;
+
         console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
         console.log('[AUTH] Redirecting to /users...');
-        res.redirect('/users');
+      
+        // Save the session before redirecting
+        req.session.save((err) => {
+            if (err) {
+                return next(err);
+            }
+            res.redirect('/users');
+        });
+
     } catch (err) {
         console.error('[AUTH] Error during login:', err);
         next(err);
