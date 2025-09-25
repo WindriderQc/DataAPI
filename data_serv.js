@@ -64,8 +64,8 @@ async function startServer() {
             resave: false,
             saveUninitialized: false,
             store: MongoStore.create({
-                mongoUrl: mdb.getConnection().client.s.url,
-                collection: 'sessions',
+                mongoUrl: mdb.getMongoUrl(),
+                collectionName: 'sessions',
                 ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2, // 2 hours
               }),
             cookie: {
