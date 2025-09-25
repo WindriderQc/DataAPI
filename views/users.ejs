@@ -86,6 +86,30 @@
 
         </div>
         <!-- /.container-fluid-->
+
+
+
+
+        <th>Name</th>
+        <th>Email</th>
+        <th>Lat</th>
+        <th>Lon</th>
+        <th>Created At</th>
+        <th>Last Connect</th>
+
+        <tbody>
+        <% users.forEach(function(user) { %>
+            <tr>
+                <td><%= user.name %></td>
+                <td><%= user.email %></td>
+                <td><%= user.lat || '' %></td>
+                <td><%= user.lon || '' %></td>
+                <td><%= user.creationDate ? user.creationDate.toLocaleString() : '' %></td>
+                <td><%= user.lastConnectDate ? user.lastConnectDate.toLocaleString() : '' %></td>
+            </tr>
+        <% }); %>
+        </tbody>
+
     </div>
     <!-- /.content-wrapper-->
 

@@ -1,150 +1,113 @@
-const { validationResult } = require('express-validator');
-const bcrypt = require('bcrypt');
-const User = require('../models/userModel');
-const { NotFoundError, BadRequest } = require('../utils/errors');
+// controllers/userController.js
+const User = require('../models/usermodel');
 
-// index
-exports.index = async (req, res, next) => {
+// GET /users
+exports.index = async (req, res) => {
     try {
-        let { skip = 0, limit = 5, sort = 'desc' } = req.query;
-        skip = parseInt(skip) || 0;
-        limit = parseInt(limit) || 10;
-        skip = skip < 0 ? 0 : skip;
-        limit = Math.min(50, Math.max(1, limit));
-
-        const [total, data] = await Promise.all([
-            User.countDocuments({}),
-            User.find({}, {}, { sort: { created: sort === 'desc' ? -1 : 1 } }).skip(skip).limit(limit)
-        ]);
-
-        res.json({
-            status: "success",
-            message: 'Users retrieved successfully',
-            data: data,
-            meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }
-        });
+        const users = await User.find();
+        res.json(users);  // Keep API-style JSON
     } catch (err) {
-        next(err);
+        res.status(500).json({ message: err.message });
     }
 };
 
-// Helper function to pick allowed fields from an object
-const pick = (obj, keys) => {
-    return keys.reduce((acc, key) => {
-        if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
-            acc[key] = obj[key];
-        }
-        return acc;
-    }, {});
-};
-
-// create
-exports.new = async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return next(new BadRequest(errors.array()));
-    }
-
+// POST /users
+exports.new = async (req, res) => {
     try {
-        const allowedFields = ['name', 'email', 'password', 'gender', 'phone', 'lon', 'lat'];
-        const userData = pick(req.body, allowedFields);
-
-        const user = new User(userData);
+        const { name, email, password, lat, lon } = req.body;
+        const user = new User({ name, email, password, lat, lon });
         await user.save();
-        const userObject = user.toObject();
-        delete userObject.password;
-        res.status(201).json({ message: 'New user created!', data: userObject });
+        res.status(201).json(user);
     } catch (err) {
-        next(err);
+        res.status(400).json({ message: err.message });
     }
 };
 
-// login
-exports.login = async (req, res, next) => {
+// POST /users/login
+exports.login = async (req, res) => {
+    const { email, password } = req.body;
     try {
-        const user = await User.findOne({ email: req.body.email });
-        if (!user) {
-            return next(new NotFoundError('User not found'));
-        }
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
-        const validPassword = await user.comparePassword(req.body.password);
-        if (!validPassword) {
-            return next(new BadRequest('Invalid password'));
-        }
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
-        const userObject = user.toObject();
-        delete userObject.password;
-        res.json({ status: 'success', message: 'Login successful', data: userObject });
+        // Update lastConnectDate
+        user.lastConnectDate = new Date();
+        await user.save();
+
+        res.json({ message: 'Login successful', userId: user._id });
     } catch (err) {
-        next(err);
+        res.status(500).json({ message: err.message });
     }
 };
 
-// view
-exports.view = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.params.user_id);
-        if (!user) {
-            return next(new NotFoundError('User not found'));
-        }
-        res.json({ status: 'success', message: 'User details loading..', data: user });
-    } catch (err) {
-        next(err);
-    }
-};
-
-// from Email
-exports.fromEmail = async (req, res, next) => {
+// GET /users/fromEmail/:email
+exports.fromEmail = async (req, res) => {
     try {
         const user = await User.findOne({ email: req.params.email });
-        if (!user) {
-            return next(new NotFoundError('User not found'));
-        }
-        res.json({ status: 'success', message: 'User details loading..', data: user });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
     } catch (err) {
-        next(err);
+        res.status(500).json({ message: err.message });
     }
 };
 
-// update
-exports.update = async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return next(new BadRequest(errors.array()));
-    }
-
+// GET /users/:user_id
+exports.view = async (req, res) => {
     try {
         const user = await User.findById(req.params.user_id);
-        if (!user) {
-            return next(new NotFoundError('User not found'));
-        }
-
-        const allowedUpdates = ['name', 'gender', 'email', 'phone', 'lon', 'lat', 'lastConnectDate'];
-        const updates = pick(req.body, allowedUpdates);
-
-        // Special handling for numeric types
-        if (updates.lat) updates.lat = parseFloat(updates.lat);
-        if (updates.lon) updates.lon = parseFloat(updates.lon);
-
-        Object.assign(user, updates);
-
-        await user.save();
-        res.json({ status: 'success', message: 'User Info updated', data: user });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
     } catch (err) {
-        next(err);
+        res.status(500).json({ message: err.message });
     }
 };
 
-// delete
-exports.delete = async (req, res, next) => {
+// PATCH/PUT /users/:user_id
+exports.update = async (req, res) => {
     try {
-        // Note: .remove() is deprecated. Using deleteOne() instead.
-        const result = await User.deleteOne({ _id: req.params.user_id });
-        if (result.deletedCount === 0) {
-            return next(new NotFoundError('User not found'));
-        }
-        res.json({ status: 'success', message: 'User deleted' });
+        const updateData = req.body;
+        if (updateData.password) delete updateData.password; // avoid direct password change
+        const user = await User.findByIdAndUpdate(req.params.user_id, updateData, { new: true });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
     } catch (err) {
-        next(err);
+        res.status(400).json({ message: err.message });
+    }
+};
+
+// DELETE /users/:user_id
+exports.delete = async (req, res) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.user_id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ message: 'User deleted' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+
+
+// Model view controller for rendering the users page.
+exports.renderUsersPage = async (req, res) => {
+    try {
+        const users = await User.find();
+       res.render('users', {
+            title: 'Users',
+            users: users.map(u => ({
+                _id: u._id,
+                name: u.name,
+                email: u.email,
+                lat: u.lat,
+                lon: u.lon,
+                creationDate: u.creationDate,
+                lastConnectDate: u.lastConnectDate
+            }))
+        });
+    } catch (err) {
+        res.status(500).send('Server Error');
     }
 };
