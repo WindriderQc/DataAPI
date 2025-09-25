@@ -19,21 +19,28 @@ exports.register = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
     const { email, password } = req.body;
+    console.log(`[AUTH] Attempting login for email: ${email}`);
 
     try {
         const user = await User.findOne({ email });
         if (!user) {
+            console.log(`[AUTH] Login failed: User not found for email: ${email}`);
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
+            console.log(`[AUTH] Login failed: Invalid password for email: ${email}`);
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
+        console.log(`[AUTH] Login successful for user: ${user._id}. Storing userId in session.`);
         req.session.userId = user._id;
+        console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
+        console.log('[AUTH] Redirecting to /users...');
         res.redirect('/users');
     } catch (err) {
+        console.error('[AUTH] Error during login:', err);
         next(err);
     }
 };
