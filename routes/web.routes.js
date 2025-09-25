@@ -18,13 +18,16 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/users', requireAuth, async (req, res) => {
+    console.log('[ROUTES] GET /users: Handling request.');
     try {
         const users = await User.find();
+        console.log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
         res.render('users', {
             users: users,
             title: 'User Management'
         });
     } catch (err) {
+        console.error('[ROUTES] GET /users: Error:', err);
         res.status(500).send(err);
     }
 });
