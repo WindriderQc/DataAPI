@@ -55,9 +55,7 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
     try {
-        if (process.env.NODE_ENV !== 'test') {
-            await mdb.init();
-        }
+        await mdb.init();
 
         // Session configuration
         app.use(session({
