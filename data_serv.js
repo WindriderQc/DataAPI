@@ -5,7 +5,7 @@ require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
 const session = require('express-session');
-const MongoStore = require('connect-mongo')(session);
+const MongoStore = require('connect-mongo');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const pjson = require('./package.json');
 
@@ -55,7 +55,9 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
     try {
-        await mdb.init();
+        if (process.env.NODE_ENV !== 'test') {
+            await mdb.init();
+        }
 
         // Session configuration
         app.use(session({
@@ -63,11 +65,11 @@ async function startServer() {
             secret: process.env.SESS_SECRET || 'default-secret',
             resave: false,
             saveUninitialized: false,
-            store: new MongoStore({
-                mongooseConnection: mdb.getConnection(),
+            store: MongoStore.create({
+                mongoUrl: mdb.getConnection().client.s.url,
                 collection: 'sessions',
-                ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
-            }),
+                ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2, // 2 hours
+              }),
             cookie: {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
