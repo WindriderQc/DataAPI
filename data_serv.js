@@ -15,6 +15,7 @@ const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devd
 const { attachUser } = require('./utils/auth');
 
 const app = express();
+app.set('trust proxy', 1) // trust first proxy
 
 // Make version available in all templates
 app.locals.appVersion = pjson.version;
