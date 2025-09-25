@@ -15,25 +15,6 @@ const IN_PROD = process.env.NODE_ENV === 'production'  // for https channel...  
 const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';  
 
 
-const mongoStore = new MongoDBStore({ uri: process.env.MONGO_URL, collection: 'mySessions'}, (err) => { if(err) console.log( 'MongoStore connect error: ', err) } );
-mongoStore.on('error', (error) => console.log('MongoStore Error: ', error) );
-
-const sessionOptions = {
-  name: process.env.SESS_NAME,
-  resave: false,
-  saveUninitialized: false,  // only save when something changes
-  secret: process.env.SESS_SECRET,
-  store: mongoStore,
-  cookie: {  
-        secure: IN_PROD,         // true if HTTPS
-        httpOnly: true,
-        sameSite: 'none',        // needed for cross-site
-        maxAge: 1000 * 60 * 60   // 1h (example)
-    }// Please note that secure: true is a recommended option. However, it requires an https-enabled website, i.e., HTTPS is necessary for secure cookies. If secure is set, and you access your site over HTTP, the cookie will not be set.
-}
-
-
-
 const { attachUser } = require('./utils/auth');
 
 const app = express();
@@ -49,7 +30,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session(sessionOptions))
+
 
 const { GeneralError } = require('./utils/errors');
 
@@ -90,8 +71,33 @@ async function startServer() {
             console.warn("Could not retrieve collection list on startup:", e.message);
         }
 
+        const mongoStore = new MongoDBStore({
+            uri: mdb.getMongoUrl(),
+            collection: 'mySessions'
+        });
+        mongoStore.on('error', (error) => console.log('MongoStore Error: ', error));
+
+        const sessionOptions = {
+            name: process.env.SESS_NAME,
+            resave: false,
+            saveUninitialized: false,
+            secret: process.env.SESS_SECRET,
+            store: mongoStore,
+            cookie: {
+                secure: IN_PROD,
+                httpOnly: true,
+                sameSite: 'none',
+                maxAge: 1000 * 60 * 60
+            }
+        };
+
         // Create a dedicated router for web routes that require session handling
         const webRouter = express.Router();
+        // Set a dummy secret for the test environment
+        if (process.env.NODE_ENV === 'test') {
+            sessionOptions.secret = 'test-secret';
+        }
+        webRouter.use(session(sessionOptions));
         webRouter.use(attachUser); // Apply attachUser middleware only to web routes
         webRouter.use('/', require("./routes/auth.routes"));
         webRouter.use('/', require("./routes/web.routes"));

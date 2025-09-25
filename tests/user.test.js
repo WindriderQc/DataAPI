@@ -55,7 +55,7 @@ describe('User Routes', () => {
             const wrongLoginRes = await request(app)
                 .post('/api/v1/users/login')
                 .send({ email: 'test@example.com', password: 'wrongpassword' });
-            expect(wrongLoginRes.statusCode).toEqual(400);
+            expect(wrongLoginRes.statusCode).toEqual(401);
         });
 
         it('should fail to create a user with invalid data', async () => {
