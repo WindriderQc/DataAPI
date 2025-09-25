@@ -89,10 +89,14 @@ async function startServer() {
             console.warn("Could not retrieve collection list on startup:", e.message);
         }
 
-        // Apply attachUser middleware
-        app.use(attachUser);
+        // Create a dedicated router for web routes that require session handling
+        const webRouter = express.Router();
+        webRouter.use(attachUser); // Apply attachUser middleware only to web routes
+        webRouter.use('/', require("./routes/auth.routes"));
+        webRouter.use('/', require("./routes/web.routes"));
+        app.use('/', webRouter); // Mount the web router
 
-        // Apply rate limiting and routes
+        // Apply rate limiting and API routes
         const rateLimit = require('express-rate-limit');
         const apiLimiter = rateLimit({
             windowMs: 15 * 60 * 1000, // 15 minutes
@@ -101,9 +105,7 @@ async function startServer() {
             legacyHeaders: false,
         });
         app.use('/api/', apiLimiter);
-        app.use('/', require("./routes/auth.routes"));
-        app.use('/', require("./routes/web.routes"));
-        app.use('/api/v1', require("./routes/api.routes"));
+        app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
 
         // Global error handler should be last
         app.use((err, req, res, next) => {
