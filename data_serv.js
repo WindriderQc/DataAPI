@@ -62,7 +62,7 @@ async function startServer() {
             name: process.env.SESS_NAME || 'sid',
             secret: process.env.SESS_SECRET || 'default-secret',
             resave: false,
-            saveUninitialized: false,
+            saveUninitialized: true,
             store: MongoStore.create({
                 mongoUrl: mdb.getMongoUrl(),
                 collectionName: 'sessions',
