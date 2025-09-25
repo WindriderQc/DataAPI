@@ -70,7 +70,7 @@ async function startServer() {
               }),
             cookie: {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: false, // Must be false for non-HTTPS development
                 sameSite: 'lax', // Needed for modern browsers
                 maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
             }
