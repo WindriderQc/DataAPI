@@ -62,7 +62,7 @@ async function startServer() {
             name: process.env.SESS_NAME || 'sid',
             secret: process.env.SESS_SECRET || 'default-secret',
             resave: false,
-            saveUninitialized: true,
+            saveUninitialized: false,
             store: MongoStore.create({
                 mongoUrl: mdb.getMongoUrl(),
                 collectionName: 'sessions',
@@ -71,6 +71,7 @@ async function startServer() {
             cookie: {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax', // Needed for modern browsers
                 maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
             }
         }));
