@@ -34,18 +34,25 @@ exports.login = async (req, res, next) => {
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
-        console.log(`[AUTH] Login successful for user: ${user._id}. Storing userId in session.`);
-        req.session.userId = user._id;
+        console.log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
 
-        console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
-        console.log('[AUTH] Redirecting to /users...');
-      
-        // Save the session before redirecting
-        req.session.save((err) => {
+        req.session.regenerate(err => {
             if (err) {
+                console.error('[AUTH] Error regenerating session:', err);
                 return next(err);
             }
-            res.redirect('/users');
+
+            req.session.userId = user._id;
+            console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
+            console.log('[AUTH] Redirecting to /users...');
+
+            req.session.save(err => {
+                if (err) {
+                    console.error('[AUTH] Error saving session:', err);
+                    return next(err);
+                }
+                res.redirect('/users');
+            });
         });
 
     } catch (err) {

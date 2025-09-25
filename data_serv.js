@@ -5,7 +5,7 @@ require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
 const session = require('express-session');
-const MongoStore = require('connect-mongo')(session);
+const MongoDBStore = require('connect-mongodb-session')(session);
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const pjson = require('./package.json');
 
@@ -15,6 +15,7 @@ const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devd
 const { attachUser } = require('./utils/auth');
 
 const app = express();
+app.set('trust proxy', 1) // trust first proxy
 
 // Make version available in all templates
 app.locals.appVersion = pjson.version;
@@ -58,19 +59,23 @@ async function startServer() {
         await mdb.init();
 
         // Session configuration
+        const mongoStore = new MongoDBStore({
+            uri: mdb.getMongoUrl(),
+            collection: 'sessions'
+        });
+
+        mongoStore.on('error', (error) => console.log('MongoStore Error: ', error));
+
         app.use(session({
             name: process.env.SESS_NAME || 'sid',
             secret: process.env.SESS_SECRET || 'default-secret',
             resave: false,
             saveUninitialized: false,
-            store: new MongoStore({
-                mongooseConnection: mdb.getConnection(),
-                collection: 'sessions',
-                ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
-            }),
+            store: mongoStore,
             cookie: {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: true, // Must be true for production HTTPS
+                sameSite: 'lax',
                 maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
             }
         }));
@@ -84,10 +89,14 @@ async function startServer() {
             console.warn("Could not retrieve collection list on startup:", e.message);
         }
 
-        // Apply attachUser middleware
-        app.use(attachUser);
+        // Create a dedicated router for web routes that require session handling
+        const webRouter = express.Router();
+        webRouter.use(attachUser); // Apply attachUser middleware only to web routes
+        webRouter.use('/', require("./routes/auth.routes"));
+        webRouter.use('/', require("./routes/web.routes"));
+        app.use('/', webRouter); // Mount the web router
 
-        // Apply rate limiting and routes
+        // Apply rate limiting and API routes
         const rateLimit = require('express-rate-limit');
         const apiLimiter = rateLimit({
             windowMs: 15 * 60 * 1000, // 15 minutes
@@ -96,9 +105,7 @@ async function startServer() {
             legacyHeaders: false,
         });
         app.use('/api/', apiLimiter);
-        app.use('/', require("./routes/auth.routes"));
-        app.use('/', require("./routes/web.routes"));
-        app.use('/api/v1', require("./routes/api.routes"));
+        app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
 
         // Global error handler should be last
         app.use((err, req, res, next) => {
