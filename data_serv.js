@@ -1,7 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-require('dotenv').config();
+const rateLimit = require('express-rate-limit');
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
 const session = require('express-session');
@@ -10,7 +11,28 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const pjson = require('./package.json');
 
 const PORT = process.env.PORT || 3003;
+const IN_PROD = process.env.NODE_ENV === 'production'  // for https channel...  IN_PROD will be true if in production environment    If true while on http connection, session cookie will not work
 const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';  
+
+
+const mongoStore = new MongoDBStore({ uri: process.env.MONGO_URL, collection: 'mySessions'}, (err) => { if(err) console.log( 'MongoStore connect error: ', err) } );
+mongoStore.on('error', (error) => console.log('MongoStore Error: ', error) );
+
+const sessionOptions = {
+  name: process.env.SESS_NAME,
+  resave: false,
+  saveUninitialized: false,  // only save when something changes
+  secret: process.env.SESS_SECRET,
+  store: mongoStore,
+  cookie: {  
+        secure: IN_PROD,         // true if HTTPS
+        httpOnly: true,
+        sameSite: 'none',        // needed for cross-site
+        maxAge: 1000 * 60 * 60   // 1h (example)
+    }// Please note that secure: true is a recommended option. However, it requires an https-enabled website, i.e., HTTPS is necessary for secure cookies. If secure is set, and you access your site over HTTP, the cookie will not be set.
+}
+
+
 
 const { attachUser } = require('./utils/auth');
 
@@ -27,6 +49,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(session(sessionOptions))
 
 const { GeneralError } = require('./utils/errors');
 
@@ -58,28 +81,6 @@ async function startServer() {
     try {
         await mdb.init();
 
-        // Session configuration
-        const mongoStore = new MongoDBStore({
-            uri: mdb.getMongoUrl(),
-            collection: 'sessions'
-        });
-
-        mongoStore.on('error', (error) => console.log('MongoStore Error: ', error));
-
-        app.use(session({
-            name: process.env.SESS_NAME || 'sid',
-            secret: process.env.SESS_SECRET || 'default-secret',
-            resave: false,
-            saveUninitialized: false,
-            store: mongoStore,
-            cookie: {
-                httpOnly: true,
-                secure: true, // Must be true for production HTTPS
-                sameSite: 'lax',
-                maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
-            }
-        }));
-
 
         // The `getCollections` call seems to be for debugging/logging,
         // let's keep it here but with proper error handling.
@@ -97,7 +98,6 @@ async function startServer() {
         app.use('/', webRouter); // Mount the web router
 
         // Apply rate limiting and API routes
-        const rateLimit = require('express-rate-limit');
         const apiLimiter = rateLimit({
             windowMs: 15 * 60 * 1000, // 15 minutes
             max: 100,
