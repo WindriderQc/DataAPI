@@ -20,6 +20,7 @@ router.get('/', (req, res) => {
 
 
 
+
 const databaseController = require('../controllers/databaseController')
 
 router.route("/db").get(databaseController.index)
@@ -54,6 +55,7 @@ router.route('/contacts/:contact_id')
     .delete(contactController.delete)
 
 const userController = require('../controllers/userController')
+router.get('/users-page', userController.renderUsersPage);
 
 router.route('/users')
     .get(userController.index)
