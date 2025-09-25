@@ -1,5 +1,5 @@
 // controllers/userController.js
-const User = require('../models/usermodel');
+const User = require('../models/userModel');
 
 // GET /users
 exports.index = async (req, res) => {
