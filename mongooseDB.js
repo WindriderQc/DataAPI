@@ -4,6 +4,7 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 let _db;
 let _connection;
 let mongoServer;
+let mongourl;
 
 const mongooseDB = {
     init: async function() {
@@ -12,7 +13,6 @@ const mongooseDB = {
         }
 
         const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
-        let mongourl;
 
         if (process.env.NODE_ENV !== 'production') {
             mongoServer = await MongoMemoryServer.create();
@@ -81,6 +81,13 @@ const mongooseDB = {
             throw new Error("Database not initialized. Call init() first.");
         }
         return _connection;
+    },
+
+    getMongoUrl: function() {
+        if (!mongourl) {
+            throw new Error("MongoDB URL not set. Call init() first.");
+        }
+        return mongourl;
     },
 
     close: async function() {
