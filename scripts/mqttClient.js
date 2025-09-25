@@ -40,9 +40,9 @@ function publish(topic, message) {
   client.publish(topic, messageToPublish, (error) => {
     if (error) {
       console.error('Error publishing message:', error);
-    } else {
-      console.log(`Message published to topic ${topic}: ${messageToPublish}`);
-    }
+    } //else {
+      //console.log(`Message published to topic ${topic}: ${messageToPublish}`);
+    //}
   });
 }
 
