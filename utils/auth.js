@@ -1,7 +1,7 @@
 const User = require('../models/userModel');
 
 const attachUser = async (req, res, next) => {
-    console.log(`[MIDDLEWARE] attachUser: Checking session with ID: ${req.sessionID}`);
+    console.log(`[MIDDLEWARE] attachUser: Req for [${req.originalUrl}] from origin [${req.headers.origin}] - Checking session with ID: ${req.sessionID}`);
     res.locals.user = null; // Ensure user is always defined in views
     if (req.session && req.session.userId) {
         console.log(`[MIDDLEWARE] attachUser: Session found with userId: ${req.session.userId}`);
