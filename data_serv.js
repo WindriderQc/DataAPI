@@ -73,7 +73,7 @@ async function startServer() {
             store: mongoStore,
             cookie: {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: true, // Must be true for production HTTPS
                 sameSite: 'lax',
                 maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
             }
