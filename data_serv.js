@@ -5,7 +5,7 @@ require('dotenv').config();
 const mdb = require('./mongooseDB');
 const liveDatas = require('./scripts/liveData.js');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoDBStore = require('connect-mongodb-session')(session);
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const pjson = require('./package.json');
 
@@ -58,20 +58,23 @@ async function startServer() {
         await mdb.init();
 
         // Session configuration
+        const mongoStore = new MongoDBStore({
+            uri: mdb.getMongoUrl(),
+            collection: 'sessions'
+        });
+
+        mongoStore.on('error', (error) => console.log('MongoStore Error: ', error));
+
         app.use(session({
             name: process.env.SESS_NAME || 'sid',
             secret: process.env.SESS_SECRET || 'default-secret',
             resave: false,
             saveUninitialized: false,
-            store: MongoStore.create({
-                mongoUrl: mdb.getMongoUrl(),
-                collectionName: 'sessions',
-                ttl: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2, // 2 hours
-              }),
+            store: mongoStore,
             cookie: {
                 httpOnly: true,
-                secure: false, // Must be false for non-HTTPS development
-                sameSite: 'lax', // Needed for modern browsers
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
                 maxAge: parseInt(process.env.SESS_LIFETIME) || 1000 * 60 * 60 * 2 // 2 hours
             }
         }));
