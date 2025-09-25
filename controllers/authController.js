@@ -32,7 +32,14 @@ exports.login = async (req, res, next) => {
         }
 
         req.session.userId = user._id;
-        res.redirect('/users');
+
+        // Save the session before redirecting
+        req.session.save((err) => {
+            if (err) {
+                return next(err);
+            }
+            res.redirect('/users');
+        });
     } catch (err) {
         next(err);
     }
