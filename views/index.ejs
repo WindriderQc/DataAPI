@@ -1,285 +1,451 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang='en'>
 <head>
-    <%- include('partials/mainHead', { title: 'Data API ' }) %>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Data Farming App"> <meta name="author" content="SpecialBlend Production">
+    <title>SBQC Server Dashboard</title>
+    <link rel="shortcut icon" href="/img/favicon.ico" type="image/x-icon">
 
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+    <!-- MDB CSS (used by index.ejs via old head.ejs) -->
+    <link rel="stylesheet" href="/css/mdb.min.css" />
+    <!-- DataTables (used by dashboard.ejs)  needs jquery  -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js" type="text/javascript" charset="utf8" ></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/moment@latest/moment.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script>
+
+    <%- include('partials/mainHead', { title: 'SBQC Server Dashboard' }) %>
 </head>
+<body class="light-grey">
+<%- include('partials/nav') %> 
 
+<div class="main" style="margin-left:300px;margin-top:43px;">
 
+    <header class="container" style="padding-top:22px">
+        <h5><b><i class="fa fa-dashboard"></i> My Dashboard</b></h5>
+    </header>
 
-
-<body class="fixed-nav sticky-footer bg-light sidenav-toggled" id="page-top">
-
-<%- include('partials/nav') %>
-
-
-<div class="content-wrapper">
-    <div class="container-fluid bg-3 text-center">
-
-        <div class='row mt-5'>
-            <div class='col-sm-8 mx-auto'>
-                <div class="card text-center">
-                    <div class='card-body form-inline'>
-
-                        <select class='form-control' style='width:280px' id="user_select" selected ></select>
-
-                        <form>
-                            <div class="form-group form-inline">
-                                <button type="button" onClick="selectUser()" class="btn btn-primary mx-2 ">Select User</button>
-                            </div>
-
-                            <input type="hidden" id="sender_id" name="sender" value="">
-                            <!-- <input type="hidden" id="io_id" name="io_id" value=""> -->
-                        </form>
-
-                    </div>
+    <div class="row-padding margin-bottom">
+        <div class="col col-3">
+            <div class="container green text-black padding-16 card-4">
+                <div class="left"><i class="fa fa-comment xxxlarge"></i></div>
+                <div class="right">
+                <h3 id="msgCard"><%- collectionInfo.mews %>  </h3>
                 </div>
+                <div class="clear"></div>
+                <h4>Messages</h4>
             </div>
         </div>
-
-        <div class="row my-2">
-
-            <div class='col-sm-8 mx-auto'>
-                <div class="card">
-                    <div class='card-body'>
-                        <form name='userForm' id='userForm'>
-
-                            <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" class="form-control" id="name" name='name' aria-describedby="emailHelp" placeholder="Enter name">
-                            </div>
-                            <div class="form-group">
-                            <label for="email">Email address</label>
-                            <input type="email" class="form-control" id="email" name='email' aria-describedby="emailHelp" placeholder="Enter email">
-                            <small id="emailHelp" class="form-text text-muted">emails are not shared.</small>
-                            </div>
-                            <div class="form-group">
-                            <label for="exampleInputPassword">Password</label>
-                            <input type="password" class="form-control" id="exampleInputPassword" name='password' placeholder="Password">
-                            </div>
-
-                            <div class="row">
-                                <div class="form-group mx-2">
-                                    <label for="lat">Latitude</label>
-                                    <input class='form-control mr-2' type="text" id="lat" name="lat" placeholder="00.00">
-                                </div>
-                                <div class="form-group mx-2">
-                                    <label for="lon">Longitude</label>
-                                    <input class='form-control' type="text" id="lon" name='lon' placeholder="00.00">
-                                </div>
-                            </div>
-
-                            <div class='row'>
-                                <div class="form-group mx-2">
-                                    <label for="creationDate">Creation</label>
-                                    <input class='form-control mr-2' type="text" id="creationDate" name='creationDate' placeholder="2020/01/01">
-                                </div>
-                                <div class="form-group mx-2">
-                                    <label for="lastConnectDate">Last Connection</label>
-                                    <input class='form-control' type="text" id="lastConnectDate" name='lastConnectDate' placeholder="2020/03/01">
-                                </div>
-                            </div>
-
-                            <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                            <label class="form-check-label" for="exampleCheck1">Check me out</label>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Submit</button>
-                        </form>
-                    </div>
+        <div class="col col-3">
+            <div class="container indigo text-black padding-16 card-4">
+                <div class="left"><i class="fa fa-eye xxxlarge"></i></div>
+                <div class="right">
+                <h3 id="viewsCard"><%- collectionInfo.userLogs %></h3>
                 </div>
-            </div>
-
-        </div>
-
-
-        <div class="row">
-            <div class="col-sm-8 mx-auto">
-                <div class="card my-5 ">
-                <div class="card-body ">
-                    <form class="form-signin" action ="/api/v1/user/deleteViaEmail" method="post" enctype="application/json" >
-                        <div class="input-group">
-                            <input type="email" class="form-control"  name='email' id="email_id" placeholder="Email address" required autofocus>
-                            <span class="input-group-btn mx-2">
-                                    <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">Delete User</button>
-                            </span>
-                        </div>
-                    </form>
-                </div>
-
-                <div class='card text-center'>
-                    <div class='card-body'>
-                        <form action="/api/v1/resetDB">
-                            <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">!!!!  Reset DB !!!!</button>
-                        </form>
-                    </div>
-                </div>
-
-                </div>
+                <div class="clear"></div>
+                <h4>Views</h4>
             </div>
         </div>
-
-         <div class="row">
-            <div class='col-sm-12'>
-                <div class="card">
-                    <div class='card-body text-left'>
-                        <small><div id='deviceList'></div></small>
-                    </div>
+        <div class="col col-3">
+            <div class="container khaki padding-16 card-4">
+                <div class="left"><i class="fa fa-share-alt xxxlarge"></i></div>
+                <div class="right">
+                <h3 id="devicesCard"><%- collectionInfo.server %></h3>
                 </div>
+                <div class="clear"></div>
+                <h4>Devices</h4>
             </div>
         </div>
-
-
-
-
-
-        <div class='row'>
-            <div class='col-sm-8 mx-auto'>
-                <div class="card text-center">
-                    <div class='card-body form-inline'>
-
-                        <select class='form-control' style='width:280px' id="device_select" selected ></select>
-
-                        <form>
-                            <div class="form-group form-inline">
-                                <button type="button" onClick="selectDevice()" class="btn btn-primary mx-2 ">Select Device</button>
-                            </div>
-
-                            <input type="hidden" id="device_id" name="device" value="">
-                        </form>
-
-                    </div>
+        <div class="col col-3">
+            <div class="container grey padding-16 card-4">
+                <div class="left"><i class="fa fa-users xxxlarge"></i></div>
+                <div class="right">
+                <h3 id="usersCard"><%- collectionInfo.users %></h3>
                 </div>
+                <div class="clear"></div>
+                <h4>Users</h4>
             </div>
         </div>
+    </div>
 
-
-        <div class="row my-2">
-
-            <div class='col-sm-8 mx-auto'>
-                <div class="card">
-                    <div class='card-body'>
-                        <form name='deviceForm' id='deviceForm'>
-
-                            <div class="form-group">
-                                <label for="type">Type</label>
-                                <input type="text" class="form-control" id="type" name='type' aria-describedby="emailHelp" placeholder="Enter name">
-                            </div>
-                            <div class="form-group">
-                                <label for="id">UID</label>
-                                <input type="text" class="form-control" id="id" name='id'>
-                            </div>
-                            <div class='row'>
-                                <div class="form-group mx-2">
-                                    <label for="lastBoot">Last boot</label>
-                                    <input class='form-control mr-2' type="text" id="lastBoot" name='lastBoot' placeholder="2020/01/01 XX:XX:XX">
-                                </div>
-                                <div class="form-group mx-2">
-                                    <label for="connected">Connected</label>
-                                    <input class='form-control' type="text" id="connected" name='connected' placeholder="true">
-                                </div>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">Submit</button>
-                        </form>
-                    </div>
-                </div>
+    <div class="panel">
+        <div class="row-padding">
+        
+            <div id="map" class="col col-12 col-l6 black card-2" >
+                <h5>World</h5>
+                <!--<img src="/img/region.jpg" style="width:100%" alt="Google Regional Map">-->
+                <canvas id="worldMap" width="800" height="600"></canvas>
+            
             </div>
+    
+        
+            <div class="col col-12 col-l6 ">
+                <h5>Feeds - hitcount:  <%- hitCount %></h5>
 
+        
+
+                <table class="table striped white">
+                    <tr>
+                        <td><i class="fa fa-user text-blue large"></i></td>
+                        <td>New record, over 90 views.</td>
+                        <td><i>10 mins</i></td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-bell text-red large"></i></td>
+                        <td>Database error.</td>
+                        <td><i>15 mins</i></td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-users text-yellow large"></i></td>
+                        <td>New record, over 40 users.</td>
+                        <td><i>17 mins</i></td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-comment text-red large"></i></td>
+                        <td>New comments.</td>
+                        <td><i>25 mins</i></td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-bookmark text-blue large"></i></td>
+                        <td>Check transactions.</td>
+                        <td><i>28 mins</i></td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-laptop text-red large"></i></td>
+                        <td>CPU overload.</td>
+                        <td><i>35 mins</i></td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-share-alt text-green large"></i></td>
+                        <td>New shares.</td>
+                        <td><i>39 mins</i></td>
+                    </tr>
+                </table>
         </div>
+        </div>
+    </div>
+    <hr>
+   
+    <hr>
+
+    <div class="container">
+        <h5>TimeZone</h5>
+        <div id="ip_id"></div>
+        <br>
+        <div>
+            <label for="sourceSelect">Select Source:</label>
+            <select id="sourceSelect">
+                <% for (const collection in collectionInfo) { %>
+                    <option value="<%= collection %>" <%= collection === 'userLogs' ? 'selected' : '' %>><%= collection.charAt(0).toUpperCase() + collection.slice(1) %> </option>
+                <% } %>
+            </select>
+        </div>
+        <div id="tableContainer">
+            <hr />
+            <h3>Server logs</h3>
+            <table id="logsTable" class="display"> </table>
+        </div>
+        <div class='loading'>
+            <img src='img/loading.gif' alt=''>
+        </div>
+    </div>
 
 
- <!-- End Container  -->
-</div>
-</div>
+   
 
+    <div class="row">
+
+              
+
+     </div>
+    
+     
+    
+  
 <%- include('partials/footer') %>
+</div>
 
 
+<script src="/js/tools.js"></script>
 <script>
-    const userList = <%-JSON.stringify(users)%>
-    console.log("userlist: ", userList)
+    // Requires tools.js and chartjs-chart-geo libraries
+let worldMap;
 
-    const deviceList = <%-JSON.stringify(devices)%>
-    console.log("devicelist: " , deviceList)
-    /*
-    const alarmList = <%-JSON.stringify(alarms)%>
-    console.log("alarmlist: ", alarmList)
-    */
+document.addEventListener('DOMContentLoaded', async function() {
+
+    const hoverElement = document.getElementById('hoverElement');
+
+    hoverElement.addEventListener('mouseenter', function() {
+      hoverElement.classList.add('animate-fading');
+    });
+
+    hoverElement.addEventListener('mouseleave', function() {
+      hoverElement.classList.add('animate-opacity');
+    });
+
+    const sourceSelect = document.getElementById('sourceSelect');
+      sourceSelect.addEventListener('change', function() {
+        source = this.value;
+        skip = 0; 
+        listAllLogs(source); 
+      });
+    
+    
+    listAllLogs("userLogs");
+
+    await getUserInfo()
 
 
-    async function setUserList()
-    {
-        let select = document.getElementById('user_select');
-        for(let index in userList) {
-                select.options[select.options.length] = new Option(userList[index].email, index);
+});
+
+
+  
+async function getUserInfo()
+{
+    const info = await Tools.ipLookUp()
+    document.getElementById('ip_id').innerHTML =  "<pre>"+JSON.stringify(info.TimeZone,null, '\t') +"</pre>"
+} 
+
+
+function setWorlGraph(data) {
+    
+      // Mapping of incorrect country names to correct country names
+      const countryNameCorrections = {
+        "United States" : "United States of America",
+        "Russia": "Russian Federation",
+        "South Korea": "Korea, Republic of",
+        // Add more mappings as needed
+    };
+
+    const countryCounts = data.reduce((acc, entry) => {
+        // Check if CountryName is valid before processing
+        if (entry.CountryName) {
+            // Correct the country name if it exists in the mapping
+            const correctedCountryName = countryNameCorrections[entry.CountryName] || entry.CountryName;
+            acc[correctedCountryName] = (acc[correctedCountryName] || 0) + 1;
         }
+        return acc;
+    }, {});
+    //console.log('worldMapData', countryCounts);
+
+ 
 
 
+    // Fetch or define the geo data (e.g., world geoJSON) 
+    fetch('https://unpkg.com/world-atlas/countries-50m.json')
+        .then(response => response.json())
+        .then(world => {
+        
+            const countries = ChartGeo.topojson.feature(world, world.objects.countries).features;
+            //console.log('countries', countries);
+
+            // Create a set of valid country names
+            const validCountryNames = new Set(countries.map(country => country.properties.name));
+            // Check for missing country names
+            Object.keys(countryCounts).forEach(countryName => {
+                
+                if (!validCountryNames.has(countryName)) {
+                        console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
+                    }
+            });
+
+            // Prepare the dataset
+            const chartData = {
+                labels: countries.map(d => d.properties.name),
+                datasets: [{
+                    label: 'Countries',
+                    data: countries.map(country => ({
+                        feature: country,
+                        value: countryCounts[country.properties.name] || 0
+                    })),
+                    outline: countries,
+                    backgroundColor: (context) => {
+                        const dataItem = context.dataset.data[context.index];
+                        if (!dataItem || !dataItem.value) {
+                            return 'rgba(200, 200, 200, 0.25)'; // Default grey for missing values
+                        }
+                    
+                        const value = dataItem.value;
+            
+                        if (value < 40) return `rgba(0, 200, 100, ${(value * 5) / 200 + 0.15})`;
+                        return `rgba(0, 100, 200, ${(value * 3) / 100 + 0.1})`;
+                    },
+                }]
+            };
+            const config = {
+                type: 'choropleth',
+                data: chartData,
+                options: {
+                    showOutline: false,
+                    showGraticule: false,
+                    scales: {
+                        projection: {
+                            axis: 'x',
+                            projection: 'equalEarth',
+                        },
+                    },
+                    onClick: (evt, elems) => {
+                        console.log(elems.map((elem) => elem.element.feature.properties.name));
+                    },
+                    geo: {
+                        colorScale: {
+                            display: false,
+                        }
+                    }, 
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            };
+            //worldMap = new Chart( document.getElementById('worldMap'), config);
+            if (worldMap) {
+                    worldMap.destroy();
+                }
+                worldMap = new Chart(document.getElementById('worldMap'), config);
+
+        });       
+}
+
+const loadingElement = document.querySelector('.loading');
+const logsElement = document.querySelector('.logs');
 
 
+let skip = 0;
+let sort = 'desc'; 
+let loading = false;
 
-    }
-    setUserList()
 
-    async function setDeviceList()
-    {
-        let select = document.getElementById('device_select');
-        for(let index in deviceList) {
-                select.options[select.options.length] = new Option(deviceList[index].id, index);
-        }
-    }
-    setDeviceList()
+function listAllLogs(source) {
+  loading = true;
+  loadingElement.style.display = '';
+    const url = `/v2/logs?skip=${skip}&sort=${sort}&source=${source}`
+  const options =  { method: 'GET',    mode: 'no-cors' }
 
-    Tools.showArrayOnDOM(deviceList, "deviceList")
+  fetch(url, options)
+    .then(response => response.json())
+    .then(result => {
 
-    function selectUser()
-    {
-      var sel = document.getElementById('user_select');
-        for(let index in userList)
-        {
-            let selected = Tools.getDOMSelectedOption(sel)
-            if(userList[index].email ==  selected.innerHTML)
-            {
-              console.log(userList[index])
-              Tools.fillForm('userForm', userList[index])
+        if (!result.logs || result.logs.length === 0) {
+                console.warn('No logs available to display.');
+                loadingElement.style.display = 'none';
+                return;
             }
-        }
-    }
 
-    function selectDevice()
-    {
-      var sel = document.getElementById('device_select');
-        for(let index in deviceList)
-        {
-            let selected = Tools.getDOMSelectedOption(sel)
-            if(deviceList[index].id ==  selected.innerHTML)
-            {
-              console.log(deviceList[index])
-              Tools.fillForm('deviceForm', deviceList[index])
+        //console.log('result', result)
+        setWorlGraph(result.logs)
+
+
+
+        // Collect all unique keys from all log entries
+        const allKeys = new Set();
+        result.logs.forEach(log => {
+            if (log && typeof log === 'object') { // Ensure log is an object
+                Object.keys(log).forEach(key => allKeys.add(key));
             }
-        }
+        });
+
+        // Normalize the data: ensure all objects have all keys from allKeys
+        const normalizedLogs = result.logs.map(log => {
+            const normalizedLog = {};
+            if (log && typeof log === 'object') { // Process only if log is an object
+                allKeys.forEach(key => {
+                    normalizedLog[key] = log.hasOwnProperty(key) ? log[key] : ""; // Use empty string for missing keys
+                });
+            } else { // If log is not an object (e.g. null, primitive), create an object with empty values for all keys
+                allKeys.forEach(key => {
+                    normalizedLog[key] = "";
+                });
+            }
+            return normalizedLog;
+        });
+
+        const columns = Array.from(allKeys).map((key) => ({
+            title: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize column names
+            data: key,
+            defaultContent: "", // Provide default content for missing keys (good for safety)
+            render:
+                (key === 'date' || key === 'created')
+                    ? function (data, type, row) {
+                          // data will be "" if originally missing due to normalization
+                          if (data === null || data === undefined || data === "") {
+                              return ""; 
+                          }
+                          const dateObj = new Date(data);
+                          // Check if dateObj is valid
+                          if (isNaN(dateObj.getTime())) {
+                              return ""; // Was not a valid date string
+                          }
+                          return dateObj.toLocaleString(); // Format the date
+                      }
+                    : null,
+        }));
+   
+        loadDataTable({ data: normalizedLogs,  columns }); // Use normalizedLogs
+        
+        loadingElement.style.display = 'none';
+    })
+    .catch(error => {
+        console.error('Error fetching logs:', error);
+        loadingElement.style.display = 'none';
+    });
+   
+}
+
+function loadDataTable(dataset) {
+    console.log('dataset', dataset);
+
+    // Clear the table and remove lingering DataTable instance
+    const table = $('#logsTable');
+    if ($.fn.DataTable.isDataTable(table)) {
+        table.DataTable().clear().destroy(); // Fully destroy the instance
     }
 
+    // Empty the table structure to remove old columns
+    table.empty();
+
+    // Reinitialize the DataTable with the new dataset and columns
+    table.DataTable({
+        data: dataset.data,
+        columns: dataset.columns,
+        destroy: true, // Ensure old table is destroyed (redundant here for safety)
+        scrollX: true
+    });
+}
 
 
-                          /*    function update(id, data){
-                                fetch('http://localhost:3001/api/user/' + id, {
-                                  method: 'PATCH',
-                                  body: JSON.stringify({ data })
-                                }).then((response) => {
-                                  response.json().then((response) => {
-                                    console.log(response);
-                                  })
-                                }).catch(err => {
-                                  console.error(err)
-                                })
+var mySidebar = document.getElementById("mySidebar");
+var overlayBg = document.getElementById("myOverlay");
+// Toggle and add overlay effect
+function w3_open() {
+  if (mySidebar.style.display === 'block') {
+    mySidebar.style.display = 'none';
+    overlayBg.style.display = "none";
+  } else {
+    mySidebar.style.display = 'block';
+    overlayBg.style.display = "block";
+  }
+}
+// Close the sidebar with the close button
+function w3_close() {
+    console.log('w3_close called');
+  mySidebar.style.display = "none";
+  overlayBg.style.display = "none";
+}
+</script>
 
-                              }*/
 
-
-    </script>
 
 
 </body>
