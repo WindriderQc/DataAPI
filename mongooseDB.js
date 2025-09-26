@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-
 const { MongoClient } = require('mongodb');
+const { log } = require('./utils/logger');
 
 let client;
 let mongoServer;
@@ -17,7 +17,7 @@ const mongooseDB = {
         if (process.env.NODE_ENV !== 'production') {
             mongoServer = await MongoMemoryServer.create();
             mongourl = mongoServer.getUri();
-            console.log("Using in-memory MongoDB server at", mongourl);
+            log(`Using in-memory MongoDB server at ${mongourl}`);
         } else {
             if (!process.env.MONGO_URL) {
                 throw new Error('MONGO_URL environment variable is not set for production environment.');
@@ -30,17 +30,17 @@ const mongooseDB = {
                 useUnifiedTopology: true,
             });
             await client.connect();
-            console.log("\nMongoDB client connected\n");
+            log("\nMongoDB client connected\n");
 
             // Initialize default databases
             const dbNames = ['SBQC', 'datas'];
             for (const dbName of dbNames) {
                 databases[dbName] = client.db(dbName);
             }
-            console.log("Databases initialized:", Object.keys(databases));
+            log(`Databases initialized: ${Object.keys(databases)}`);
 
         } catch (error) {
-            console.error('Failed to connect to MongoDB during init:', error);
+            log('Failed to connect to MongoDB during init:', 'error');
             process.exit(1);
         }
     },

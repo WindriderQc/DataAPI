@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { requireAuth } = require('../utils/auth');
+const { log } = require('../utils/logger');
 
 router.get('/', async (req, res) => {
     try {
@@ -34,17 +35,17 @@ router.get('/tools', async (req, res) => {
 });
 
 router.get('/users', requireAuth, async (req, res) => {
-    console.log('[ROUTES] GET /users: Handling request.');
+    log('[ROUTES] GET /users: Handling request.');
     try {
         const dbs = req.app.locals.dbs;
         const users = await dbs.datas.collection('users').find().toArray();
-        console.log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
+        log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
         res.render('users', {
             users: users,
             title: 'User Management'
         });
     } catch (err) {
-        console.error('[ROUTES] GET /users: Error:', err);
+        log(`[ROUTES] GET /users: Error: ${err}`, 'error');
         res.status(500).send(err);
     }
 });

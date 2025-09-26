@@ -1,18 +1,18 @@
 const request = require('supertest');
-const mdb = require('../mongooseDB');
-const startServer = require('../data_serv');
+const { setup, teardown } = require('./test-setup');
 
 describe('Alarm API', () => {
   let app;
   let db;
 
   beforeAll(async () => {
-    app = await startServer();
-    db = mdb.getDb('datas');
+    const { app: expressApp, db: initializedDb } = await setup();
+    app = expressApp;
+    db = initializedDb;
   });
 
   afterAll(async () => {
-    await mdb.close();
+    await teardown();
   });
 
   beforeEach(async () => {
