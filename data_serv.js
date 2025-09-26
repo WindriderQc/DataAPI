@@ -162,7 +162,7 @@ async function startServer() {
         if (process.env.NODE_ENV !== 'test') {
             app.listen(PORT, () => {
                 console.log(`\n\nData API Server running at port ${PORT}`);
-                liveDatas.init();
+                liveDatas.init(app.locals.dbs);
                 console.log("LiveData  -  v" + liveDatas.version);
             });
         }

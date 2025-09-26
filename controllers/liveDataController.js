@@ -1,13 +1,12 @@
-const Iss = require('../models/issModel');
-const Quake = require('../models/quakeModel');
-const liveData = require('../scripts/liveData');
 const { NotFoundError } = require('../utils/errors');
 
 exports.quakes = async (req, res, next) => {
     try {
+        const db = req.app.locals.dbs.datas;
+        const quakesCollection = db.collection('quakes');
         const [count, quakes] = await Promise.all([
-            Quake.countDocuments(),
-            Quake.find({})
+            quakesCollection.countDocuments(),
+            quakesCollection.find({}).toArray()
         ]);
         res.json({ status: "success", message: 'Quakes retrieved successfully', meta: { count }, data: quakes });
     } catch (err) {
@@ -17,9 +16,11 @@ exports.quakes = async (req, res, next) => {
 
 exports.iss = async (req, res, next) => {
     try {
+        const db = req.app.locals.dbs.datas;
+        const issCollection = db.collection('isses');
         const [total, data] = await Promise.all([
-            Iss.countDocuments({}),
-            Iss.find({}, {}, { sort: { created: -1 } })
+            issCollection.countDocuments({}),
+            issCollection.find({}, { sort: { created: -1 } }).toArray()
         ]);
         res.json({ status: "success", message: 'Iss locations retrieved successfully', meta: { total }, data: data });
     } catch (err) {
@@ -29,7 +30,9 @@ exports.iss = async (req, res, next) => {
 
 exports.deleteAllIss = async (req, res, next) => {
     try {
-        const ack = await Iss.deleteMany({});
+        const db = req.app.locals.dbs.datas;
+        const issCollection = db.collection('isses');
+        const ack = await issCollection.deleteMany({});
         res.json({ status: "success", message: 'All Iss deleted', data: ack });
     } catch (err) {
         next(err);
@@ -38,7 +41,9 @@ exports.deleteAllIss = async (req, res, next) => {
 
 exports.deleteAllQuakes = async (req, res, next) => {
     try {
-        const ack = await Quake.deleteMany({});
+        const db = req.app.locals.dbs.datas;
+        const quakesCollection = db.collection('quakes');
+        const ack = await quakesCollection.deleteMany({});
         res.json({ status: "success", message: 'All Quakes deleted', data: ack });
     } catch (err) {
         next(err);
