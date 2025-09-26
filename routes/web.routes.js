@@ -18,6 +18,24 @@ router.get('/', async (req, res) => {
     }
 });
 
+
+
+router.get('/tools', async (req, res) => {
+    try {
+        const users = await User.find();
+        const devices = await Device.find();
+        res.render('tools', {
+            users: users,
+            devices: devices,
+            alarms: [],
+             title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices 
+        });
+    } catch (err) {
+        res.status(500).send(err);
+    }
+});
+
+
 router.get('/users', requireAuth, async (req, res) => {
     console.log('[ROUTES] GET /users: Handling request.');
     try {
