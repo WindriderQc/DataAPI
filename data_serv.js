@@ -87,6 +87,16 @@ async function startServer() {
             });
             console.log("Boot log inserted.");
 
+            // Fetch and log collection info for the 'datas' db
+            app.locals.collectionInfo = {};
+            const datasDb = app.locals.dbs['datas'];
+            const collections = await datasDb.listCollections().toArray();
+            for (const coll of collections) {
+                const count = await datasDb.collection(coll.name).countDocuments();
+                app.locals.collectionInfo[coll.name] = count;
+            }
+            console.log("Collection Info for 'datas' db:", app.locals.collectionInfo, '\n__________________________________________________\n\n');
+
         } catch (e) {
             console.warn("Could not initialize dbs on startup:", e.message);
         }
