@@ -132,7 +132,7 @@ const Tools = {
     ipLookUp: async () => {
             try {
                 //const response = await fetch('http://ip-api.com/json')
-                const response = await fetch('/api/proxy-location')
+                const response = await fetch('/api/v1/proxy-location')
                 const data = await response.json()
                 console.log('User\'s Location Data is ', data); // Escaped '
                 console.log('User\'s Country', data.country); // Escaped '
