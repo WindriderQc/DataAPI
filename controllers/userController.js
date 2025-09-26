@@ -81,10 +81,10 @@ exports.fromEmail = async (req, res) => {
     }
 };
 
-// GET /users/:user_id
+// GET /users/:id
 exports.view = async (req, res) => {
     try {
-        const user = await User.findById(req.params.user_id);
+        const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json(user);
     } catch (err) {
@@ -92,12 +92,12 @@ exports.view = async (req, res) => {
     }
 };
 
-// PATCH/PUT /users/:user_id
+// PATCH/PUT /users/:id
 exports.update = async (req, res) => {
     try {
         const updateData = req.body;
         if (updateData.password) delete updateData.password; // avoid direct password change
-        const user = await User.findByIdAndUpdate(req.params.user_id, updateData, { new: true });
+        const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json(user);
     } catch (err) {
@@ -105,10 +105,10 @@ exports.update = async (req, res) => {
     }
 };
 
-// DELETE /users/:user_id
+// DELETE /users/:id
 exports.delete = async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.user_id);
+        const user = await User.findByIdAndDelete(req.params.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ message: 'User deleted' });
     } catch (err) {

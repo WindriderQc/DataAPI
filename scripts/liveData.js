@@ -11,6 +11,7 @@ let datas = { version: 1.0 };
 const version = datas.version;
 const intervals = { quakes: 1000 * 60 * 60 * 24 * 7, iss: 1000 * 5 };
 const maxISSlogs = 4320;
+let intervalIds = [];
 
 async function getISS() {
     const iss_api_url = 'https://api.wheretheiss.at/v1/satellites/25544';
@@ -85,7 +86,11 @@ function init(dbConnections) {
     }
 
     mqttClient.init();
-    setAutoUpdate(intervals, true);
+
+    // Do not run intervals in the test environment
+    if (process.env.NODE_ENV !== 'test') {
+        setAutoUpdate(intervals, true);
+    }
 }
 
 function setAutoUpdate(intervals, updateNow = false) {
@@ -94,15 +99,22 @@ function setAutoUpdate(intervals, updateNow = false) {
         getISS();
     }
 
-    setInterval(getQuakes, intervals.quakes);
-    setInterval(getISS, intervals.iss);
+    intervalIds.push(setInterval(getQuakes, intervals.quakes));
+    intervalIds.push(setInterval(getISS, intervals.iss));
 
     console.log("LiveData configured  -  Intervals: ", intervals);
+}
+
+function close() {
+    intervalIds.forEach(clearInterval);
+    intervalIds = [];
+    mqttClient.close();
 }
 
 module.exports = {
     init,
     setAutoUpdate,
     version,
-    intervals
+    intervals,
+    close,
 };

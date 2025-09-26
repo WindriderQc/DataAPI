@@ -1,27 +1,23 @@
 const startServer = require('../data_serv');
-const mdb = require('../mongooseDB');
-
-let server;
-let app;
-let db;
+const { closeServer: closeMongoServer } = require('../mongooseDB');
 
 const setup = async () => {
-    if (server) {
-        return { app, db };
-    }
-    const { app: expressApp, close } = await startServer();
-    app = expressApp;
-    server = { close };
-    db = mdb.getDb('datas');
-    return { app, db };
+    const { app, close: closeHttpServer, dbConnection } = await startServer();
+    const db = dbConnection.getDb('datas');
+    return { app, db, closeHttpServer, dbConnection };
 };
 
-const teardown = async () => {
-    if (server) {
-        await server.close();
-        server = null;
+const teardown = async ({ closeHttpServer, dbConnection }) => {
+    if (closeHttpServer) {
+        await closeHttpServer();
     }
-    await mdb.close();
+    if (dbConnection) {
+        await dbConnection.close();
+    }
 };
 
-module.exports = { setup, teardown };
+const afterAllTests = async () => {
+    await closeMongoServer();
+};
+
+module.exports = { setup, teardown, afterAllTests };

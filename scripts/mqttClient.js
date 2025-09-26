@@ -50,8 +50,18 @@ function getClient() {
   return client;
 }
 
+function close() {
+  if (client) {
+    client.end(true, () => { // true forces a disconnect
+      console.log('MQTT client disconnected');
+      client = null;
+    });
+  }
+}
+
 module.exports = {
   init,
   publish,
   getClient,
+  close,
 };
