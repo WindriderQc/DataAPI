@@ -1,6 +1,7 @@
 const util = require('util');
 const bcrypt = require('bcrypt');
 const { BadRequest } = require('../utils/errors');
+const { log } = require('../utils/logger');
 
 exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
@@ -36,22 +37,22 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
     const dbs = req.app.locals.dbs;
     const usersCollection = dbs.datas.collection('users');
-    console.log(`[AUTH] Attempting login for email: ${email}`);
+    log(`[AUTH] Attempting login for email: ${email}`);
 
     try {
         const user = await usersCollection.findOne({ email });
         if (!user) {
-            console.log(`[AUTH] Login failed: User not found for email: ${email}`);
+            log(`[AUTH] Login failed: User not found for email: ${email}`);
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log(`[AUTH] Login failed: Invalid password for email: ${email}`);
+            log(`[AUTH] Login failed: Invalid password for email: ${email}`);
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
-        console.log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
+        log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
 
         const regenerate = util.promisify(req.session.regenerate).bind(req.session);
         const save = util.promisify(req.session.save).bind(req.session);
@@ -60,12 +61,12 @@ exports.login = async (req, res, next) => {
         req.session.userId = user._id.toString();
         await save();
 
-        console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
-        console.log('[AUTH] Redirecting to /users...');
+        log(`[AUTH] Session userId set to: ${req.session.userId}`);
+        log('[AUTH] Redirecting to /users...');
         res.redirect('/users');
 
     } catch (err) {
-        console.error('[AUTH] Error during login:', err);
+        log(`[AUTH] Error during login: ${err}`, 'error');
         next(err);
     }
 };
