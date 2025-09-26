@@ -126,6 +126,16 @@ async function startServer() {
             }
         };
 
+        // Apply rate limiting and API routes
+        const apiLimiter = rateLimit({
+            windowMs: 15 * 60 * 1000, // 15 minutes
+            max: 100,
+            standardHeaders: true,
+            legacyHeaders: false,
+        });
+        app.use('/api/', apiLimiter);
+        app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
+
         // Create a dedicated router for web routes that require session handling
         const webRouter = express.Router();
         // Set a dummy secret for the test environment
@@ -137,16 +147,6 @@ async function startServer() {
         webRouter.use('/', require("./routes/auth.routes"));
         webRouter.use('/', require("./routes/web.routes"));
         app.use('/', webRouter); // Mount the web router
-
-        // Apply rate limiting and API routes
-        const apiLimiter = rateLimit({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 100,
-            standardHeaders: true,
-            legacyHeaders: false,
-        });
-        app.use('/api/', apiLimiter);
-        app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
 
         // Global error handler should be last
         app.use((err, req, res, next) => {
