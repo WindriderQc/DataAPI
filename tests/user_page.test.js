@@ -1,12 +1,14 @@
 const request = require('supertest');
 const mdb = require('../mongooseDB');
-const User = require('../models/userModel');
-
-let app;
+const startServer = require('../data_serv');
 
 describe('User Page', () => {
+    let app;
+    let db;
+
     beforeAll(async () => {
-        app = await require('../data_serv.js')();
+        app = await startServer();
+        db = mdb.getDb('datas');
     });
 
     afterAll(async () => {
@@ -14,7 +16,7 @@ describe('User Page', () => {
     });
 
     beforeEach(async () => {
-        await User.deleteMany({});
+        await db.collection('users').deleteMany({});
     });
 
     it('should redirect to login when accessing the user management page without being authenticated', async () => {
@@ -23,7 +25,7 @@ describe('User Page', () => {
         expect(res.headers.location).toBe('/login');
     });
 
-    it('should create a new user and return a 201 status code', async () => {
+    it('should create a new user via API and return a 201 status code', async () => {
         const res = await request(app)
             .post('/api/v1/users')
             .send({
@@ -33,8 +35,10 @@ describe('User Page', () => {
             });
 
         expect(res.statusCode).toEqual(201);
+        expect(res.body).toHaveProperty('_id');
+        expect(res.body).toHaveProperty('name', 'Test User');
 
-        const user = await User.findOne({ email: 'test@example.com' });
+        const user = await db.collection('users').findOne({ email: 'test@example.com' });
         expect(user).not.toBeNull();
         expect(user.name).toBe('Test User');
     });
