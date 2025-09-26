@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include('partials/mainHead', { title: 'Data API ' }) %>
+
+</head>
+
+
+
+
+<body class="fixed-nav sticky-footer bg-light sidenav-toggled" id="page-top">
+
+<%- include('partials/nav') %>
+
+
+<div class="content-wrapper">
+    <div class="container-fluid bg-3 text-center">
+
+        <div class='row mt-5'>
+            <div class='col-sm-8 mx-auto'>
+                <div class="card text-center">
+                    <div class='card-body form-inline'>
+
+                        <select class='form-control' style='width:280px' id="user_select" selected ></select>
+
+                        <form>
+                            <div class="form-group form-inline">
+                                <button type="button" onClick="selectUser()" class="btn btn-primary mx-2 ">Select User</button>
+                            </div>
+
+                            <input type="hidden" id="sender_id" name="sender" value="">
+                            <!-- <input type="hidden" id="io_id" name="io_id" value=""> -->
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row my-2">
+
+            <div class='col-sm-8 mx-auto'>
+                <div class="card">
+                    <div class='card-body'>
+                        <form name='userForm' id='userForm'>
+
+                            <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" class="form-control" id="name" name='name' aria-describedby="emailHelp" placeholder="Enter name">
+                            </div>
+                            <div class="form-group">
+                            <label for="email">Email address</label>
+                            <input type="email" class="form-control" id="email" name='email' aria-describedby="emailHelp" placeholder="Enter email">
+                            <small id="emailHelp" class="form-text text-muted">emails are not shared.</small>
+                            </div>
+                            <div class="form-group">
+                            <label for="exampleInputPassword">Password</label>
+                            <input type="password" class="form-control" id="exampleInputPassword" name='password' placeholder="Password">
+                            </div>
+
+                            <div class="row">
+                                <div class="form-group mx-2">
+                                    <label for="lat">Latitude</label>
+                                    <input class='form-control mr-2' type="text" id="lat" name="lat" placeholder="00.00">
+                                </div>
+                                <div class="form-group mx-2">
+                                    <label for="lon">Longitude</label>
+                                    <input class='form-control' type="text" id="lon" name='lon' placeholder="00.00">
+                                </div>
+                            </div>
+
+                            <div class='row'>
+                                <div class="form-group mx-2">
+                                    <label for="creationDate">Creation</label>
+                                    <input class='form-control mr-2' type="text" id="creationDate" name='creationDate' placeholder="2020/01/01">
+                                </div>
+                                <div class="form-group mx-2">
+                                    <label for="lastConnectDate">Last Connection</label>
+                                    <input class='form-control' type="text" id="lastConnectDate" name='lastConnectDate' placeholder="2020/03/01">
+                                </div>
+                            </div>
+
+                            <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
+                            <label class="form-check-label" for="exampleCheck1">Check me out</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="row">
+            <div class="col-sm-8 mx-auto">
+                <div class="card my-5 ">
+                <div class="card-body ">
+                    <form class="form-signin" action ="/api/v1/user/deleteViaEmail" method="post" enctype="application/json" >
+                        <div class="input-group">
+                            <input type="email" class="form-control"  name='email' id="email_id" placeholder="Email address" required autofocus>
+                            <span class="input-group-btn mx-2">
+                                    <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">Delete User</button>
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <div class='card text-center'>
+                    <div class='card-body'>
+                        <form action="/api/v1/resetDB">
+                            <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">!!!!  Reset DB !!!!</button>
+                        </form>
+                    </div>
+                </div>
+
+                </div>
+            </div>
+        </div>
+
+         <div class="row">
+            <div class='col-sm-12'>
+                <div class="card">
+                    <div class='card-body text-left'>
+                        <small><div id='deviceList'></div></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+        <div class='row'>
+            <div class='col-sm-8 mx-auto'>
+                <div class="card text-center">
+                    <div class='card-body form-inline'>
+
+                        <select class='form-control' style='width:280px' id="device_select" selected ></select>
+
+                        <form>
+                            <div class="form-group form-inline">
+                                <button type="button" onClick="selectDevice()" class="btn btn-primary mx-2 ">Select Device</button>
+                            </div>
+
+                            <input type="hidden" id="device_id" name="device" value="">
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row my-2">
+
+            <div class='col-sm-8 mx-auto'>
+                <div class="card">
+                    <div class='card-body'>
+                        <form name='deviceForm' id='deviceForm'>
+
+                            <div class="form-group">
+                                <label for="type">Type</label>
+                                <input type="text" class="form-control" id="type" name='type' aria-describedby="emailHelp" placeholder="Enter name">
+                            </div>
+                            <div class="form-group">
+                                <label for="id">UID</label>
+                                <input type="text" class="form-control" id="id" name='id'>
+                            </div>
+                            <div class='row'>
+                                <div class="form-group mx-2">
+                                    <label for="lastBoot">Last boot</label>
+                                    <input class='form-control mr-2' type="text" id="lastBoot" name='lastBoot' placeholder="2020/01/01 XX:XX:XX">
+                                </div>
+                                <div class="form-group mx-2">
+                                    <label for="connected">Connected</label>
+                                    <input class='form-control' type="text" id="connected" name='connected' placeholder="true">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+ <!-- End Container  -->
+</div>
+</div>
+
+<%- include('partials/footer') %>
+
+
+<script>
+    const userList = <%-JSON.stringify(users)%>
+    console.log("userlist: ", userList)
+
+    const deviceList = <%-JSON.stringify(devices)%>
+    console.log("devicelist: " , deviceList)
+    /*
+    const alarmList = <%-JSON.stringify(alarms)%>
+    console.log("alarmlist: ", alarmList)
+    */
+
+
+    async function setUserList()
+    {
+        let select = document.getElementById('user_select');
+        for(let index in userList) {
+                select.options[select.options.length] = new Option(userList[index].email, index);
+        }
+
+
+
+
+
+    }
+    setUserList()
+
+    async function setDeviceList()
+    {
+        let select = document.getElementById('device_select');
+        for(let index in deviceList) {
+                select.options[select.options.length] = new Option(deviceList[index].id, index);
+        }
+    }
+    setDeviceList()
+
+    Tools.showArrayOnDOM(deviceList, "deviceList")
+
+    function selectUser()
+    {
+      var sel = document.getElementById('user_select');
+        for(let index in userList)
+        {
+            let selected = Tools.getDOMSelectedOption(sel)
+            if(userList[index].email ==  selected.innerHTML)
+            {
+              console.log(userList[index])
+              Tools.fillForm('userForm', userList[index])
+            }
+        }
+    }
+
+    function selectDevice()
+    {
+      var sel = document.getElementById('device_select');
+        for(let index in deviceList)
+        {
+            let selected = Tools.getDOMSelectedOption(sel)
+            if(deviceList[index].id ==  selected.innerHTML)
+            {
+              console.log(deviceList[index])
+              Tools.fillForm('deviceForm', deviceList[index])
+            }
+        }
+    }
+
+
+
+                          /*    function update(id, data){
+                                fetch('http://localhost:3001/api/user/' + id, {
+                                  method: 'PATCH',
+                                  body: JSON.stringify({ data })
+                                }).then((response) => {
+                                  response.json().then((response) => {
+                                    console.log(response);
+                                  })
+                                }).catch(err => {
+                                  console.error(err)
+                                })
+
+                              }*/
+
+
+    </script>
+
+
+</body>
+</html>

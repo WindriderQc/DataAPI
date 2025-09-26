@@ -10,7 +10,8 @@ router.get('/', async (req, res) => {
         res.render('index', {
             users: users,
             devices: devices,
-            alarms: []
+            alarms: [],
+             title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices 
         });
     } catch (err) {
         res.status(500).send(err);
@@ -33,3 +34,18 @@ router.get('/users', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+router.get('/dashboard', async (req, res) => {
+    console.log('Getting registered Esp32')
+    const registered = await esp32.getRegistered()
+    if(registered == null) {
+        console.log('Could not fetch devices list. Is DataAPI online?')
+        res.redirect('/index')
+    } else {
+        console.log(registered.map((dev) => id = dev.id ))
+        res.render('dashboard', { title: "Dashboard", menuId: 'home', hitCount: await counter.getCount(), collectionInfo: req.app.locals.collectionInfo, regDevices: registered })
+    }
+
+})
