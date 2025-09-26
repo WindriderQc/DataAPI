@@ -51,12 +51,18 @@ function getClient() {
 }
 
 function close() {
-  if (client) {
-    client.end(true, () => { // true forces a disconnect
-      console.log('MQTT client disconnected');
+  return new Promise((resolve) => {
+    if (client && client.connected) {
+      client.end(true, () => {
+        console.log('MQTT client disconnected');
+        client = null;
+        resolve();
+      });
+    } else {
       client = null;
-    });
-  }
+      resolve();
+    }
+  });
 }
 
 module.exports = {

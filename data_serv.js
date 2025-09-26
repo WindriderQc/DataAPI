@@ -178,7 +178,7 @@ async function startServer() {
                 await new Promise(resolve => server.close(resolve));
                 log('Server closed.');
             }
-            liveDatas.close();
+            await liveDatas.close();
             await dbConnection.close();
         };
 
