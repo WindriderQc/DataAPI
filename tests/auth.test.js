@@ -1,20 +1,28 @@
 const request = require('supertest');
-const { setup, teardown } = require('./test-setup');
+const { setup, teardown, afterAllTests } = require('./test-setup');
 const bcrypt = require('bcrypt');
 
 describe('Auth Flow', () => {
   let app;
   let db;
+  let closeHttpServer;
+    let dbConnection;
 
   beforeAll(async () => {
-    const { app: expressApp, db: initializedDb } = await setup();
+    const { app: expressApp, db: initializedDb, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
     app = expressApp;
     db = initializedDb;
+    closeHttpServer = serverCloser;
+        dbConnection = conn;
   });
 
   afterAll(async () => {
-    await teardown();
+    await teardown({ closeHttpServer, dbConnection });
   });
+
+    afterAll(async () => {
+        await afterAllTests();
+    });
 
   beforeEach(async () => {
     await db.collection('users').deleteMany({});

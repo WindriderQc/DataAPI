@@ -62,7 +62,7 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
     try {
-        await mdb.init();
+        const dbConnection = await mdb.init();
         let mongoStore;
 
 
@@ -72,7 +72,7 @@ async function startServer() {
             const dbNames = ['SBQC', 'datas'];
             app.locals.dbs = {};
             for (const dbName of dbNames) {
-                app.locals.dbs[dbName] = mdb.getDb(dbName);
+                app.locals.dbs[dbName] = dbConnection.getDb(dbName);
             }
             log("DBs assigned.");
 
@@ -106,8 +106,9 @@ async function startServer() {
         }
 
         mongoStore = new MongoDBStore({
-            uri: mdb.getMongoUrl(),
-            collection: 'mySessions'
+            uri: dbConnection.getMongoUrl(),
+            collection: 'mySessions',
+            client: dbConnection.client
         });
         mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
 
@@ -177,12 +178,11 @@ async function startServer() {
                 await new Promise(resolve => server.close(resolve));
                 log('Server closed.');
             }
-            if (mongoStore && mongoStore.client) {
-                await mongoStore.client.close();
-            }
+            liveDatas.close();
+            await dbConnection.close();
         };
 
-        return { app, close: closeServer };
+        return { app, close: closeServer, dbConnection };
 
     } catch (err) {
         log(`Failed to initialize database: ${err}`, 'error');
