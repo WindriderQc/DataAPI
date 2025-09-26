@@ -10,8 +10,20 @@ router.get('/', (req, res) => {
     });
 });
 
+const userController = require('../controllers/userController');
+
+router.route('/users')
+    .get(userController.index)
+    .post(userController.new);
+
+router.route('/users/:id')
+    .get(userController.view)
+    .put(userController.update)
+    .patch(userController.update)
+    .delete(userController.delete);
+
 // Generic routes for collections
-const collections = ['contacts', 'users', 'devices', 'profiles', 'heartbeats', 'alarms'];
+const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms'];
 collections.forEach(collectionName => {
     const controller = genericController(collectionName);
     router.route(`/${collectionName}`)

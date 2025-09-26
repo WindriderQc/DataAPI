@@ -3,81 +3,54 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const { MongoClient } = require('mongodb');
 const { log } = require('./utils/logger');
 
-let client;
-let mongoServer;
-let mongourl;
-const databases = {};
+let mongoServer; // This can be shared across connections in a test env
 
-const mongooseDB = {
-    init: async function() {
-        if (client) {
-            return;
-        }
+const init = async () => {
+    let mongourl;
 
-        if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production') {
+        if (!mongoServer) {
             mongoServer = await MongoMemoryServer.create();
-            mongourl = mongoServer.getUri();
-            log(`Using in-memory MongoDB server at ${mongourl}`);
-        } else {
-            if (!process.env.MONGO_URL) {
-                throw new Error('MONGO_URL environment variable is not set for production environment.');
-            }
-            mongourl = process.env.MONGO_URL;
         }
-
-        try {
-            client = new MongoClient(mongourl, {
-                useUnifiedTopology: true,
-            });
-            await client.connect();
-            log("\nMongoDB client connected\n");
-
-            // Initialize default databases
-            const dbNames = ['SBQC', 'datas'];
-            for (const dbName of dbNames) {
-                databases[dbName] = client.db(dbName);
-            }
-            log(`Databases initialized: ${Object.keys(databases)}`);
-
-        } catch (error) {
-            log('Failed to connect to MongoDB during init:', 'error');
-            if (process.env.NODE_ENV !== 'test') {
-                process.exit(1);
-            } else {
-                throw error;
-            }
+        mongourl = mongoServer.getUri();
+    } else {
+        if (!process.env.MONGO_URL) {
+            throw new Error('MONGO_URL environment variable is not set for production environment.');
         }
-    },
+        mongourl = process.env.MONGO_URL;
+    }
 
-    getDb: function(dbName = 'datas') {
-        if (!databases[dbName]) {
-            throw new Error(`Database '${dbName}' not initialized. Call init() first.`);
-        }
-        return databases[dbName];
-    },
+    // Mongoose connection for models
+    await mongoose.connect(mongourl);
 
-    getCollection: function(dbName, collectionName) {
-        const db = this.getDb(dbName);
-        return db.collection(collectionName);
-    },
+    // Native client connection for other parts of the app
+    const client = new MongoClient(mongourl, {
+        useUnifiedTopology: true,
+    });
+    await client.connect();
 
-    getMongoUrl: function() {
-        if (!mongourl) {
-            throw new Error("MongoDB URL not set. Call init() first.");
-        }
-        return mongourl;
-    },
+    const databases = {
+        SBQC: client.db('SBQC'),
+        datas: client.db('datas'),
+    };
 
-    close: async function() {
-        if (client) {
-            await client.close();
-            client = null;
-        }
-        if (mongoServer) {
-            await mongoServer.stop();
-            mongoServer = null;
-        }
+    const getDb = (dbName = 'datas') => databases[dbName];
+
+    const getMongoUrl = () => mongourl;
+
+    const close = async () => {
+        await client.close();
+        await mongoose.disconnect();
+    };
+
+    return { getDb, getMongoUrl, close, client };
+};
+
+const closeServer = async () => {
+    if (mongoServer) {
+        await mongoServer.stop();
+        mongoServer = null;
     }
 };
 
-module.exports = mongooseDB;
+module.exports = { init, closeServer };
