@@ -9,10 +9,12 @@ const session = require('express-session');
 const MongoDBStore = require('connect-mongodb-session')(session);
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const pjson = require('./package.json');
+const { log } = require('./utils/logger');
+
 
 const PORT = process.env.PORT || 3003;
 const IN_PROD = process.env.NODE_ENV === 'production'  // for https channel...  IN_PROD will be true if in production environment    If true while on http connection, session cookie will not work
-const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';  
+const dbCollectionName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
 
 
 const { attachUser } = require('./utils/auth');
@@ -51,7 +53,7 @@ app.use((err, req, res, next) => {
         return res.status(err.getCode()).json(responseJson);
     }
 
-    console.error(err.stack);
+    log(err.stack, 'error');
     return res.status(500).json({
         status: 'error',
         message: 'An internal server error occurred.'
@@ -61,17 +63,18 @@ app.use((err, req, res, next) => {
 async function startServer() {
     try {
         await mdb.init();
+        let mongoStore;
 
 
         // Initialize database connections
         try {
-            console.log("Assigning dbs to app.locals...");
+            log("Assigning dbs to app.locals...");
             const dbNames = ['SBQC', 'datas'];
             app.locals.dbs = {};
             for (const dbName of dbNames) {
                 app.locals.dbs[dbName] = mdb.getDb(dbName);
             }
-            console.log("DBs assigned.");
+            log("DBs assigned.");
 
             // Insert boot log
             const userLogsCollection = app.locals.dbs['SBQC'].collection('userLogs');
@@ -85,7 +88,7 @@ async function startServer() {
                 hitCount: 'N/A',
                 created: new Date()
             });
-            console.log("Boot log inserted.");
+            log("Boot log inserted.");
 
             // Fetch and log collection info for the 'datas' db
             app.locals.collectionInfo = {};
@@ -95,17 +98,18 @@ async function startServer() {
                 const count = await datasDb.collection(coll.name).countDocuments();
                 app.locals.collectionInfo[coll.name] = count;
             }
-            console.log("Collection Info for 'datas' db:", app.locals.collectionInfo, '\n__________________________________________________\n\n');
+            log(`Collection Info for 'datas' db: ${JSON.stringify(app.locals.collectionInfo)} \n__________________________________________________\n\n`);
+
 
         } catch (e) {
-            console.warn("Could not initialize dbs on startup:", e.message);
+            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
         }
 
-        const mongoStore = new MongoDBStore({
+        mongoStore = new MongoDBStore({
             uri: mdb.getMongoUrl(),
             collection: 'mySessions'
         });
-        mongoStore.on('error', (error) => console.log('MongoStore Error: ', error));
+        mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
 
         const sessionOptions = {
             name: process.env.SESS_NAME,
@@ -155,20 +159,33 @@ async function startServer() {
                 }
                 return res.status(err.getCode()).json(responseJson);
             }
-            console.error(err.stack);
+            log(err.stack, 'error');
             return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
         });
 
+        let server;
         if (process.env.NODE_ENV !== 'test') {
-            app.listen(PORT, () => {
-                console.log(`\n\nData API Server running at port ${PORT}`);
+            server = app.listen(PORT, () => {
+                log(`\n\nData API Server running at port ${PORT}`);
                 liveDatas.init(app.locals.dbs);
-                console.log("LiveData  -  v" + liveDatas.version);
+                log("LiveData  -  v" + liveDatas.version);
             });
         }
-        return app;
+
+        const closeServer = async () => {
+            if (server) {
+                await new Promise(resolve => server.close(resolve));
+                log('Server closed.');
+            }
+            if (mongoStore && mongoStore.client) {
+                await mongoStore.client.close();
+            }
+        };
+
+        return { app, close: closeServer };
+
     } catch (err) {
-        console.error('Failed to initialize database:', err);
+        log(`Failed to initialize database: ${err}`, 'error');
         process.exit(1);
     }
 }
