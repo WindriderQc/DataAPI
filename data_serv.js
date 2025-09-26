@@ -98,7 +98,7 @@ async function startServer() {
                 const count = await datasDb.collection(coll.name).countDocuments();
                 app.locals.collectionInfo[coll.name] = count;
             }
-            log(`Collection Info for 'datas' db: ${JSON.stringify(app.locals.collectionInfo)} \n__________________________________________________\n\n`);
+            log(`Collection Info for 'datas' db has been gathered. \n__________________________________________________\n\n`);
 
 
         } catch (e) {
@@ -186,7 +186,11 @@ async function startServer() {
 
     } catch (err) {
         log(`Failed to initialize database: ${err}`, 'error');
-        process.exit(1);
+        if (process.env.NODE_ENV !== 'test') {
+            process.exit(1);
+        } else {
+            throw err;
+        }
     }
 }
 
