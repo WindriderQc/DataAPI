@@ -1,20 +1,29 @@
 const util = require('util');
-const User = require('../models/userModel');
+const bcrypt = require('bcrypt');
 const { BadRequest } = require('../utils/errors');
 
 exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
+    const dbs = req.app.locals.dbs;
+    const usersCollection = dbs.datas.collection('users');
 
     try {
-        const user = new User({ name, email, password });
-        await user.save();
+        const existingUser = await usersCollection.findOne({ email });
+        if (existingUser) {
+            return next(new BadRequest('An account with this email already exists.'));
+        }
 
-        // Promisify session save before redirecting
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        const result = await usersCollection.insertOne({ name, email, password: hashedPassword });
+        const user = { _id: result.insertedId };
+
         const save = util.promisify(req.session.save).bind(req.session);
-        req.session.userId = user._id;
+        req.session.userId = user._id.toString();
         await save();
 
-        res.redirect('/users');
+        res.redirect('/login');
     } catch (err) {
         if (err.code === 11000) {
             return next(new BadRequest('An account with this email already exists.'));
@@ -25,16 +34,18 @@ exports.register = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
     const { email, password } = req.body;
+    const dbs = req.app.locals.dbs;
+    const usersCollection = dbs.datas.collection('users');
     console.log(`[AUTH] Attempting login for email: ${email}`);
 
     try {
-        const user = await User.findOne({ email });
+        const user = await usersCollection.findOne({ email });
         if (!user) {
             console.log(`[AUTH] Login failed: User not found for email: ${email}`);
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             console.log(`[AUTH] Login failed: Invalid password for email: ${email}`);
             return res.status(401).render('login', { error: 'Invalid credentials' });
@@ -42,12 +53,11 @@ exports.login = async (req, res, next) => {
 
         console.log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
 
-        // Promisify session methods
         const regenerate = util.promisify(req.session.regenerate).bind(req.session);
         const save = util.promisify(req.session.save).bind(req.session);
 
         await regenerate();
-        req.session.userId = user._id;
+        req.session.userId = user._id.toString();
         await save();
 
         console.log(`[AUTH] Session userId set to: ${req.session.userId}`);

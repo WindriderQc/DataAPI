@@ -1,45 +1,43 @@
 const router = require('express').Router();
-const User = require('../models/userModel');
-const Device = require('../models/deviceModel');
 const { requireAuth } = require('../utils/auth');
 
 router.get('/', async (req, res) => {
     try {
-        const users = await User.find();
-        const devices = await Device.find();
+        const dbs = req.app.locals.dbs;
+        const users = await dbs.datas.collection('users').find().toArray();
+        const devices = await dbs.datas.collection('devices').find().toArray();
         res.render('index', {
             users: users,
             devices: devices,
             alarms: [],
-             title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices 
+            title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices
         });
     } catch (err) {
         res.status(500).send(err);
     }
 });
 
-
-
 router.get('/tools', async (req, res) => {
     try {
-        const users = await User.find();
-        const devices = await Device.find();
+        const dbs = req.app.locals.dbs;
+        const users = await dbs.datas.collection('users').find().toArray();
+        const devices = await dbs.datas.collection('devices').find().toArray();
         res.render('tools', {
             users: users,
             devices: devices,
             alarms: [],
-             title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices 
+            title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices
         });
     } catch (err) {
         res.status(500).send(err);
     }
 });
 
-
 router.get('/users', requireAuth, async (req, res) => {
     console.log('[ROUTES] GET /users: Handling request.');
     try {
-        const users = await User.find();
+        const dbs = req.app.locals.dbs;
+        const users = await dbs.datas.collection('users').find().toArray();
         console.log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
         res.render('users', {
             users: users,
@@ -51,10 +49,7 @@ router.get('/users', requireAuth, async (req, res) => {
     }
 });
 
-module.exports = router;
-
-
-
+/*
 router.get('/dashboard', async (req, res) => {
     console.log('Getting registered Esp32')
     const registered = await esp32.getRegistered()
@@ -65,5 +60,7 @@ router.get('/dashboard', async (req, res) => {
         console.log(registered.map((dev) => id = dev.id ))
         res.render('dashboard', { title: "Dashboard", menuId: 'home', hitCount: await counter.getCount(), collectionInfo: req.app.locals.collectionInfo, regDevices: registered })
     }
-
 })
+*/
+
+module.exports = router;

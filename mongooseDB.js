@@ -1,18 +1,18 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
-let _db;
-let _connection;
+const { MongoClient } = require('mongodb');
+
+let client;
 let mongoServer;
 let mongourl;
+const databases = {};
 
 const mongooseDB = {
     init: async function() {
-        if (_connection) {
+        if (client) {
             return;
         }
-
-        const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
 
         if (process.env.NODE_ENV !== 'production') {
             mongoServer = await MongoMemoryServer.create();
@@ -26,61 +26,35 @@ const mongooseDB = {
         }
 
         try {
-            const conn = await mongoose.connect(mongourl, {
-                dbName: dbName,
-                family: 4,
+            client = new MongoClient(mongourl, {
+                useUnifiedTopology: true,
             });
+            await client.connect();
+            console.log("\nMongoDB client connected\n");
 
-            _connection = conn.connection;
-            _db = _connection.db;
+            // Initialize default databases
+            const dbNames = ['SBQC', 'datas'];
+            for (const dbName of dbNames) {
+                databases[dbName] = client.db(dbName);
+            }
+            console.log("Databases initialized:", Object.keys(databases));
 
-            console.log(`\nMongoose connected to: ${_db.databaseName}\n`);
-
-            _connection.on('error', (err) => {
-                console.error('Mongoose connection error:', err);
-                process.exit(1);
-            });
         } catch (error) {
             console.error('Failed to connect to MongoDB during init:', error);
             process.exit(1);
         }
     },
 
-    getCollections: async function() {
-        if (!_db) {
-            throw new Error("Database not initialized. Call init() first.");
+    getDb: function(dbName = 'datas') {
+        if (!databases[dbName]) {
+            throw new Error(`Database '${dbName}' not initialized. Call init() first.`);
         }
-        const col = await _db.listCollections().toArray();
-        return col;
+        return databases[dbName];
     },
 
-    changeDb: function(dbName) {
-        if (!_connection) {
-            throw new Error("Database not initialized. Call init() first.");
-        }
-        const newDbConnection = _connection.useDb(dbName);
-        _db = newDbConnection.db;
-    },
-
-    getDb: function() {
-        if (!_db) {
-            throw new Error("Database not initialized. Call init() first.");
-        }
-        return _db;
-    },
-
-    getCollection: function(name) {
-        if (!_db) {
-            throw new Error("Database not initialized. Call init() first.");
-        }
-        return _db.collection(name);
-    },
-
-    getConnection: function() {
-        if (!_connection) {
-            throw new Error("Database not initialized. Call init() first.");
-        }
-        return _connection;
+    getCollection: function(dbName, collectionName) {
+        const db = this.getDb(dbName);
+        return db.collection(collectionName);
     },
 
     getMongoUrl: function() {
@@ -91,10 +65,9 @@ const mongooseDB = {
     },
 
     close: async function() {
-        if (_connection) {
-            await _connection.close();
-            _connection = null;
-            _db = null;
+        if (client) {
+            await client.close();
+            client = null;
         }
         if (mongoServer) {
             await mongoServer.stop();

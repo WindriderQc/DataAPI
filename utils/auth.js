@@ -1,12 +1,25 @@
-const User = require('../models/userModel');
+const { ObjectId } = require('mongodb');
 
 const attachUser = async (req, res, next) => {
     console.log(`[MIDDLEWARE] attachUser: Req for [${req.originalUrl}] from origin [${req.headers.origin}] - Checking session with ID: ${req.sessionID}`);
-    res.locals.user = null; // Ensure user is always defined in views
+    res.locals.user = null;
     if (req.session && req.session.userId) {
         console.log(`[MIDDLEWARE] attachUser: Session found with userId: ${req.session.userId}`);
         try {
-            const user = await User.findById(req.session.userId).select('-password');
+            const dbs = req.app.locals.dbs;
+            if (!dbs || !dbs.datas) {
+                console.error('[MIDDLEWARE] attachUser: Database not available.');
+                return next();
+            }
+            const usersCollection = dbs.datas.collection('users');
+            if (!ObjectId.isValid(req.session.userId)) {
+                console.error(`[MIDDLEWARE] attachUser: Invalid userId format: ${req.session.userId}`);
+                return next();
+            }
+            const user = await usersCollection.findOne(
+                { _id: new ObjectId(req.session.userId) },
+                { projection: { password: 0 } }
+            );
             if (user) {
                 console.log(`[MIDDLEWARE] attachUser: User ${user.email} attached to res.locals.`);
                 res.locals.user = user;
