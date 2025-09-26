@@ -41,7 +41,11 @@ const mongooseDB = {
 
         } catch (error) {
             log('Failed to connect to MongoDB during init:', 'error');
-            process.exit(1);
+            if (process.env.NODE_ENV !== 'test') {
+                process.exit(1);
+            } else {
+                throw error;
+            }
         }
     },
 
