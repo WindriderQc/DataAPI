@@ -90,7 +90,7 @@
     
         
             <div class="col col-12 col-l6 ">
-                <h5>Feeds - hitcount:  <%- hitCount %></h5>
+                <h5>Feeds</h5>
 
         
 
@@ -176,22 +176,13 @@
 </div>
 
 
-<script src="/js/tools.js"></script>
 <script>
     // Requires tools.js and chartjs-chart-geo libraries
 let worldMap;
 
 document.addEventListener('DOMContentLoaded', async function() {
 
-    const hoverElement = document.getElementById('hoverElement');
 
-    hoverElement.addEventListener('mouseenter', function() {
-      hoverElement.classList.add('animate-fading');
-    });
-
-    hoverElement.addEventListener('mouseleave', function() {
-      hoverElement.classList.add('animate-opacity');
-    });
 
     const sourceSelect = document.getElementById('sourceSelect');
       sourceSelect.addEventListener('change', function() {
@@ -330,7 +321,7 @@ let loading = false;
 function listAllLogs(source) {
   loading = true;
   loadingElement.style.display = '';
-    const url = `/v2/logs?skip=${skip}&sort=${sort}&source=${source}`
+    const url = `api/v1/v2/logs?skip=${skip}&sort=${sort}&source=${source}`
   const options =  { method: 'GET',    mode: 'no-cors' }
 
   fetch(url, options)

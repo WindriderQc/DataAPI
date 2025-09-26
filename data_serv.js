@@ -66,7 +66,42 @@ async function startServer() {
         // The `getCollections` call seems to be for debugging/logging,
         // let's keep it here but with proper error handling.
         try {
-            console.log("Collections: ", await mdb.getCollections());
+
+                app.locals.collections = []
+                    const list = await mdb.getCollections()
+
+                    console.log("Assigning Collections to app.locals :")
+                    for(coll of list) {
+                        console.log(coll.name)
+                        app.locals.collections[coll.name] =  mdb.getDb(coll.name)
+                    }
+
+
+
+            app.locals.collections = await mdb.getCollections();
+            console.log("Collections: ", app.locals.collections);
+
+             // The 'boot' collection will be created automatically by MongoDB if it doesn't exist upon the first insertOne operation.
+                // No explicit conditional creation is needed unless specific collection options are required at creation time.
+              /*  app.locals.collections.boot.insertOne({
+                        logType: 'boot',
+                        client: 'server',
+                        content: 'dbServer boot',
+                        authorization: 'none',
+                        host: IN_PROD ? "Production Mode" : "Developpement Mode",
+                        ip: 'localhost',
+                        hitCount: 'N/A',
+                        created: Date.now()
+                    })*/
+
+                // Fetch collection names and document counts
+                app.locals.collectionInfo = {}
+                for (const coll of list) {
+                    const count = await app.locals.collections[coll.name].countDocuments()
+                    app.locals.collectionInfo[coll.name] = count
+            }
+  console.log("Collection Info:", app.locals.collectionInfo, '\n__________________________________________________\n\n')
+
         } catch (e) {
             console.warn("Could not retrieve collection list on startup:", e.message);
         }
