@@ -1,3 +1,4 @@
+const util = require('util');
 const User = require('../models/userModel');
 const { BadRequest } = require('../utils/errors');
 
@@ -7,7 +8,12 @@ exports.register = async (req, res, next) => {
     try {
         const user = new User({ name, email, password });
         await user.save();
+
+        // Promisify session save before redirecting
+        const save = util.promisify(req.session.save).bind(req.session);
         req.session.userId = user._id;
+        await save();
+
         res.redirect('/users');
     } catch (err) {
         if (err.code === 11000) {
@@ -36,24 +42,17 @@ exports.login = async (req, res, next) => {
 
         console.log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
 
-        req.session.regenerate(err => {
-            if (err) {
-                console.error('[AUTH] Error regenerating session:', err);
-                return next(err);
-            }
+        // Promisify session methods
+        const regenerate = util.promisify(req.session.regenerate).bind(req.session);
+        const save = util.promisify(req.session.save).bind(req.session);
 
-            req.session.userId = user._id;
-            console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
-            console.log('[AUTH] Redirecting to /users...');
+        await regenerate();
+        req.session.userId = user._id;
+        await save();
 
-            req.session.save(err => {
-                if (err) {
-                    console.error('[AUTH] Error saving session:', err);
-                    return next(err);
-                }
-                res.redirect('/users');
-            });
-        });
+        console.log(`[AUTH] Session userId set to: ${req.session.userId}`);
+        console.log('[AUTH] Redirecting to /users...');
+        res.redirect('/users');
 
     } catch (err) {
         console.error('[AUTH] Error during login:', err);
