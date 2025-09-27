@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.get('/tools', async (req, res) => {
+router.get('/tools', requireAuth, async (req, res) => {
     try {
         const dbs = req.app.locals.dbs;
         const users = await dbs.datas.collection('users').find().toArray();
