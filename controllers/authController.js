@@ -54,6 +54,7 @@ exports.login = async (req, res, next) => {
 
         log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
 
+        const returnTo = req.session.returnTo;
         const regenerate = util.promisify(req.session.regenerate).bind(req.session);
         const save = util.promisify(req.session.save).bind(req.session);
 
@@ -62,8 +63,9 @@ exports.login = async (req, res, next) => {
         await save();
 
         log(`[AUTH] Session userId set to: ${req.session.userId}`);
-        log('[AUTH] Redirecting to /users...');
-        res.redirect('/users');
+        const redirectUrl = returnTo || '/users';
+        log(`[AUTH] Redirecting to ${redirectUrl}...`);
+        res.redirect(redirectUrl);
 
     } catch (err) {
         log(`[AUTH] Error during login: ${err}`, 'error');
@@ -77,6 +79,6 @@ exports.logout = (req, res) => {
             return res.redirect('/users');
         }
         res.clearCookie(process.env.SESS_NAME || 'sid');
-        res.redirect('/login');
+        res.redirect('/');
     });
 };
