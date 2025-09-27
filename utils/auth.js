@@ -37,9 +37,10 @@ const attachUser = async (req, res, next) => {
 };
 
 const requireAuth = (req, res, next) => {
-    log(`[MIDDLEWARE] requireAuth: Checking auth for path: ${req.path}`);
+    log(`[MIDDLEWARE] requireAuth: Checking auth for path: ${req.originalUrl}`);
     if (!req.session || !req.session.userId) {
         log('[MIDDLEWARE] requireAuth: No userId in session. Redirecting to /login.');
+        req.session.returnTo = req.originalUrl;
         return res.redirect('/login');
     }
     log(`[MIDDLEWARE] requireAuth: Authentication successful for userId: ${req.session.userId}`);
