@@ -94,7 +94,7 @@ describe('Auth Flow', () => {
       .expect(302);
 
     const res = await agent.get('/logout').expect(302);
-    expect(res.header.location).toBe('/login');
+    expect(res.header.location).toBe('/');
 
     await agent.get('/users').expect(302);
   });
