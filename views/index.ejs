@@ -30,11 +30,12 @@
 <body class="light-grey">
 <%- include('partials/nav') %> 
 
-<div class="main" style="margin-left:300px;margin-top:43px;">
+<div class="main" style="margin-top:43px;">
 
     <header class="container" style="padding-top:22px">
         <h5><b><i class="fa fa-dashboard"></i> My Dashboard</b></h5>
     </header>
+
 
     <div class="row-padding margin-bottom">
         <%
@@ -65,18 +66,15 @@
         <% }); %>
     </div>
 
-    <div class="panel">
-        <div class="row-padding">
-        
-            <div id="map" class="col col-12 col-l6 black card-2" >
-                <h5>World</h5>
-                <!--<img src="/img/region.jpg" style="width:100%" alt="Google Regional Map">-->
-                <canvas id="worldMap" width="800" height="600"></canvas>
-            
+
+        <div class="col-md-8">
+            <div class="panel">
+                <div id="map" class="col col-12 black card-2" >
+                    <h5>World</h5>
+                    <canvas id="worldMap" width="800" height="600"></canvas>
+                </div>
             </div>
-    
-        
-            <div class="col col-12 col-l6 ">
+            <div class="panel">
                 <h5>Feeds</h5>
 
         
