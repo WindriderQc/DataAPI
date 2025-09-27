@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -26,12 +27,13 @@ app.set('trust proxy', 1) // trust first proxy
 app.locals.appVersion = pjson.version;
 
 // Middlewares & routes
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(morgan('dev'));
 app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 
 const { GeneralError } = require('./utils/errors');
@@ -90,6 +92,7 @@ async function startServer() {
             });
             log("Boot log inserted.");
 
+
             // Fetch and log collection info for all dbs
             app.locals.collectionInfo = [];
             for (const dbName in app.locals.dbs) {
@@ -121,10 +124,10 @@ async function startServer() {
         mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
 
         const sessionOptions = {
-            name: process.env.SESS_NAME,
+            name: process.env.SESS_NAME || 'default-session-name',
             resave: false,
             saveUninitialized: false,
-            secret: process.env.SESS_SECRET,
+            secret: process.env.SESS_SECRET || 'a-default-secret-for-development',
             store: mongoStore,
             cookie: {
                 secure: IN_PROD,
