@@ -37,46 +37,32 @@
     </header>
 
     <div class="row-padding margin-bottom">
-        <div class="col col-3">
-            <div class="container green text-black padding-16 card-4">
-                <div class="left"><i class="fa fa-comment xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="msgCard"><%- collectionInfo.mews %>  </h3>
+        <%
+        const dbColors = {
+            'SBQC': 'green',
+            'datas': 'indigo',
+            'default': 'grey'
+        };
+        const icons = {
+            'users': 'fa-users',
+            'userLogs': 'fa-eye',
+            'mews': 'fa-comment',
+            'devices': 'fa-share-alt',
+            'default': 'fa-database'
+        };
+        %>
+        <% collectionInfo.forEach(info => { %>
+            <div class="col col-3">
+                <div class="container <%= dbColors[info.db] || dbColors['default'] %> text-black padding-16 card-4">
+                    <div class="left"><i class="fa <%= icons[info.collection] || icons['default'] %> xxxlarge"></i></div>
+                    <div class="right">
+                        <h3><%- info.count %></h3>
+                    </div>
+                    <div class="clear"></div>
+                    <h4><%= info.collection.charAt(0).toUpperCase() + info.collection.slice(1) %></h4>
                 </div>
-                <div class="clear"></div>
-                <h4>Messages</h4>
             </div>
-        </div>
-        <div class="col col-3">
-            <div class="container indigo text-black padding-16 card-4">
-                <div class="left"><i class="fa fa-eye xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="viewsCard"><%- collectionInfo.userLogs %></h3>
-                </div>
-                <div class="clear"></div>
-                <h4>Views</h4>
-            </div>
-        </div>
-        <div class="col col-3">
-            <div class="container khaki padding-16 card-4">
-                <div class="left"><i class="fa fa-share-alt xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="devicesCard"><%- collectionInfo.server %></h3>
-                </div>
-                <div class="clear"></div>
-                <h4>Devices</h4>
-            </div>
-        </div>
-        <div class="col col-3">
-            <div class="container grey padding-16 card-4">
-                <div class="left"><i class="fa fa-users xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="usersCard"><%- collectionInfo.users %></h3>
-                </div>
-                <div class="clear"></div>
-                <h4>Users</h4>
-            </div>
-        </div>
+        <% }); %>
     </div>
 
     <div class="panel">

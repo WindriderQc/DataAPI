@@ -90,15 +90,23 @@ async function startServer() {
             });
             log("Boot log inserted.");
 
-            // Fetch and log collection info for the 'datas' db
-            app.locals.collectionInfo = {};
-            const datasDb = app.locals.dbs['datas'];
-            const collections = await datasDb.listCollections().toArray();
-            for (const coll of collections) {
-                const count = await datasDb.collection(coll.name).countDocuments();
-                app.locals.collectionInfo[coll.name] = count;
+            // Fetch and log collection info for all dbs
+            app.locals.collectionInfo = [];
+            for (const dbName in app.locals.dbs) {
+                const db = app.locals.dbs[dbName];
+                if (db) {
+                    const collections = await db.listCollections().toArray();
+                    for (const coll of collections) {
+                        const count = await db.collection(coll.name).countDocuments();
+                        app.locals.collectionInfo.push({
+                            db: dbName,
+                            collection: coll.name,
+                            count: count
+                        });
+                    }
+                }
             }
-            log(`Collection Info for 'datas' db has been gathered. \n__________________________________________________\n\n`);
+            log(`Collection Info for all dbs has been gathered. \n__________________________________________________\n\n`);
 
 
         } catch (e) {
