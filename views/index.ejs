@@ -30,67 +30,66 @@
 <body class="light-grey">
 <%- include('partials/nav') %> 
 
-<div class="main" style="margin-left:300px;margin-top:43px;">
+<div class="main" style="margin-top:43px;">
 
     <header class="container" style="padding-top:22px">
         <h5><b><i class="fa fa-dashboard"></i> My Dashboard</b></h5>
     </header>
 
-    <div class="row-padding margin-bottom">
-        <div class="col col-3">
-            <div class="container green text-black padding-16 card-4">
-                <div class="left"><i class="fa fa-comment xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="msgCard"><%- collectionInfo.mews %>  </h3>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="container grey padding-16 card-4">
+                        <div class="left"><i class="fa fa-users xxxlarge"></i></div>
+                        <div class="right">
+                        <h3 id="usersCard"><%- collectionInfo.users %></h3>
+                        </div>
+                        <div class="clear"></div>
+                        <h4>Users</h4>
+                    </div>
                 </div>
-                <div class="clear"></div>
-                <h4>Messages</h4>
+                <div class="col-12 mb-4">
+                    <div class="container khaki padding-16 card-4">
+                        <div class="left"><i class="fa fa-share-alt xxxlarge"></i></div>
+                        <div class="right">
+                        <h3 id="devicesCard"><%- collectionInfo.devices %></h3>
+                        </div>
+                        <div class="clear"></div>
+                        <h4>Devices</h4>
+                    </div>
+                </div>
+                <div class="col-12 mb-4">
+                    <div class="container red text-black padding-16 card-4">
+                        <div class="left"><i class="fa fa-bell xxxlarge"></i></div>
+                        <div class="right">
+                        <h3 id="alarmsCard"><%- collectionInfo.alarms %></h3>
+                        </div>
+                        <div class="clear"></div>
+                        <h4>Alarms</h4>
+                    </div>
+                </div>
+                <div class="col-12 mb-4">
+                    <div class="container blue padding-16 card-4">
+                        <div class="left"><i class="fa fa-heartbeat xxxlarge"></i></div>
+                        <div class="right">
+                        <h3 id="heartbeatsCard"><%- collectionInfo.heartbeats %></h3>
+                        </div>
+                        <div class="clear"></div>
+                        <h4>Heartbeats</h4>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col col-3">
-            <div class="container indigo text-black padding-16 card-4">
-                <div class="left"><i class="fa fa-eye xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="viewsCard"><%- collectionInfo.userLogs %></h3>
-                </div>
-                <div class="clear"></div>
-                <h4>Views</h4>
-            </div>
-        </div>
-        <div class="col col-3">
-            <div class="container khaki padding-16 card-4">
-                <div class="left"><i class="fa fa-share-alt xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="devicesCard"><%- collectionInfo.server %></h3>
-                </div>
-                <div class="clear"></div>
-                <h4>Devices</h4>
-            </div>
-        </div>
-        <div class="col col-3">
-            <div class="container grey padding-16 card-4">
-                <div class="left"><i class="fa fa-users xxxlarge"></i></div>
-                <div class="right">
-                <h3 id="usersCard"><%- collectionInfo.users %></h3>
-                </div>
-                <div class="clear"></div>
-                <h4>Users</h4>
-            </div>
-        </div>
-    </div>
 
-    <div class="panel">
-        <div class="row-padding">
-        
-            <div id="map" class="col col-12 col-l6 black card-2" >
-                <h5>World</h5>
-                <!--<img src="/img/region.jpg" style="width:100%" alt="Google Regional Map">-->
-                <canvas id="worldMap" width="800" height="600"></canvas>
-            
+        <div class="col-md-8">
+            <div class="panel">
+                <div id="map" class="col col-12 black card-2" >
+                    <h5>World</h5>
+                    <canvas id="worldMap" width="800" height="600"></canvas>
+                </div>
             </div>
-    
-        
-            <div class="col col-12 col-l6 ">
+            <div class="panel">
                 <h5>Feeds</h5>
 
         
