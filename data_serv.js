@@ -92,29 +92,24 @@ async function startServer() {
             });
             log("Boot log inserted.");
 
-            // Fetch and log collection info for both 'datas' and 'SBQC' dbs
-            app.locals.collectionInfo = {};
-            const dbsToQuery = {
-                'datas': ['users', 'devices', 'alarms', 'heartbeats'],
-                'SBQC': ['userLogs']
-            };
 
-            for (const dbName in dbsToQuery) {
-                const collections = dbsToQuery[dbName];
+            // Fetch and log collection info for all dbs
+            app.locals.collectionInfo = [];
+            for (const dbName in app.locals.dbs) {
                 const db = app.locals.dbs[dbName];
                 if (db) {
-                    for (const collName of collections) {
-                        try {
-                            const count = await db.collection(collName).countDocuments();
-                            app.locals.collectionInfo[collName] = count;
-                        } catch (e) {
-                            log(`Could not get count for collection ${collName} in db ${dbName}: ${e.message}`, 'warn');
-                            app.locals.collectionInfo[collName] = 0; // Default to 0 if collection doesn't exist or error
-                        }
+                    const collections = await db.listCollections().toArray();
+                    for (const coll of collections) {
+                        const count = await db.collection(coll.name).countDocuments();
+                        app.locals.collectionInfo.push({
+                            db: dbName,
+                            collection: coll.name,
+                            count: count
+                        });
                     }
                 }
             }
-            log(`Collection Info for all specified dbs has been gathered. \n__________________________________________________\n\n`);
+            log(`Collection Info for all dbs has been gathered. \n__________________________________________________\n\n`);
 
 
         } catch (e) {
