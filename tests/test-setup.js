@@ -1,10 +1,17 @@
 const startServer = require('../data_serv');
 const { closeServer: closeMongoServer } = require('../mongooseDB');
+const mongoose = require('mongoose');
 
 const setup = async () => {
     const { app, close: closeHttpServer, dbConnection } = await startServer();
-    const db = dbConnection.getDb('datas');
-    return { app, db, closeHttpServer, dbConnection };
+    const datasDb = dbConnection.getDb('datas');
+
+    // Seed the database with some data for testing
+    await datasDb.collection('users').insertOne({ name: 'Test User' });
+    await datasDb.collection('devices').insertOne({ name: 'Test Device' });
+    await datasDb.collection('mews').insertOne({ message: 'Test Mew' });
+
+    return { app, db: datasDb, closeHttpServer, dbConnection };
 };
 
 const teardown = async ({ closeHttpServer, dbConnection }) => {

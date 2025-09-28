@@ -27,98 +27,99 @@
 
     <%- include('partials/mainHead', { title: 'SBQC Server Dashboard' }) %>
 </head>
-<body class="light-grey">
-<%- include('partials/nav') %> 
+<body class="bg-light">
+<%- include('partials/nav') %>
 
-<div class="main" style="margin-top:43px;">
+<div class="main pt-5">
 
-    <header class="container" style="padding-top:22px">
-        <h5><b><i class="fa fa-dashboard"></i> My Dashboard</b></h5>
+    <header class="container py-4">
+        <h5><b><i class="fas fa-tachometer-alt"></i> My Dashboard</b></h5>
     </header>
 
-
-    <div class="row row-padding margin-bottom">
+    <div class="row g-4 mb-4">
         <div class="col-md-4">
-        
-        <%
-        const dbColors = {
-            'SBQC': 'green',
-            'datas': 'indigo',
-            'default': 'grey'
-        };
-        const icons = {
-            'users': 'fa-users',
-            'userLogs': 'fa-eye',
-            'mews': 'fa-comment',
-            'devices': 'fa-share-alt',
-            'default': 'fa-database'
-        };
-        %>
-        <% collectionInfo.forEach(info => { %>
-            <div class="col col-md-4 ">
-                <div class="container <%= dbColors[info.db] || dbColors['default'] %> text-black padding-16 card-4">
-                    <div class="left"><i class="fa <%= icons[info.collection] || icons['default'] %> xxxlarge"></i></div>
-                    <div class="right">
-                        <h3><%- info.count %></h3>
+            <div class="row">
+                <%
+                const dbColors = {
+                    'SBQC': 'green',
+                    'datas': 'indigo',
+                    'default': 'grey'
+                };
+                const icons = {
+                    'users': 'fa-users',
+                    'userLogs': 'fa-eye',
+                    'mews': 'fa-comment',
+                    'devices': 'fa-share-alt',
+                    'default': 'fa-database'
+                };
+                %>
+                <% collectionInfo.forEach(info => { %>
+                    <div class="col-6 mb-4">
+                        <div class="card <%= dbColors[info.db] || dbColors['default'] %> text-white shadow-lg p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div><i class="fa <%= icons[info.collection] || icons['default'] %> fa-2x"></i></div>
+                                <div class="text-end">
+                                    <h5 class="mb-0"><%- info.count %></h5>
+                                    <small><%= info.collection.charAt(0).toUpperCase() + info.collection.slice(1) %></small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="clear"></div>
-                    <h4><%= info.collection.charAt(0).toUpperCase() + info.collection.slice(1) %></h4>
-                </div>
+                <% }); %>
             </div>
-        <% }); %>
-    
-</div>
+        </div>
 
         <div class="col-md-8">
-            <div class="panel">
-                <div id="map" class="col col-12 black card-2" >
-                    <h5>World</h5>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">World</h5>
                     <canvas id="worldMap" width="800" height="600"></canvas>
                 </div>
             </div>
-            <div class="panel">
-                <h5>Feeds</h5>
-
-        
-
-                <table class="table striped white">
-                    <tr>
-                        <td><i class="fa fa-user text-blue large"></i></td>
-                        <td>New record, over 90 views.</td>
-                        <td><i>10 mins</i></td>
-                    </tr>
-                    <tr>
-                        <td><i class="fa fa-bell text-red large"></i></td>
-                        <td>Database error.</td>
-                        <td><i>15 mins</i></td>
-                    </tr>
-                    <tr>
-                        <td><i class="fa fa-users text-yellow large"></i></td>
-                        <td>New record, over 40 users.</td>
-                        <td><i>17 mins</i></td>
-                    </tr>
-                    <tr>
-                        <td><i class="fa fa-comment text-red large"></i></td>
-                        <td>New comments.</td>
-                        <td><i>25 mins</i></td>
-                    </tr>
-                    <tr>
-                        <td><i class="fa fa-bookmark text-blue large"></i></td>
-                        <td>Check transactions.</td>
-                        <td><i>28 mins</i></td>
-                    </tr>
-                    <tr>
-                        <td><i class="fa fa-laptop text-red large"></i></td>
-                        <td>CPU overload.</td>
-                        <td><i>35 mins</i></td>
-                    </tr>
-                    <tr>
-                        <td><i class="fa fa-share-alt text-green large"></i></td>
-                        <td>New shares.</td>
-                        <td><i>39 mins</i></td>
-                    </tr>
-                </table>
-        </div>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Feeds</h5>
+                    <table class="table table-striped bg-white">
+                        <tbody>
+                            <tr>
+                                <td><i class="fa fa-user text-primary fa-lg"></i></td>
+                                <td>New record, over 90 views.</td>
+                                <td><i>10 mins</i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fa fa-bell text-danger fa-lg"></i></td>
+                                <td>Database error.</td>
+                                <td><i>15 mins</i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fa fa-users text-warning fa-lg"></i></td>
+                                <td>New record, over 40 users.</td>
+                                <td><i>17 mins</i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fa fa-comment text-danger fa-lg"></i></td>
+                                <td>New comments.</td>
+                                <td><i>25 mins</i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fa fa-bookmark text-primary fa-lg"></i></td>
+                                <td>Check transactions.</td>
+                                <td><i>28 mins</i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fa fa-laptop text-danger fa-lg"></i></td>
+                                <td>CPU overload.</td>
+                                <td><i>35 mins</i></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fa fa-share-alt text-success fa-lg"></i></td>
+                                <td>New shares.</td>
+                                <td><i>39 mins</i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
         
     </div>
