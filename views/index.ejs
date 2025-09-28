@@ -37,7 +37,9 @@
     </header>
 
 
-    <div class="row-padding margin-bottom">
+    <div class="row row-padding margin-bottom">
+        <div class="col-md-4">
+        
         <%
         const dbColors = {
             'SBQC': 'green',
@@ -53,7 +55,7 @@
         };
         %>
         <% collectionInfo.forEach(info => { %>
-            <div class="col col-3">
+            <div class="col col-md-4 ">
                 <div class="container <%= dbColors[info.db] || dbColors['default'] %> text-black padding-16 card-4">
                     <div class="left"><i class="fa <%= icons[info.collection] || icons['default'] %> xxxlarge"></i></div>
                     <div class="right">
@@ -64,8 +66,8 @@
                 </div>
             </div>
         <% }); %>
-    </div>
-
+    
+</div>
 
         <div class="col-md-8">
             <div class="panel">
@@ -118,6 +120,7 @@
                 </table>
         </div>
         </div>
+        
     </div>
     <hr>
    
