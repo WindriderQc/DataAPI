@@ -15,183 +15,153 @@
 
 
 <div class="content-wrapper">
-    <div class="container-fluid bg-3 text-center">
-
-        <div class='row mt-5'>
-            <div class='col-sm-8 mx-auto'>
-                <div class="card text-center">
-                    <div class='card-body form-inline'>
-
-                        <select class='form-control' style='width:280px' id="user_select" selected ></select>
-
-                        <form>
-                            <div class="form-group form-inline">
-                                <button type="button" onClick="selectUser()" class="btn btn-primary mx-2 ">Select User</button>
-                            </div>
-
-                            <input type="hidden" id="sender_id" name="sender" value="">
-                            <!-- <input type="hidden" id="io_id" name="io_id" value=""> -->
-                        </form>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row my-2">
-
-            <div class='col-sm-8 mx-auto'>
-                <div class="card">
-                    <div class='card-body'>
-                        <form name='userForm' id='userForm'>
-
-                            <div class="form-group">
-                            <label for="name">Name</label>
-                            <input type="text" class="form-control" id="name" name='name' aria-describedby="emailHelp" placeholder="Enter name">
-                            </div>
-                            <div class="form-group">
-                            <label for="email">Email address</label>
-                            <input type="email" class="form-control" id="email" name='email' aria-describedby="emailHelp" placeholder="Enter email">
-                            <small id="emailHelp" class="form-text text-muted">emails are not shared.</small>
-                            </div>
-                            <div class="form-group">
-                            <label for="exampleInputPassword">Password</label>
-                            <input type="password" class="form-control" id="exampleInputPassword" name='password' placeholder="Password">
-                            </div>
-
-                            <div class="row">
-                                <div class="form-group mx-2">
-                                    <label for="lat">Latitude</label>
-                                    <input class='form-control mr-2' type="text" id="lat" name="lat" placeholder="00.00">
-                                </div>
-                                <div class="form-group mx-2">
-                                    <label for="lon">Longitude</label>
-                                    <input class='form-control' type="text" id="lon" name='lon' placeholder="00.00">
-                                </div>
-                            </div>
-
-                            <div class='row'>
-                                <div class="form-group mx-2">
-                                    <label for="creationDate">Creation</label>
-                                    <input class='form-control mr-2' type="text" id="creationDate" name='creationDate' placeholder="2020/01/01">
-                                </div>
-                                <div class="form-group mx-2">
-                                    <label for="lastConnectDate">Last Connection</label>
-                                    <input class='form-control' type="text" id="lastConnectDate" name='lastConnectDate' placeholder="2020/03/01">
-                                </div>
-                            </div>
-
-                            <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                            <label class="form-check-label" for="exampleCheck1">Check me out</label>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Submit</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-
+    <div class="container-fluid pt-4">
+        <!-- User Selection Card -->
         <div class="row">
             <div class="col-sm-8 mx-auto">
-                <div class="card my-5 ">
-                <div class="card-body ">
-                    <form class="form-signin" action ="/api/v1/user/deleteViaEmail" method="post" enctype="application/json" >
-                        <div class="input-group">
-                            <input type="email" class="form-control"  name='email' id="email_id" placeholder="Email address" required autofocus>
-                            <span class="input-group-btn mx-2">
-                                    <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">Delete User</button>
-                            </span>
-                        </div>
-                    </form>
-                </div>
-
-                <div class='card text-center'>
-                    <div class='card-body'>
-                        <form action="/api/v1/resetDB">
-                            <button class="btn btn-md btn-warning btn-block text-uppercase" type="submit">!!!!  Reset DB !!!!</button>
-                        </form>
+                <div class="card text-center mb-4">
+                    <div class="card-header">User Tools</div>
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        <select class="form-select w-auto" id="user_select"></select>
+                        <button type="button" onClick="selectUser()" class="btn btn-primary ms-2">Select User</button>
                     </div>
-                </div>
-
                 </div>
             </div>
         </div>
 
-         <div class="row">
-            <div class='col-sm-12'>
+        <!-- User Details Form Card -->
+        <div class="row mb-4">
+            <div class="col-sm-8 mx-auto">
                 <div class="card">
-                    <div class='card-body text-left'>
-                        <small><div id='deviceList'></div></small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-
-
-
-        <div class='row'>
-            <div class='col-sm-8 mx-auto'>
-                <div class="card text-center">
-                    <div class='card-body form-inline'>
-
-                        <select class='form-control' style='width:280px' id="device_select" selected ></select>
-
-                        <form>
-                            <div class="form-group form-inline">
-                                <button type="button" onClick="selectDevice()" class="btn btn-primary mx-2 ">Select Device</button>
+                    <div class="card-body">
+                        <form name="userForm" id="userForm">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="Enter name">
                             </div>
-
-                            <input type="hidden" id="device_id" name="device" value="">
-                        </form>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <div class="row my-2">
-
-            <div class='col-sm-8 mx-auto'>
-                <div class="card">
-                    <div class='card-body'>
-                        <form name='deviceForm' id='deviceForm'>
-
-                            <div class="form-group">
-                                <label for="type">Type</label>
-                                <input type="text" class="form-control" id="type" name='type' aria-describedby="emailHelp" placeholder="Enter name">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email address</label>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Enter email">
+                                <div class="form-text">Emails are not shared.</div>
                             </div>
-                            <div class="form-group">
-                                <label for="id">UID</label>
-                                <input type="text" class="form-control" id="id" name='id'>
+                            <div class="mb-3">
+                                <label for="exampleInputPassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="exampleInputPassword" name="password" placeholder="Password">
                             </div>
-                            <div class='row'>
-                                <div class="form-group mx-2">
-                                    <label for="lastBoot">Last boot</label>
-                                    <input class='form-control mr-2' type="text" id="lastBoot" name='lastBoot' placeholder="2020/01/01 XX:XX:XX">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="lat" class="form-label">Latitude</label>
+                                    <input class="form-control" type="text" id="lat" name="lat" placeholder="00.00">
                                 </div>
-                                <div class="form-group mx-2">
-                                    <label for="connected">Connected</label>
-                                    <input class='form-control' type="text" id="connected" name='connected' placeholder="true">
+                                <div class="col-md-6 mb-3">
+                                    <label for="lon" class="form-label">Longitude</label>
+                                    <input class="form-control" type="text" id="lon" name="lon" placeholder="00.00">
                                 </div>
                             </div>
-
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="creationDate" class="form-label">Creation</label>
+                                    <input class="form-control" type="text" id="creationDate" name="creationDate" placeholder="2020/01/01">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="lastConnectDate" class="form-label">Last Connection</label>
+                                    <input class="form-control" type="text" id="lastConnectDate" name="lastConnectDate" placeholder="2020/03/01">
+                                </div>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="exampleCheck1">
+                                <label class="form-check-label" for="exampleCheck1">Check me out</label>
+                            </div>
                             <button type="submit" class="btn btn-primary">Submit</button>
                         </form>
                     </div>
                 </div>
             </div>
-
         </div>
 
+        <!-- Danger Zone Card -->
+        <div class="row mb-4">
+            <div class="col-sm-8 mx-auto">
+                <div class="card border-danger">
+                    <div class="card-header text-white bg-danger">Danger Zone</div>
+                    <div class="card-body">
+                        <!-- Delete User -->
+                        <form action="/api/v1/user/deleteViaEmail" method="post" enctype="application/json" class="mb-3">
+                            <label for="email_id" class="form-label">Delete User by Email</label>
+                            <div class="input-group">
+                                <input type="email" class="form-control" name="email" id="email_id" placeholder="Email address" required>
+                                <button class="btn btn-outline-danger text-uppercase" type="submit">Delete User</button>
+                            </div>
+                        </form>
+                        <hr>
+                        <!-- Reset DB -->
+                        <form action="/api/v1/resetDB">
+                            <label class="form-label">Reset Database</label>
+                            <div>
+                                <button class="btn btn-danger w-100 text-uppercase" type="submit">!!!! Reset DB !!!!</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
 
- <!-- End Container  -->
-</div>
+        <!-- Device List Card -->
+        <div class="row mb-4">
+            <div class="col-sm-12">
+                <div class="card">
+                    <div class="card-header">Device List</div>
+                    <div class="card-body text-left">
+                        <small><div id="deviceList"></div></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Selection Card -->
+        <div class="row mb-4">
+            <div class="col-sm-8 mx-auto">
+                <div class="card text-center">
+                    <div class="card-header">Device Tools</div>
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        <select class="form-select w-auto" id="device_select"></select>
+                        <button type="button" onClick="selectDevice()" class="btn btn-primary ms-2">Select Device</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Details Form Card -->
+        <div class="row mb-4">
+            <div class="col-sm-8 mx-auto">
+                <div class="card">
+                    <div class="card-body">
+                        <form name="deviceForm" id="deviceForm">
+                            <div class="mb-3">
+                                <label for="type" class="form-label">Type</label>
+                                <input type="text" class="form-control" id="type" name="type" placeholder="Enter name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="id" class="form-label">UID</label>
+                                <input type="text" class="form-control" id="id" name="id">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="lastBoot" class="form-label">Last boot</label>
+                                    <input class="form-control" type="text" id="lastBoot" name="lastBoot" placeholder="2020/01/01 XX:XX:XX">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="connected" class="form-label">Connected</label>
+                                    <input class="form-control" type="text" id="connected" name="connected" placeholder="true">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <%- include('partials/footer') %>
