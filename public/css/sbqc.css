@@ -301,3 +301,19 @@ form .form-input:focus {
     flex: 1;
     text-align: center;
 }
+
+/* Color classes */
+.green {
+    background-color: #4CAF50 !important;
+    color: white !important;
+}
+
+.indigo {
+    background-color: #3F51B5 !important;
+    color: white !important;
+}
+
+.grey {
+    background-color: #9E9E9E !important;
+    color: white !important;
+}
