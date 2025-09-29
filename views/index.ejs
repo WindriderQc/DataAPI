@@ -207,8 +207,9 @@
 </div>
 
 
-<script>
-    // Requires tools.js and chartjs-chart-geo libraries
+<script type="module">
+    import { API } from '/js/utils/index.js';
+    // Requires chartjs-chart-geo libraries
 let worldMap;
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -234,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   
 async function getUserInfo()
 {
-    const info = await Tools.ipLookUp()
+    const info = await API.ipLookUp();
     document.getElementById('ip_id').innerHTML =  "<pre>"+JSON.stringify(info.TimeZone,null, '\t') +"</pre>"
 } 
 
