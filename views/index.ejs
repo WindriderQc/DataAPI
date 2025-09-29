@@ -132,9 +132,9 @@
         <div>
             <label for="sourceSelect">Select Source:</label>
             <select id="sourceSelect">
-                <% for (const collection in collectionInfo) { %>
-                    <option value="<%= collection %>" <%= collection === 'userLogs' ? 'selected' : '' %>><%= collection.charAt(0).toUpperCase() + collection.slice(1) %> </option>
-                <% } %>
+                <% collectionInfo.forEach(info => { %>
+                    <option value="<%= info.collection %>" <%= info.collection === 'userLogs' ? 'selected' : '' %>><%= info.collection.charAt(0).toUpperCase() + info.collection.slice(1) %></option>
+                <% }); %>
             </select>
         </div>
         <div id="tableContainer">
