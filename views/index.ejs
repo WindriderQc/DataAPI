@@ -34,10 +34,11 @@
 
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="row">
-                <%
-                const dbColors = {
-                    'SBQC': 'green',
+            <div id="card-scroll-container">
+                <div class="row">
+                    <%
+                    const dbColors = {
+                        'SBQC': 'green',
                     'datas': 'indigo',
                     'default': 'grey'
                 };
@@ -51,7 +52,7 @@
                 %>
                 <% collectionInfo.forEach(info => { %>
                     <div class="col-12 mb-4">
-                        <div class="card <%= dbColors[info.db] || dbColors['default'] %> text-white shadow-lg p-3">
+                        <div class="card summary-card <%= dbColors[info.db] || dbColors['default'] %> text-white shadow-lg p-3" data-collection="<%= info.collection %>" style="cursor: pointer;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div><i class="fa <%= icons[info.collection] || icons['default'] %> fa-2x"></i></div>
                                 <div class="text-end">
@@ -62,13 +63,14 @@
                         </div>
                     </div>
                 <% }); %>
+                </div>
             </div>
         </div>
 
         <div class="col-md-9">
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
-                    <h5 class="card-title">World</h5>
+                    <h5 class="card-title">World <span id="worldMapTitle" class="text-primary fw-bold"></span></h5>
                     <canvas id="worldMap" width="800" height="600"></canvas>
                 </div>
             </div>
@@ -213,7 +215,27 @@ let worldMap;
 
 document.addEventListener('DOMContentLoaded', async function() {
 
+    let selectedCollection = null;
+    const summaryCards = document.querySelectorAll('.summary-card');
 
+    summaryCards.forEach(card => {
+        card.addEventListener('click', function() {
+            // Remove 'selected' class from all cards
+            summaryCards.forEach(c => c.classList.remove('selected'));
+
+            // Add 'selected' class to the clicked card
+            this.classList.add('selected');
+
+            // Store the selected collection name
+            selectedCollection = this.getAttribute('data-collection');
+
+            // Update the world map title
+            const worldMapTitle = document.getElementById('worldMapTitle');
+            if (worldMapTitle) {
+                worldMapTitle.innerText = `- ${selectedCollection.charAt(0).toUpperCase() + selectedCollection.slice(1)}`;
+            }
+        });
+    });
 
     const sourceSelect = document.getElementById('sourceSelect');
       sourceSelect.addEventListener('change', function() {
@@ -227,6 +249,37 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     await getUserInfo()
 
+    const scrollContainer = document.getElementById('card-scroll-container');
+    let isDown = false;
+    let startY;
+    let scrollTop;
+
+    if (scrollContainer) {
+        scrollContainer.addEventListener('mousedown', (e) => {
+            isDown = true;
+            scrollContainer.classList.add('grabbing');
+            startY = e.pageY - scrollContainer.offsetTop;
+            scrollTop = scrollContainer.scrollTop;
+        });
+
+        scrollContainer.addEventListener('mouseleave', () => {
+            isDown = false;
+            scrollContainer.classList.remove('grabbing');
+        });
+
+        scrollContainer.addEventListener('mouseup', () => {
+            isDown = false;
+            scrollContainer.classList.remove('grabbing');
+        });
+
+        scrollContainer.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const y = e.pageY - scrollContainer.offsetTop;
+            const walk = (y - startY) * 2; // The multiplier affects scroll speed
+            scrollContainer.scrollTop = scrollTop - walk;
+        });
+    }
 
 });
 
