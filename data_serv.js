@@ -38,30 +38,6 @@ app.use(express.json({ limit: '10mb' }));
 
 const { GeneralError } = require('./utils/errors');
 
-// Global error handler middleware
-app.use((err, req, res, next) => {
-    if (res.headersSent) {
-        return next(err);
-    }
-
-    if (err instanceof GeneralError) {
-        const responseJson = {
-            status: 'error',
-            message: err.message
-        };
-        if (err.errors) {
-            responseJson.errors = err.errors;
-        }
-        return res.status(err.getCode()).json(responseJson);
-    }
-
-    log(err.stack, 'error');
-    return res.status(500).json({
-        status: 'error',
-        message: 'An internal server error occurred.'
-    });
-});
-
 async function startServer() {
     try {
         const dbConnection = await mdb.init();
@@ -163,6 +139,13 @@ async function startServer() {
         app.use((err, req, res, next) => {
             if (res.headersSent) {
                 return next(err);
+            }
+            // Handle Mongoose CastError (e.g., for malformed IDs)
+            if (err.name === 'CastError') {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Invalid ID format.'
+                });
             }
             if (err instanceof GeneralError) {
                 const responseJson = { status: 'error', message: err.message };

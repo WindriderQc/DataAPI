@@ -2,24 +2,18 @@ const { validationResult } = require('express-validator');
 const Device = require('../models/deviceModel');
 const { NotFoundError, BadRequest } = require('../utils/errors');
 
+const APIFeatures = require('../utils/apiFeatures');
+
 exports.index = async (req, res, next) => {
     try {
-        let { skip = 0, limit = 5, sort = 'desc' } = req.query;
-        skip = parseInt(skip) || 0;
-        limit = parseInt(limit) || 10;
-        skip = skip < 0 ? 0 : skip;
-        limit = Math.min(50, Math.max(1, limit));
-
-        const [total, data] = await Promise.all([
-            Device.countDocuments({}),
-            Device.find({}, {}, { sort: { created: sort === 'desc' ? -1 : 1 } }).skip(skip).limit(limit)
-        ]);
+        const initialQuery = Device.find({});
+        const features = new APIFeatures(initialQuery, req.query).paginate().sort();
+        const result = await APIFeatures.execute(initialQuery, features);
 
         res.json({
             status: "success",
             message: 'Devices retrieved successfully',
-            data: data,
-            meta: { total, sort, skip, limit, has_more: total - (skip + limit) > 0 }
+            ...result
         });
     } catch (err) {
         next(err);
