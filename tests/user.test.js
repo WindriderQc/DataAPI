@@ -56,7 +56,7 @@ describe('User API', () => {
       const res = await request(app).get('/api/v1/users');
 
       expect(res.statusCode).toEqual(200);
-      expect(res.body.length).toBe(2);
+      expect(res.body.data.length).toBe(2);
     });
   });
 
@@ -68,8 +68,8 @@ describe('User API', () => {
       const res = await request(app).get(`/api/v1/users/${userId}`);
 
       expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('_id', userId.toString());
-      expect(res.body).toHaveProperty('name', 'Test User');
+      expect(res.body.data).toHaveProperty('_id', userId.toString());
+      expect(res.body.data).toHaveProperty('name', 'Test User');
     });
   });
 
@@ -84,7 +84,7 @@ describe('User API', () => {
         .send(updatedData);
 
       expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('name', 'Updated User Name');
+      expect(res.body.data).toHaveProperty('name', 'Updated User Name');
 
       const dbUser = await User.findById(userId);
       expect(dbUser.name).toBe('Updated User Name');
@@ -100,6 +100,7 @@ describe('User API', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toHaveProperty('message', 'User deleted');
+      expect(res.body.status).toBe('success');
 
       const dbUser = await User.findById(userId);
       expect(dbUser).toBeNull();
@@ -148,9 +149,9 @@ describe('User API', () => {
         expect(res.statusCode).toEqual(500);
     });
 
-    it('should return 500 for a malformed user ID in GET', async () => {
+    it('should return 400 for a malformed user ID in GET', async () => {
         const res = await request(app).get('/api/v1/users/123');
-        expect(res.statusCode).toEqual(500);
+        expect(res.statusCode).toEqual(400);
     });
 
     it('should return 400 for a malformed user ID in PUT', async () => {
