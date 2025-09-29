@@ -1,22 +1,27 @@
 // controllers/userController.js
 const User = require('../models/userModel');
 const { validationResult } = require('express-validator');
+const { BadRequest, NotFoundError, ConflictError } = require('../utils/errors');
 
 // GET /users
-exports.index = async (req, res) => {
+exports.index = async (req, res, next) => {
     try {
         const users = await User.find();
-        res.json(users);  // Keep API-style JSON
+        res.json({
+            status: 'success',
+            message: 'Users retrieved successfully',
+            data: users
+        });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 };
 
 // POST /users
-exports.new = async (req, res) => {
+exports.new = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return next(new BadRequest(errors.array()));
     }
 
     try {
@@ -24,35 +29,34 @@ exports.new = async (req, res) => {
         const user = new User({ name, email, password, lat, lon });
         await user.save();
 
-        // Exclude password from the returned object
         const userResponse = user.toObject();
         delete userResponse.password;
 
         res.status(201).json({
+            status: 'success',
             message: 'New user created!',
             data: userResponse
         });
     } catch (err) {
-        // Handle potential duplicate email errors or other DB issues
         if (err.code === 11000) {
-            return res.status(409).json({ message: 'Email already in use.' });
+            return next(new ConflictError('Email already in use.'));
         }
-        res.status(500).json({ message: 'An internal server error occurred.' });
+        next(err);
     }
 };
 
 // POST /users/login
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
     const { email, password } = req.body;
     try {
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return next(new BadRequest('Invalid email or password'));
         }
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return next(new BadRequest('Invalid email or password'));
         }
 
         user.lastConnectDate = new Date();
@@ -62,67 +66,81 @@ exports.login = async (req, res) => {
         delete userResponse.password;
 
         res.json({
+            status: 'success',
             message: 'Login successful',
             data: userResponse
         });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 };
 
 // GET /users/fromEmail/:email
-exports.fromEmail = async (req, res) => {
+exports.fromEmail = async (req, res, next) => {
     try {
         const user = await User.findOne({ email: req.params.email });
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json(user);
+        if (!user) return next(new NotFoundError('User not found'));
+        res.json({
+            status: 'success',
+            message: 'User retrieved successfully',
+            data: user
+        });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 };
 
 // GET /users/:id
-exports.view = async (req, res) => {
+exports.view = async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json(user);
+        if (!user) return next(new NotFoundError('User not found'));
+        res.json({
+            status: 'success',
+            message: 'User retrieved successfully',
+            data: user
+        });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 };
 
 // PATCH/PUT /users/:id
-exports.update = async (req, res) => {
+exports.update = async (req, res, next) => {
     try {
         const updateData = req.body;
-        if (updateData.password) delete updateData.password; // avoid direct password change
+        if (updateData.password) delete updateData.password;
         const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json(user);
+        if (!user) return next(new NotFoundError('User not found'));
+        res.json({
+            status: 'success',
+            message: 'User updated successfully',
+            data: user
+        });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        next(err);
     }
 };
 
 // DELETE /users/:id
-exports.delete = async (req, res) => {
+exports.delete = async (req, res, next) => {
     try {
         const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ message: 'User deleted' });
+        if (!user) return next(new NotFoundError('User not found'));
+        res.json({
+            status: 'success',
+            message: 'User deleted'
+        });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        next(err);
     }
 };
 
-
-
 // Model view controller for rendering the users page.
-exports.renderUsersPage = async (req, res) => {
+exports.renderUsersPage = async (req, res, next) => {
     try {
         const users = await User.find();
-       res.render('users', {
+        res.render('users', {
             title: 'Users',
             users: users.map(u => ({
                 _id: u._id,
@@ -135,6 +153,6 @@ exports.renderUsersPage = async (req, res) => {
             }))
         });
     } catch (err) {
-        res.status(500).send('Server Error');
+        next(err);
     }
 };
