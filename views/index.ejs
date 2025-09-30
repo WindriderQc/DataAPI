@@ -419,16 +419,16 @@ function listAllLogs(source) {
     .then(response => response.json())
     .then(result => {
 
+        // Always update the world graph, passing an empty array if logs are null/undefined
+        setWorlGraph(result.logs || []);
+
         if (!result.logs || result.logs.length === 0) {
-                console.warn('No logs available to display.');
-                loadingElement.style.display = 'none';
-                return;
-            }
-
-        //console.log('result', result)
-        setWorlGraph(result.logs)
-
-
+            console.warn('No logs available to display.');
+            // Clear the table by loading it with no data and no columns
+            loadDataTable({ data: [], columns: [] });
+            loadingElement.style.display = 'none';
+            return;
+        }
 
         // Collect all unique keys from all log entries
         const allKeys = new Set();
