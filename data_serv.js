@@ -26,7 +26,28 @@ app.locals.appVersion = pjson.version;
 // Middlewares & routes
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(morgan('dev'));
-app.use(cors({ origin: '*', optionsSuccessStatus: 200 }));
+// Configure CORS to be more restrictive in production
+const corsOptions = {
+    origin: (origin, callback) => {
+        // In development, allow all origins for ease of testing.
+        if (!IN_PROD) {
+            return callback(null, true);
+        }
+
+        // In production, only allow requests from a specific whitelist of origins.
+        const whitelist = (process.env.CORS_WHITELIST || '').split(',');
+
+        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman, mobile apps).
+        if (whitelist.includes(origin) || !origin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true, // This is important for sessions/cookies.
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
