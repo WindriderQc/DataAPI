@@ -36,8 +36,9 @@ describe('Alarm API', () => {
         enabled: true
       });
     expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty('_id');
-    expect(res.body).toHaveProperty('espID', 'esp123');
+    expect(res.body.status).toBe('success');
+    expect(res.body.data).toHaveProperty('_id');
+    expect(res.body.data).toHaveProperty('espID', 'esp123');
   });
 
   it('should get all alarms with a specific query', async () => {
@@ -47,8 +48,9 @@ describe('Alarm API', () => {
       .get('/api/v1/alarms?espID=esp123&io=1');
 
     expect(res.statusCode).toEqual(200);
-    expect(res.body.length).toBe(1);
-    expect(res.body[0]).toHaveProperty('espID', 'esp123');
+    expect(res.body.status).toBe('success');
+    expect(res.body.data.length).toBe(1);
+    expect(res.body.data[0]).toHaveProperty('espID', 'esp123');
   });
 
   it('should return an empty array if alarm is not found', async () => {
@@ -56,6 +58,7 @@ describe('Alarm API', () => {
       .get('/api/v1/alarms?espID=nonexistent&io=999');
 
     expect(res.statusCode).toEqual(200);
-    expect(res.body.length).toBe(0);
+    expect(res.body.status).toBe('success');
+    expect(res.body.data.length).toBe(0);
   });
 });
