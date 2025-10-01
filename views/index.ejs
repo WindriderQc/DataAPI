@@ -1,13 +1,8 @@
 <!DOCTYPE html>
 <html lang='en'>
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="Data Farming App"> <meta name="author" content="SpecialBlend Production">
-    <title>SBQC Server Dashboard</title>
-    <link rel="shortcut icon" href="/img/favicon.ico" type="image/x-icon">
-
+    <%- include('partials/mainHead', { title: 'DataAPI Dashboard' }) %>
+   
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/sbqc.css" />
    <!-- DataTables (used by dashboard.ejs)  needs jquery  -->
@@ -21,7 +16,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script>
 
-    <%- include('partials/mainHead', { title: 'SBQC Server Dashboard' }) %>
 </head>
 <body class="bg-light">
 <%- include('partials/nav') %>
