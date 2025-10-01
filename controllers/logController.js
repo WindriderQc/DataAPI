@@ -18,7 +18,7 @@ const getUserLogs = async (req, res, next) => {
 
         const [total, logs] = await Promise.all([
             logsdb.countDocuments(),
-            logsdb.find({}, { skip, sort: { created: sort === 'desc' ? -1 : 1 } }).toArray()
+            logsdb.find({}).sort({ created: sort === 'desc' ? -1 : 1 }).skip(skip).limit(1000).toArray()
         ]);
 
         res.json({
