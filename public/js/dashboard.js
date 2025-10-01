@@ -1,37 +1,5 @@
 import { API } from '/js/utils/index.js';
 
-// p5.js sketch functions
-let lastUpdateTime = 0;
-let delay = 1000; // 1 second delay
-
-function setup() {
-    const canvas = createCanvas(800, 600);
-    canvas.parent('pixel-canvas');
-}
-
-function draw() {
-    if (millis() - lastUpdateTime > delay) {
-        // Code to be executed less frequently
-        squares();
-        lastUpdateTime = millis();
-    }
-}
-
-function squares() {
-    background(180);
-    for (let y = 0; y < height; y = y + 15) {
-        for (let x = 0; x < width; x = x + 10) {
-            fill(random(255), random(255), random(255));
-            rect(x, y, 8, 8);
-        }
-    }
-}
-
-// Make p5.js functions global so they can be called by the p5.js library
-window.setup = setup;
-window.draw = draw;
-
-
 // Dashboard UI and Charting Logic
 let worldMap;
 
@@ -146,8 +114,7 @@ function setWorlGraph(data) {
             const validCountryNames = new Set(countries.map(country => country.properties.name));
             Object.keys(countryCounts).forEach(countryName => {
                 if (!validCountryNames.has(countryName)) {
-                    // This console.warn is being removed as per code review feedback.
-                    // console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
+                    console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
                 }
             });
             const chartData = {
@@ -159,6 +126,7 @@ function setWorlGraph(data) {
                         value: countryCounts[country.properties.name] || 0
                     })),
                     backgroundColor: (context) => {
+                        // The context object provides `dataIndex`, not `index`. This was the error.
                         const dataItem = context.dataset.data[context.dataIndex];
                         if (!dataItem || !dataItem.value) {
                             return 'rgba(200, 200, 200, 0.25)'; // Default grey for missing values
@@ -181,10 +149,13 @@ function setWorlGraph(data) {
                             axis: 'x',
                             projection: 'equalEarth',
                         },
+                        color: {
+                            display: false // This is the correct way to hide the geo color legend
+                        }
                     },
                     plugins: {
                         legend: {
-                            display: false // Keep the default legend off
+                            display: false // Keep the default dataset legend off
                         }
                     }
                 }
