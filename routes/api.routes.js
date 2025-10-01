@@ -22,8 +22,14 @@ router.route('/users')
 
 router.route('/users/:id')
     .get(userController.view)
-    .put(userController.update)
-    .patch(userController.update)
+    .put([
+        body('name').optional().trim().escape(),
+        body('email').optional().isEmail().normalizeEmail()
+    ], userController.update)
+    .patch([
+        body('name').optional().trim().escape(),
+        body('email').optional().isEmail().normalizeEmail()
+    ], userController.update)
     .delete(userController.delete);
 
 // Generic routes for collections
@@ -70,64 +76,15 @@ router.get('/proxy-location', async (req, res) => {
     }
 });
 
-//  User/System logs manipulation functions
+// User/System logs manipulation routes
+const logController = require('../controllers/logController');
 
-
-const getUserLogs = async (req, res, next) => {
-    let { skip = 0, sort = 'desc', source = 'userLogs', db = 'SBQC' } = req.query;
-    skip = parseInt(skip) || 0;
-    skip = skip < 0 ? 0 : skip;
-
-    const dbs = req.app.locals.dbs;
-    if (!dbs || !dbs[db]) {
-        return res.status(500).json({ error: `Database '${db}' not found.` });
-    }
-    const logsdb = dbs[db].collection(source);
-
-    Promise.all([
-        logsdb.countDocuments(),
-        logsdb.find({}, { skip, sort: { created: sort === 'desc' ? -1 : 1 } }).toArray()
-    ])
-    .then(([total, logs]) => {
-        res.json({
-            logs,
-            meta: { total, skip, source, db, has_more: 0 }
-        });
-    })
-    .catch(next);
-};
-
-const createUserLog = async (req, res, next) => {
-    if (req.body) {
-        const log = req.body;
-        log.created = new Date();
-
-        const { db = 'SBQC', source = 'userLogs' } = req.query;
-        const dbs = req.app.locals.dbs;
-
-        if (!dbs || !dbs[db]) {
-            return res.status(500).json({ error: `Database '${db}' not found.` });
-        }
-
-        const logsdb = dbs[db].collection(source);
-        try {
-            const createdLog = await logsdb.insertOne(log);
-            console.log(`Log document was inserted with the _id: ${createdLog.insertedId}`);
-            res.json(createdLog);
-        } catch (err) {
-            console.log(err);
-            next(err);
-        }
-    } else {
-        res.status(422).json({
-            message: 'Hey! Invalid log....'
-        });
-    }
-};
-
-
-router.get('/v2/logs', getUserLogs)
-router.post('/v2/logs', createUserLog)
+router.get('/v2/logs', logController.getUserLogs);
+router.post('/v2/logs', [
+    // Sanitize all fields in the body to prevent XSS.
+    // The escape() sanitizer will only apply to string fields, leaving others untouched.
+    body('*').escape()
+], logController.createUserLog);
 
 // Export API routes
 module.exports = router

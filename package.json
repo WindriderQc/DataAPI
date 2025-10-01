@@ -5,7 +5,7 @@
   "main": "data_serv.js",
   "scripts": {
     "dev": "nodemon data_serv.js",
-    "start": "node  data_serv.js",
+    "start": "node data_serv.js",
     "test": "jest --forceExit"
   },
   "repository": {
@@ -23,7 +23,7 @@
     "connect-mongodb-session": "^5.0.0",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
-    "dotenv": "^8.2.0",
+    "dotenv": "^8.6.0",
     "ejs": "^3.1.10",
     "express": "^4.17.1",
     "express-rate-limit": "^5.5.1",
