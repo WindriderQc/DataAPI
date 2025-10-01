@@ -1,6 +1,7 @@
 const startServer = require('../data_serv');
 const { closeServer: closeMongoServer } = require('../mongooseDB');
 const mongoose = require('mongoose');
+const { logger } = require('../utils/logger'); // Import the logger instance
 
 const setup = async () => {
     const { app, close: closeHttpServer, dbConnection } = await startServer();
@@ -14,17 +15,20 @@ const setup = async () => {
     return { app, db: datasDb, closeHttpServer, dbConnection };
 };
 
-const teardown = async ({ closeHttpServer, dbConnection }) => {
+const fullTeardown = async ({ closeHttpServer, dbConnection }) => {
+    // First, close the server to stop accepting new connections
     if (closeHttpServer) {
         await closeHttpServer();
     }
-    if (dbConnection) {
+    // Then, close the database connection
+    if (dbConnection && typeof dbConnection.close === 'function') {
         await dbConnection.close();
     }
-};
-
-const afterAllTests = async () => {
+    // Stop the in-memory MongoDB server instance
     await closeMongoServer();
+
+    // Finally, close the logger to release any handles
+    logger.close();
 };
 
-module.exports = { setup, teardown, afterAllTests };
+module.exports = { setup, fullTeardown };
