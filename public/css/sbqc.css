@@ -104,3 +104,49 @@
 #card-scroll-container.grabbing {
     cursor: grabbing;
 }
+
+/* Custom Legend for World Map */
+.custom-legend-container {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    z-index: 10;
+}
+
+.custom-legend-container h5 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.custom-legend-container ul {
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.custom-legend-container li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.custom-legend-container li:last-child {
+    margin-bottom: 0;
+}
+
+.legend-color-box {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
