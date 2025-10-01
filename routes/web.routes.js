@@ -1,13 +1,15 @@
 const router = require('express').Router();
 const { requireAuth } = require('../utils/auth');
 const { log } = require('../utils/logger');
+const config = require('../config/config');
 
 // Middleware to load common data for dashboard-like pages
 const loadDashboardData = async (req, res, next) => {
     try {
         const dbs = req.app.locals.dbs;
-        res.locals.users = await dbs.datas.collection('users').find().toArray();
-        res.locals.devices = await dbs.datas.collection('devices').find().toArray();
+        const dbName = config.db.defaultDbName;
+        res.locals.users = await dbs[dbName].collection('users').find().toArray();
+        res.locals.devices = await dbs[dbName].collection('devices').find().toArray();
         next();
     } catch (err) {
         next(err); // Pass errors to the global error handler
@@ -38,11 +40,12 @@ router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
     });
 });
 
-router.get('/users', requireAuth, async (req, res) => {
+router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {
         const dbs = req.app.locals.dbs;
-        const users = await dbs.datas.collection('users').find().toArray();
+        const dbName = config.db.modelDbName;
+        const users = await dbs[dbName].collection('users').find().toArray();
         log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
         res.render('users', {
             users: users,
@@ -50,7 +53,7 @@ router.get('/users', requireAuth, async (req, res) => {
         });
     } catch (err) {
         log(`[ROUTES] GET /users: Error: ${err}`, 'error');
-        res.status(500).send(err);
+        next(err);
     }
 });
 

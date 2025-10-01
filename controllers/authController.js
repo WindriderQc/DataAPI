@@ -2,11 +2,13 @@ const util = require('util');
 const bcrypt = require('bcrypt');
 const { BadRequest } = require('../utils/errors');
 const { log } = require('../utils/logger');
+const config = require('../config/config');
 
 exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
     const dbs = req.app.locals.dbs;
-    const usersCollection = dbs.datas.collection('users');
+    const dbName = config.db.modelDbName;
+    const usersCollection = dbs[dbName].collection('users');
 
     try {
         const existingUser = await usersCollection.findOne({ email });
@@ -36,7 +38,8 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
     const { email, password } = req.body;
     const dbs = req.app.locals.dbs;
-    const usersCollection = dbs.datas.collection('users');
+    const dbName = config.db.modelDbName;
+    const usersCollection = dbs[dbName].collection('users');
     log(`[AUTH] Attempting login for email: ${email}`);
 
     try {
