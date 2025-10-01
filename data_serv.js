@@ -62,7 +62,7 @@ const corsOptions = {
     credentials: true, // This is important for sessions/cookies.
     optionsSuccessStatus: 200
 };
-app.use(cors(corsOptions));
+// CORS middleware is now applied directly to API routes.
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -141,7 +141,8 @@ async function startServer() {
         // Apply rate limiting and API routes
         const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
         app.use('/api/', apiLimiter);
-        app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
+        // Apply CORS middleware only to API routes
+        app.use('/api/v1', cors(corsOptions), require("./routes/api.routes")); // API routes don't use session middleware
         // Create a dedicated router for web routes that require session handling
         const webRouter = express.Router();
         webRouter.use(session(sessionOptions));
