@@ -105,10 +105,10 @@ function setAutoUpdate(intervals, updateNow = false) {
     console.log("LiveData configured  -  Intervals: ", intervals);
 }
 
-function close() {
+async function close() {
     intervalIds.forEach(clearInterval);
     intervalIds = [];
-    mqttClient.close();
+    await mqttClient.close();
 }
 
 module.exports = {
