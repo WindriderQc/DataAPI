@@ -1,20 +1,15 @@
 const fs = require('fs');
 const CSVToJSON = require('csvtojson');
 const mqttClient = require('./mqttClient.js');
-
-const quakes_url = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.csv';
-const quakesPath = "./data/quakes.csv";
+const config = require('../config/config');
 
 let dbs; // To store database connections
 
 let datas = { version: 1.0 };
 const version = datas.version;
-const intervals = { quakes: 1000 * 60 * 60 * 24 * 7, iss: 1000 * 5 };
-const maxISSlogs = 4320;
 let intervalIds = [];
 
 async function getISS() {
-    const iss_api_url = 'https://api.wheretheiss.at/v1/satellites/25544';
     if (!dbs || !dbs.datas) {
         console.error('[liveData] getISS: Database not initialized.');
         return;
@@ -22,19 +17,18 @@ async function getISS() {
     const issCollection = dbs.datas.collection('isses');
 
     try {
-        const response = await fetch(iss_api_url);
+        const response = await fetch(config.api.iss.url);
         const data = await response.json();
         const { latitude, longitude } = data;
 
         const timeStamp = new Date();
 
         datas.iss = { latitude, longitude, timeStamp };
-        const topic = process.env.MQTT_ISS_TOPIC || 'sbqc/iss';
-        mqttClient.publish(topic, datas.iss);
+        mqttClient.publish(config.mqtt.issTopic, datas.iss);
 
         const countBefore = await issCollection.countDocuments();
 
-        if (countBefore >= maxISSlogs) {
+        if (countBefore >= config.api.iss.maxLogs) {
             const oldestDoc = await issCollection.findOne({}, { sort: { timeStamp: 1 } });
             if (oldestDoc) {
                 await issCollection.deleteOne({ _id: oldestDoc._id });
@@ -55,9 +49,9 @@ async function getQuakes() {
     const quakesCollection = dbs.datas.collection('quakes');
 
     try {
-        const response = await fetch(quakes_url);
+        const response = await fetch(config.api.quakes.url);
         const data = await response.text();
-        fs.writeFileSync(quakesPath, data);
+        fs.writeFileSync(config.api.quakes.path, data);
         const quakes = await CSVToJSON().fromString(data);
 
         console.log('Flushing the Quake collection...');
@@ -79,8 +73,8 @@ async function getQuakes() {
 function init(dbConnections) {
     dbs = dbConnections;
 
-    if (!fs.existsSync(quakesPath)) {
-        console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", quakesPath, "interval:", intervals.quakes);
+    if (!fs.existsSync(config.api.quakes.path)) {
+        console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", config.api.quakes.path, "interval:", config.api.quakes.interval);
     } else {
         console.log('quakes file found');
     }
@@ -88,12 +82,17 @@ function init(dbConnections) {
     mqttClient.init();
 
     // Do not run intervals in the test environment
-    if (process.env.NODE_ENV !== 'test') {
-        setAutoUpdate(intervals, true);
+    if (config.env !== 'test') {
+        setAutoUpdate(true);
     }
 }
 
-function setAutoUpdate(intervals, updateNow = false) {
+function setAutoUpdate(updateNow = false) {
+    const intervals = {
+        quakes: config.api.quakes.interval,
+        iss: config.api.iss.interval,
+    };
+
     if (updateNow) {
         getQuakes();
         getISS();
@@ -115,6 +114,11 @@ module.exports = {
     init,
     setAutoUpdate,
     version,
-    intervals,
+    get intervals() {
+        return {
+            quakes: config.api.quakes.interval,
+            iss: config.api.iss.interval,
+        };
+    },
     close,
 };
