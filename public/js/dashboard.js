@@ -144,18 +144,15 @@ function setWorlGraph(data) {
                 options: {
                     showOutline: false,
                     showGraticule: false,
+                    projection: 'equalEarth',
                     scales: {
-                        projection: {
-                            axis: 'x',
-                            projection: 'equalEarth',
-                        },
                         color: {
-                            display: false // This is the correct way to hide the geo color legend
+                            display: false
                         }
                     },
                     plugins: {
                         legend: {
-                            display: false // Keep the default dataset legend off
+                            display: false
                         }
                     }
                 }
