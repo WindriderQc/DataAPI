@@ -1,5 +1,4 @@
-import re
-from playwright.sync_api import sync_playwright, Page, expect
+from playwright.sync_api import sync_playwright, expect
 
 def run(playwright):
     browser = playwright.chromium.launch(headless=True)
@@ -9,19 +8,13 @@ def run(playwright):
     # Navigate to the dashboard
     page.goto("http://localhost:3003/")
 
-    # Wait for the world map canvas to be visible and rendered
+    # Wait for the world map canvas to be visible
     world_map_canvas = page.locator("#worldMap")
-    expect(world_map_canvas).to_be_visible(timeout=10000) # Increased timeout for initial load
+    expect(world_map_canvas).to_be_visible(timeout=15000) # Increased timeout for map loading
 
-    # Optional: Add a small delay to ensure the map has fully drawn
-    page.wait_for_timeout(2000)
+    # Take a screenshot
+    page.screenshot(path="jules-scratch/verification/verification.png")
 
-    # Take a screenshot of the dashboard, focusing on the map area
-    page.screenshot(path="jules-scratch/verification/dashboard_verification.png")
-
-    print("Dashboard verification screenshot captured.")
-
-    # Close browser
     browser.close()
 
 with sync_playwright() as playwright:
