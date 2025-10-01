@@ -14,7 +14,11 @@ const userController = require('../controllers/userController');
 
 router.route('/users')
     .get(userController.index)
-    .post(userController.new);
+    .post([
+        body('name', 'Name is required').not().isEmpty().trim().escape(),
+        body('email', 'A valid email is required').isEmail().normalizeEmail(),
+        body('password', 'Password must be at least 6 characters long').isLength({ min: 6 })
+    ], userController.new);
 
 router.route('/users/:id')
     .get(userController.view)
