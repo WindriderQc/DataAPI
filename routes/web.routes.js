@@ -2,36 +2,40 @@ const router = require('express').Router();
 const { requireAuth } = require('../utils/auth');
 const { log } = require('../utils/logger');
 
-router.get('/', async (req, res) => {
+// Middleware to load common data for dashboard-like pages
+const loadDashboardData = async (req, res, next) => {
     try {
         const dbs = req.app.locals.dbs;
-        const users = await dbs.datas.collection('users').find().toArray();
-        const devices = await dbs.datas.collection('devices').find().toArray();
-        res.render('index', {
-            users: users,
-            devices: devices,
-            alarms: [],
-            title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices
-        });
+        res.locals.users = await dbs.datas.collection('users').find().toArray();
+        res.locals.devices = await dbs.datas.collection('devices').find().toArray();
+        next();
     } catch (err) {
-        res.status(500).send(err);
+        next(err); // Pass errors to the global error handler
     }
+};
+
+router.get('/', loadDashboardData, (req, res) => {
+    res.render('index', {
+        users: res.locals.users,
+        devices: res.locals.devices,
+        alarms: [],
+        title: "Dashboard",
+        menuId: 'home',
+        collectionInfo: req.app.locals.collectionInfo,
+        regDevices: res.locals.devices
+    });
 });
 
-router.get('/tools', requireAuth, async (req, res) => {
-    try {
-        const dbs = req.app.locals.dbs;
-        const users = await dbs.datas.collection('users').find().toArray();
-        const devices = await dbs.datas.collection('devices').find().toArray();
-        res.render('tools', {
-            users: users,
-            devices: devices,
-            alarms: [],
-            title: "Dashboard", menuId: 'home', collectionInfo: req.app.locals.collectionInfo, regDevices: devices
-        });
-    } catch (err) {
-        res.status(500).send(err);
-    }
+router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
+    res.render('tools', {
+        users: res.locals.users,
+        devices: res.locals.devices,
+        alarms: [],
+        title: "Dashboard",
+        menuId: 'home',
+        collectionInfo: req.app.locals.collectionInfo,
+        regDevices: res.locals.devices
+    });
 });
 
 router.get('/users', requireAuth, async (req, res) => {

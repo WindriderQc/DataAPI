@@ -142,11 +142,12 @@ describe('User API', () => {
       expect(res.statusCode).toEqual(404);
     });
 
-    it('should return 500 when creating a user with missing required fields', async () => {
+    it('should return 400 when creating a user with missing required fields', async () => {
         const res = await request(app)
             .post('/api/v1/users')
-            .send({ name: 'Incomplete User' });
-        expect(res.statusCode).toEqual(500);
+            .send({ name: 'Incomplete User' }); // Missing email and password
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toHaveProperty('errors');
     });
 
     it('should return 400 for a malformed user ID in GET', async () => {
