@@ -6,6 +6,11 @@ let client;
 const brokerUrl = process.env.MQTT_BROKER_URL;
 
 function init(options = {}) {
+  // Do not initialize the client in the test environment
+  if (process.env.NODE_ENV === 'test') {
+    return;
+  }
+
   const connectOptions = {
     username: process.env.MQTT_USERNAME,
     password: process.env.MQTT_PASSWORD,
@@ -51,12 +56,17 @@ function getClient() {
 }
 
 function close() {
-  if (client) {
-    client.end(true, () => { // true forces a disconnect
-      console.log('MQTT client disconnected');
-      client = null;
-    });
-  }
+  return new Promise((resolve) => {
+    if (client) {
+      client.end(true, () => { // true forces a disconnect
+        console.log('MQTT client disconnected');
+        client = null;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
 }
 
 module.exports = {

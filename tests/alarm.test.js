@@ -1,27 +1,23 @@
 const request = require('supertest');
-const { setup, teardown, afterAllTests } = require('./test-setup');
+const { setup, fullTeardown } = require('./test-setup');
 
 describe('Alarm API', () => {
   let app;
   let db;
   let closeHttpServer;
-    let dbConnection;
+  let dbConnection;
 
   beforeAll(async () => {
     const { app: expressApp, db: initializedDb, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
     app = expressApp;
     db = initializedDb;
     closeHttpServer = serverCloser;
-        dbConnection = conn;
+    dbConnection = conn;
   });
 
   afterAll(async () => {
-    await teardown({ closeHttpServer, dbConnection });
+    await fullTeardown({ closeHttpServer, dbConnection });
   });
-
-    afterAll(async () => {
-        await afterAllTests();
-    });
 
   beforeEach(async () => {
     await db.collection('alarms').deleteMany({});

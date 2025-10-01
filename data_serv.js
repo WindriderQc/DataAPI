@@ -141,13 +141,16 @@ async function startServer() {
 
  
 
+        // Initialize LiveData (MQTT client, etc.)
+        // The liveData module itself prevents intervals from running in test mode.
+        liveDatas.init(app.locals.dbs);
+        log("LiveData  -  v" + liveDatas.version);
+
         let server;
 
         if (process.env.NODE_ENV !== 'test') {
             server = app.listen(PORT, () => {
                 log(`\n\nData API Server running at port ${PORT}`);
-                liveDatas.init(app.locals.dbs);
-                log("LiveData  -  v" + liveDatas.version);
             });
         }
 
@@ -158,8 +161,7 @@ async function startServer() {
                 await new Promise(resolve => server.close(resolve));
                 log('Server closed.');
             }
-            liveDatas.close();
-            await dbConnection.close();
+            await liveDatas.close();
         };
 
  
