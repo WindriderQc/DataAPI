@@ -1,10 +1,11 @@
 const { ObjectId } = require('mongodb');
 const { BadRequest, NotFoundError } = require('../utils/errors');
+const config = require('../config/config');
 
 const genericController = (collectionName) => ({
   getAll: async (req, res, next) => {
     try {
-      const { db = 'datas' } = req.query;
+      const { db = config.db.defaultDbName } = req.query;
       const dbs = req.app.locals.dbs;
       if (!dbs || !dbs[db]) {
         return next(new NotFoundError(`Database '${db}' not found`));
@@ -25,7 +26,7 @@ const genericController = (collectionName) => ({
 
   getById: async (req, res, next) => {
     try {
-      const { db = 'datas' } = req.query;
+      const { db = config.db.defaultDbName } = req.query;
       const dbs = req.app.locals.dbs;
       if (!dbs || !dbs[db]) {
         return next(new NotFoundError(`Database '${db}' not found`));
@@ -50,7 +51,7 @@ const genericController = (collectionName) => ({
 
   create: async (req, res, next) => {
     try {
-      const { db = 'datas' } = req.query;
+      const { db = config.db.defaultDbName } = req.query;
       const dbs = req.app.locals.dbs;
       if (!dbs || !dbs[db]) {
         return next(new NotFoundError(`Database '${db}' not found`));
@@ -70,7 +71,7 @@ const genericController = (collectionName) => ({
 
   update: async (req, res, next) => {
     try {
-      const { db = 'datas' } = req.query;
+      const { db = config.db.defaultDbName } = req.query;
       const dbs = req.app.locals.dbs;
       if (!dbs || !dbs[db]) {
         return next(new NotFoundError(`Database '${db}' not found`));
@@ -94,7 +95,7 @@ const genericController = (collectionName) => ({
 
   delete: async (req, res, next) => {
     try {
-      const { db = 'datas' } = req.query;
+      const { db = config.db.defaultDbName } = req.query;
       const dbs = req.app.locals.dbs;
       if (!dbs || !dbs[db]) {
         return next(new NotFoundError(`Database '${db}' not found`));
