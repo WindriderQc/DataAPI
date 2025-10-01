@@ -37,8 +37,23 @@ const corsOptions = {
         // In production, only allow requests from a specific whitelist of origins.
         const whitelist = (process.env.CORS_WHITELIST || '').split(',');
 
-        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman, mobile apps).
+        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman).
+        let allowed = false;
         if (whitelist.includes(origin) || !origin) {
+            allowed = true;
+        } else if (origin) {
+            // Also allow localhost origins for local production testing.
+            try {
+                const originUrl = new URL(origin);
+                if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
+                    allowed = true;
+                }
+            } catch (e) {
+                // Malformed origin, ignore.
+            }
+        }
+
+        if (allowed) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
