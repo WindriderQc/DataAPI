@@ -148,10 +148,27 @@ function setWorlGraph(data) {
                             axis: 'x',
                             projection: 'equalEarth',
                         },
+                        color: {
+                            axis: 'x',
+                            interpolate: (value) => {
+                                if (value < 0.01) {
+                                    return 'white';
+                                }
+                                const t = Math.min(1, Math.max(0, value / 20));
+                                const r = Math.round(173.21 - t * (173.21 - 70.98));
+                                const g = Math.round(216.84 - t * (216.84 - 145.44));
+                                const b = Math.round(230.27 - t * (230.27 - 213.91));
+                                return `rgb(${r}, ${g}, ${b})`;
+                            },
+                            legend: {
+                                position: 'bottom-right',
+                                align: 'bottom',
+                            },
+                        },
                     },
                     plugins: {
-                        legend: { display: false }
-                    }
+                        legend: { display: false },
+                    },
                 }
             };
 
