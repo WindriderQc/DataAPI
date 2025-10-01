@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { setup, teardown, afterAllTests } = require('./test-setup');
+const { setup, fullTeardown } = require('./test-setup');
 const User = require('../models/userModel');
 
 describe('User API', () => {
@@ -15,8 +15,7 @@ describe('User API', () => {
   });
 
   afterAll(async () => {
-    await teardown({ closeHttpServer, dbConnection });
-    await afterAllTests();
+    await fullTeardown({ closeHttpServer, dbConnection });
   });
 
   afterEach(async () => {
