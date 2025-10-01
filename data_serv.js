@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
 const path = require('path');
@@ -13,9 +12,9 @@ const pjson = require('./package.json');
 const { log } = require('./utils/logger');
 const { attachUser } = require('./utils/auth');
 const { GeneralError } = require('./utils/errors');
+const config = require('./config/config');
 
-const PORT = process.env.PORT || 3003;
-const IN_PROD = process.env.NODE_ENV === 'production'  // for https channel...  IN_PROD will be true if in production environment    If true while on http connection, session cookie will not work
+const IN_PROD = config.env === 'production';
 
 const app = express();
 app.set('trust proxy', 1) // trust first proxy
@@ -43,23 +42,21 @@ async function startServer() {
         
         try {
             log("Assigning dbs to app.locals...");
-            const dbNames = ['SBQC', 'datas'];
             app.locals.dbs = {};
-
-            for (const dbName of dbNames) {
+            for (const dbName of config.db.appDbNames) {
                 app.locals.dbs[dbName] = dbConnection.getDb(dbName);
             }
             log("DBs assigned.");
 
             // Insert boot log
-            const userLogsCollection = app.locals.dbs['SBQC'].collection('userLogs');
+            const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
 
             await userLogsCollection.insertOne({
                 logType: 'boot',
                 client: 'server',
                 content: 'dbServer boot',
                 authorization: 'none',
-                host: IN_PROD ? "Production Mode" : "Developpement Mode",
+                host: config.env === 'production' ? "Production Mode" : "Development Mode",
                 ip: 'localhost',
                 hitCount: 'N/A',
                 created: new Date()
@@ -90,23 +87,23 @@ async function startServer() {
         mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
 
         const sessionOptions = {
-            name: process.env.SESS_NAME || 'default-session-name',
+            name: config.session.name,
             resave: false,
             saveUninitialized: false,
-            secret: process.env.NODE_ENV === 'test' ? 'test-secret' : process.env.SESS_SECRET || 'a-default-secret-for-development',
+            secret: config.session.secret,
             store: mongoStore,
             cookie: {
                 secure: IN_PROD,
                 httpOnly: true,
                 sameSite: IN_PROD ? 'none' : 'lax',
-                maxAge: 1000 * 60 * 60
+                maxAge: config.session.maxAge,
             }
         };
 
 
           
         // Apply rate limiting and API routes
-        const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000,  max: 100, standardHeaders: true, legacyHeaders: false   });
+        const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
         app.use('/api/', apiLimiter);
         app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
         // Create a dedicated router for web routes that require session handling
@@ -148,9 +145,9 @@ async function startServer() {
 
         let server;
 
-        if (process.env.NODE_ENV !== 'test') {
-            server = app.listen(PORT, () => {
-                log(`\n\nData API Server running at port ${PORT}`);
+        if (config.env !== 'test') {
+            server = app.listen(config.server.port, () => {
+                log(`\n\nData API Server running at port ${config.server.port}`);
             });
         }
 

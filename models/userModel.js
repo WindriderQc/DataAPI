@@ -1,6 +1,7 @@
 // models/usermodel.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const config = require('../config/config');
 
 const userSchema = mongoose.Schema({
     name: { type: String, required: true },
@@ -30,8 +31,7 @@ userSchema.methods.comparePassword = function(candidatePassword) {
 };
 
 // DB selection
-const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas';
-const myDB = mongoose.connection.useDb(dbName);
+const myDB = mongoose.connection.useDb(config.db.modelDbName);
 
 const User = myDB.model('User', userSchema);
 module.exports = User;
