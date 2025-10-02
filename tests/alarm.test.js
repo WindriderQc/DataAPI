@@ -4,19 +4,19 @@ const { setup, fullTeardown } = require('./test-setup');
 describe('Alarm API', () => {
   let app;
   let db;
-  let closeHttpServer;
   let dbConnection;
+  let mongoStore;
 
   beforeAll(async () => {
-    const { app: expressApp, db: initializedDb, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
+    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store } = await setup();
     app = expressApp;
     db = initializedDb;
-    closeHttpServer = serverCloser;
     dbConnection = conn;
+    mongoStore = store;
   }, 30000);
 
   afterAll(async () => {
-    await fullTeardown({ closeHttpServer, dbConnection });
+    await fullTeardown({ dbConnection, mongoStore });
   });
 
   beforeEach(async () => {
