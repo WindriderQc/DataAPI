@@ -44,7 +44,7 @@ const init = async () => {
         await mongoose.disconnect();
     };
 
-    return { getDb, getMongoUrl, close, client };
+    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection };
 };
 
 const closeServer = async () => {

@@ -9,15 +9,15 @@ describe('User API', () => {
   let User;
 
   beforeAll(async () => {
-    const { app: expressApp, db, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
+    const { app: expressApp, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
     app = expressApp;
     closeHttpServer = serverCloser;
     dbConnection = conn;
 
-    // Create the User model with the test database connection
-    User = createUserModel(db.modelDb);
+    // Create the User model using the Mongoose connection from the test setup
+    User = createUserModel(dbConnection.mongooseConnection);
 
-    // Inject the test-specific model into the app instance
+    // Inject the test-specific model into the app instance so controllers use it
     app.locals.models = { User };
   });
 

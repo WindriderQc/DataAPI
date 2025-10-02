@@ -118,7 +118,7 @@ async function startServer() {
 
             // Initialize and attach models to app.locals
             app.locals.models = {
-                User: createUserModel(app.locals.dbs[config.db.modelDbName])
+                User: createUserModel(dbConnection.mongooseConnection)
             };
             log("Models initialized and attached to app.locals.");
 
