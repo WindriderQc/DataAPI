@@ -10,7 +10,7 @@ const config = {
     },
     db: {
         connectionString: process.env.DB_CONNECTION_STRING || 'mongodb://127.0.0.1:27017/',
-        appDbNames: (process.env.DB_APP_DB_NAMES || 'SBQC,DB2').split(','),
+        appDbNames: (process.env.DB_APP_DB_NAMES || 'SBQC,datas').split(','),
         modelDbName: process.env.DB_MODEL_DB_NAME || 'SBQC',
         defaultDbName: process.env.DB_DEFAULT_DB_NAME || 'SBQC',
     },
