@@ -108,7 +108,7 @@
 /* Custom Legend for World Map */
 .custom-legend-container {
     position: absolute;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     background-color: rgba(255, 255, 255, 0.85);
     padding: 10px 15px;
