@@ -37,8 +37,23 @@ const corsOptions = {
         // In production, only allow requests from a specific whitelist of origins.
         const whitelist = (process.env.CORS_WHITELIST || '').split(',');
 
-        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman, mobile apps).
+        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman).
+        let allowed = false;
         if (whitelist.includes(origin) || !origin) {
+            allowed = true;
+        } else if (origin) {
+            // Also allow localhost origins for local production testing.
+            try {
+                const originUrl = new URL(origin);
+                if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
+                    allowed = true;
+                }
+            } catch (e) {
+                // Malformed origin, ignore.
+            }
+        }
+
+        if (allowed) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -47,7 +62,7 @@ const corsOptions = {
     credentials: true, // This is important for sessions/cookies.
     optionsSuccessStatus: 200
 };
-app.use(cors(corsOptions));
+// CORS middleware is now applied directly to API routes.
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -126,7 +141,8 @@ async function startServer() {
         // Apply rate limiting and API routes
         const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
         app.use('/api/', apiLimiter);
-        app.use('/api/v1', require("./routes/api.routes")); // API routes don't use session middleware
+        // Apply CORS middleware only to API routes
+        app.use('/api/v1', cors(corsOptions), require("./routes/api.routes")); // API routes don't use session middleware
         // Create a dedicated router for web routes that require session handling
         const webRouter = express.Router();
         webRouter.use(session(sessionOptions));
