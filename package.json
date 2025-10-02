@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon data_serv.js",
     "start": "node data_serv.js",
-    "test": "jest --forceExit"
+    "test": "jest --forceExit", 
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
