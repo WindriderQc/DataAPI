@@ -17,7 +17,7 @@ const init = async () => {
         if (!process.env.MONGO_URL) {
             throw new Error('MONGO_URL environment variable is not set for production environment.');
         }
-        mongourl = process.env.MONGO_URL;
+        mongourl = process.env.MONGO_URL + process.env.MONGO_DB_NAME + process.env.MONGO_OPTIONS;
     }
 
     // Mongoose connection for models
