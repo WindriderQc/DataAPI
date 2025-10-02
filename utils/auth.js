@@ -40,17 +40,21 @@ const attachUser = async (req, res, next) => {
 };
 
 const requireAuth = (req, res, next) => {
-    log(`[MIDDLEWARE] requireAuth: Checking auth for path: ${req.originalUrl}`);
+    log(`[DEBUG] requireAuth: Path: ${req.originalUrl}, Session ID: ${req.sessionID}`);
     if (!req.session || !req.session.userId) {
-        log('[MIDDLEWARE] requireAuth: No userId in session. Redirecting to /login.');
+        log(`[DEBUG] requireAuth: No user ID. Setting returnTo: ${req.originalUrl}`);
         req.session.returnTo = req.originalUrl;
-        // Explicitly save the session before redirecting to prevent race conditions
+
         req.session.save(err => {
-            if (err) return next(err);
+            if (err) {
+                log(`[DEBUG] requireAuth: ERROR SAVING SESSION: ${err}`, 'error');
+                return next(err);
+            }
+            log(`[DEBUG] requireAuth: Session saved. Redirecting to /login. Session: ${JSON.stringify(req.session)}`);
             res.redirect('/login');
         });
     } else {
-        log(`[MIDDLEWARE] requireAuth: Authentication successful for userId: ${req.session.userId}`);
+        log(`[DEBUG] requireAuth: Auth successful. User ID: ${req.session.userId}`);
         next();
     }
 };
