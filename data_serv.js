@@ -148,7 +148,7 @@ async function startServer() {
             cookie: {
                 secure: IN_PROD,
                 httpOnly: true,
-                sameSite: IN_PROD ? 'none' : 'lax',
+                sameSite: 'lax', // Use 'lax' for better compatibility in proxied environments
                 maxAge: config.session.maxAge,
             }
         };
