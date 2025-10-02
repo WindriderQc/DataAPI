@@ -114,7 +114,8 @@ function setWorlGraph(data) {
             const validCountryNames = new Set(countries.map(country => country.properties.name));
             Object.keys(countryCounts).forEach(countryName => {
                 if (!validCountryNames.has(countryName)) {
-                    console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
+                    // This console.warn is being removed as per code review feedback.
+                    // console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
                 }
             });
             const chartData = {
@@ -126,7 +127,6 @@ function setWorlGraph(data) {
                         value: countryCounts[country.properties.name] || 0
                     })),
                     backgroundColor: (context) => {
-                        // The context object provides `dataIndex`, not `index`. This was the error.
                         const dataItem = context.dataset.data[context.dataIndex];
                         if (!dataItem || !dataItem.value) {
                             return 'rgba(200, 200, 200, 0.25)'; // Default grey for missing values
@@ -147,12 +147,12 @@ function setWorlGraph(data) {
                     scales: {
                         projection: {
                             axis: 'x',
-                            projection: 'equalEarth'
-                        }
+                            projection: 'equalEarth',
+                        },
                     },
                     plugins: {
                         legend: {
-                            display: false
+                            display: false // Keep the default legend off
                         }
                     }
                 }
