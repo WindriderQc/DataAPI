@@ -154,6 +154,11 @@ async function startServer() {
             }
         };
 
+        // Set cookie domain only if it's configured
+        if (config.session.cookie_domain) {
+            sessionOptions.cookie.domain = config.session.cookie_domain;
+        }
+
 
           
         // Apply rate limiting and API routes
