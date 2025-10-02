@@ -43,10 +43,15 @@ const requireAuth = (req, res, next) => {
     if (!req.session || !req.session.userId) {
         log('[MIDDLEWARE] requireAuth: No userId in session. Redirecting to /login.');
         req.session.returnTo = req.originalUrl;
-        return res.redirect('/login');
+        // Explicitly save the session before redirecting to prevent race conditions
+        req.session.save(err => {
+            if (err) return next(err);
+            res.redirect('/login');
+        });
+    } else {
+        log(`[MIDDLEWARE] requireAuth: Authentication successful for userId: ${req.session.userId}`);
+        next();
     }
-    log(`[MIDDLEWARE] requireAuth: Authentication successful for userId: ${req.session.userId}`);
-    next();
 };
 
 module.exports = { attachUser, requireAuth };
