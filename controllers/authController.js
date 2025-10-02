@@ -56,19 +56,25 @@ exports.login = async (req, res, next) => {
         }
 
         log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
-
         const returnTo = req.session.returnTo;
-        const regenerate = util.promisify(req.session.regenerate).bind(req.session);
-        const save = util.promisify(req.session.save).bind(req.session);
 
-        await regenerate();
-        req.session.userId = user._id.toString();
-        await save();
+        // Use callbacks for session manipulation to ensure sequential execution
+        req.session.regenerate((err) => {
+            if (err) return next(err);
 
-        log(`[AUTH] Session userId set to: ${req.session.userId}`);
-        const redirectUrl = returnTo || '/users';
-        log(`[AUTH] Redirecting to ${redirectUrl}...`);
-        res.redirect(redirectUrl);
+            // Store user information in the new session
+            req.session.userId = user._id.toString();
+
+            // Save the session before responding
+            req.session.save((err) => {
+                if (err) return next(err);
+
+                log(`[AUTH] Session userId set to: ${req.session.userId}`);
+                const redirectUrl = returnTo || '/users';
+                log(`[AUTH] Redirecting to ${redirectUrl}...`);
+                res.redirect(redirectUrl);
+            });
+        });
 
     } catch (err) {
         log(`[AUTH] Error during login: ${err}`, 'error');
