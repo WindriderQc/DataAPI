@@ -1,17 +1,24 @@
 const request = require('supertest');
 const { setup, fullTeardown } = require('./test-setup');
-const User = require('../models/userModel');
+const createUserModel = require('../models/userModel');
 
 describe('User API', () => {
   let app;
   let closeHttpServer;
   let dbConnection;
+  let User;
 
   beforeAll(async () => {
-    const { app: expressApp, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
+    const { app: expressApp, db, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
     app = expressApp;
     closeHttpServer = serverCloser;
     dbConnection = conn;
+
+    // Create the User model with the test database connection
+    User = createUserModel(db.modelDb);
+
+    // Inject the test-specific model into the app instance
+    app.locals.models = { User };
   });
 
   afterAll(async () => {

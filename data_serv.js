@@ -13,6 +13,7 @@ const { log } = require('./utils/logger');
 const { attachUser } = require('./utils/auth');
 const { GeneralError } = require('./utils/errors');
 const config = require('./config/config');
+const createUserModel = require('./models/userModel');
 
 const IN_PROD = config.env === 'production';
 
@@ -114,6 +115,13 @@ async function startServer() {
                 }
             }
             log(`Collection Info for all dbs has been gathered. \n__________________________________________________\n\n`);
+
+            // Initialize and attach models to app.locals
+            app.locals.models = {
+                User: createUserModel(app.locals.dbs[config.db.modelDbName])
+            };
+            log("Models initialized and attached to app.locals.");
+
 
         } catch (e) {            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');        }
 

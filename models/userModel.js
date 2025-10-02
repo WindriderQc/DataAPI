@@ -30,8 +30,8 @@ userSchema.methods.comparePassword = function(candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// DB selection
-const myDB = mongoose.connection.useDb(config.db.modelDbName);
-
-const User = myDB.model('User', userSchema);
-module.exports = User;
+// DB selection can be based on a provided connection
+module.exports = (connection) => {
+  const db = connection || mongoose.connection.useDb(config.db.modelDbName);
+  return db.model('User', userSchema);
+};
