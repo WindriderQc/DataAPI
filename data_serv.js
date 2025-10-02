@@ -83,7 +83,7 @@ async function startServer() {
             for (const dbName of config.db.appDbNames) {
                 app.locals.dbs[dbName] = dbConnection.getDb(dbName);
             }
-            log("DBs assigned.",  app.locals.dbs);
+            log("DBs assigned.");
 
             // Insert boot log
             const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
