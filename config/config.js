@@ -37,7 +37,7 @@ const config = {
         },
     },
     mqtt: {
-        brokerUrl: process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883',
+        brokerUrl: process.env.MQTT_BROKER_URL || 'mqtt://broker.hivemq.com',
         username: process.env.MQTT_USERNAME,
         password: process.env.MQTT_PASSWORD,
         issTopic: process.env.MQTT_ISS_TOPIC || 'liveData/iss',

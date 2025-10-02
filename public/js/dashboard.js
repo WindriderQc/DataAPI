@@ -1,37 +1,5 @@
 import { API } from '/js/utils/index.js';
 
-// p5.js sketch functions
-let lastUpdateTime = 0;
-let delay = 1000; // 1 second delay
-
-function setup() {
-    const canvas = createCanvas(800, 600);
-    canvas.parent('pixel-canvas');
-}
-
-function draw() {
-    if (millis() - lastUpdateTime > delay) {
-        // Code to be executed less frequently
-        squares();
-        lastUpdateTime = millis();
-    }
-}
-
-function squares() {
-    background(180);
-    for (let y = 0; y < height; y = y + 15) {
-        for (let x = 0; x < width; x = x + 10) {
-            fill(random(255), random(255), random(255));
-            rect(x, y, 8, 8);
-        }
-    }
-}
-
-// Make p5.js functions global so they can be called by the p5.js library
-window.setup = setup;
-window.draw = draw;
-
-
 // Dashboard UI and Charting Logic
 let worldMap;
 
@@ -100,6 +68,30 @@ async function getUserInfo() {
     document.getElementById('ip_id').innerHTML = "<pre>" + JSON.stringify(info.TimeZone, null, '\t') + "</pre>";
 }
 
+function generateCustomLegend() {
+    const legendContainer = document.getElementById('worldMapLegend');
+    if (!legendContainer) return;
+
+    const legendData = [
+        { color: 'rgba(0, 200, 100, 0.5)', label: '< 40 Hits' },
+        { color: 'rgba(0, 100, 200, 0.7)', label: '>= 40 Hits' },
+        { color: 'rgba(200, 200, 200, 0.25)', label: 'No Data' }
+    ];
+
+    let legendHTML = '<h5>Legend</h5><ul class="list-unstyled">';
+    legendData.forEach(item => {
+        legendHTML += `
+            <li>
+                <span class="legend-color-box" style="background-color:${item.color};"></span>
+                ${item.label}
+            </li>`;
+    });
+    legendHTML += '</ul>';
+
+    legendContainer.innerHTML = legendHTML;
+}
+
+
 function setWorlGraph(data) {
     const countryNameCorrections = {
         "United States": "United States of America",
@@ -125,7 +117,6 @@ function setWorlGraph(data) {
                     console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
                 }
             });
-
             const chartData = {
                 labels: countries.map(d => d.properties.name),
                 datasets: [{
@@ -134,6 +125,16 @@ function setWorlGraph(data) {
                         feature: country,
                         value: countryCounts[country.properties.name] || 0
                     })),
+                    backgroundColor: (context) => {
+                        // The context object provides `dataIndex`, not `index`. This was the error.
+                        const dataItem = context.dataset.data[context.dataIndex];
+                        if (!dataItem || !dataItem.value) {
+                            return 'rgba(200, 200, 200, 0.25)'; // Default grey for missing values
+                        }
+                        const value = dataItem.value;
+                        if (value < 40) return `rgba(0, 200, 100, ${(value * 5) / 200 + 0.15})`;
+                        return `rgba(0, 100, 200, ${(value * 3) / 100 + 0.1})`;
+                    },
                 }]
             };
 
@@ -146,29 +147,14 @@ function setWorlGraph(data) {
                     scales: {
                         projection: {
                             axis: 'x',
-                            projection: 'equalEarth',
-                        },
-                        color: {
-                            axis: 'x',
-                            interpolate: (value) => {
-                                if (value < 0.01) {
-                                    return 'white';
-                                }
-                                const t = Math.min(1, Math.max(0, value / 20));
-                                const r = Math.round(173.21 - t * (173.21 - 70.98));
-                                const g = Math.round(216.84 - t * (216.84 - 145.44));
-                                const b = Math.round(230.27 - t * (230.27 - 213.91));
-                                return `rgb(${r}, ${g}, ${b})`;
-                            },
-                            legend: {
-                                position: 'bottom-right',
-                                align: 'bottom',
-                            },
-                        },
+                            projection: 'equalEarth'
+                        }
                     },
                     plugins: {
-                        legend: { display: false },
-                    },
+                        legend: {
+                            display: false
+                        }
+                    }
                 }
             };
 
@@ -176,6 +162,7 @@ function setWorlGraph(data) {
                 worldMap.destroy();
             }
             worldMap = new Chart(document.getElementById('worldMap'), config);
+            generateCustomLegend(); // Call the function to generate our custom legend
         });
 }
 
