@@ -5,19 +5,19 @@ const bcrypt = require('bcrypt');
 describe('Auth Flow', () => {
   let app;
   let db;
-  let closeHttpServer;
   let dbConnection;
+  let mongoStore;
 
   beforeAll(async () => {
-    const { app: expressApp, db: initializedDb, closeHttpServer: serverCloser, dbConnection: conn } = await setup();
+    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store } = await setup();
     app = expressApp;
     db = initializedDb;
-    closeHttpServer = serverCloser;
     dbConnection = conn;
+    mongoStore = store;
   }, 30000);
 
   afterAll(async () => {
-    await fullTeardown({ closeHttpServer, dbConnection });
+    await fullTeardown({ dbConnection, mongoStore });
   });
 
   beforeEach(async () => {
@@ -66,16 +66,26 @@ describe('Auth Flow', () => {
   });
 
   it('should allow access to the /users route after login', async () => {
-    const agent = request.agent(app);
+    // 1. Setup: Create a user
     const hashedPassword = await bcrypt.hash('password', 10);
     await db.modelDb.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
 
-    await agent
+    // 2. Login and get the session cookie
+    const loginRes = await request(app)
       .post('/login')
       .send({ email: 'test@example.com', password: 'password' })
       .expect(302);
 
-    const res = await agent.get('/users').expect(200);
+    const cookies = loginRes.headers['set-cookie'];
+    expect(cookies).toBeDefined();
+
+    // 3. Make a subsequent request with the cookie
+    const res = await request(app)
+      .get('/users')
+      .set('Cookie', cookies);
+
+    // 4. Assert that the request was successful
+    expect(res.statusCode).toBe(200);
     expect(res.text).toContain('User Management');
   });
 
