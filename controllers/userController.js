@@ -1,10 +1,10 @@
 // controllers/userController.js
-const User = require('../models/userModel');
 const { validationResult } = require('express-validator');
 const { BadRequest, NotFoundError, ConflictError } = require('../utils/errors');
 
 // GET /users
 exports.index = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     try {
         const users = await User.find();
         res.json({
@@ -19,6 +19,7 @@ exports.index = async (req, res, next) => {
 
 // POST /users
 exports.new = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return next(new BadRequest(errors.array()));
@@ -47,6 +48,7 @@ exports.new = async (req, res, next) => {
 
 // POST /users/login
 exports.login = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     const { email, password } = req.body;
     try {
         const user = await User.findOne({ email });
@@ -77,6 +79,7 @@ exports.login = async (req, res, next) => {
 
 // GET /users/fromEmail/:email
 exports.fromEmail = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     try {
         const user = await User.findOne({ email: req.params.email });
         if (!user) return next(new NotFoundError('User not found'));
@@ -92,6 +95,7 @@ exports.fromEmail = async (req, res, next) => {
 
 // GET /users/:id
 exports.view = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     try {
         const user = await User.findById(req.params.id);
         if (!user) return next(new NotFoundError('User not found'));
@@ -107,6 +111,7 @@ exports.view = async (req, res, next) => {
 
 // PATCH/PUT /users/:id
 exports.update = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     try {
         const updateData = req.body;
         if (updateData.password) delete updateData.password;
@@ -124,6 +129,7 @@ exports.update = async (req, res, next) => {
 
 // DELETE /users/:id
 exports.delete = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     try {
         const user = await User.findByIdAndDelete(req.params.id);
         if (!user) return next(new NotFoundError('User not found'));
@@ -138,6 +144,7 @@ exports.delete = async (req, res, next) => {
 
 // Model view controller for rendering the users page.
 exports.renderUsersPage = async (req, res, next) => {
+    const { User } = req.app.locals.models;
     try {
         const users = await User.find();
         res.render('users', {

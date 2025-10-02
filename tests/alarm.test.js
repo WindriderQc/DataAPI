@@ -20,7 +20,7 @@ describe('Alarm API', () => {
   });
 
   beforeEach(async () => {
-    await db.collection('alarms').deleteMany({});
+    await db.datasDb.collection('alarms').deleteMany({});
   });
 
   it('should create a new alarm', async () => {
@@ -38,7 +38,7 @@ describe('Alarm API', () => {
   });
 
   it('should get all alarms with a specific query', async () => {
-    await db.collection('alarms').insertOne({ espID: 'esp123', io: '1', enabled: true });
+    await db.datasDb.collection('alarms').insertOne({ espID: 'esp123', io: '1', enabled: true });
 
     const res = await request(app)
       .get('/api/v1/alarms?espID=esp123&io=1');
