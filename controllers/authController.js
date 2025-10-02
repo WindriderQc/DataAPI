@@ -56,21 +56,22 @@ exports.login = async (req, res, next) => {
         }
 
         log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
-        const returnTo = req.session.returnTo;
+        const returnTo = req.session.returnTo; // Capture the returnTo URL from the old session
 
         // Use callbacks for session manipulation to ensure sequential execution
         req.session.regenerate((err) => {
             if (err) return next(err);
 
-            // Store user information in the new session
+            // Store user information and the returnTo URL in the new session
             req.session.userId = user._id.toString();
+            req.session.returnTo = returnTo;
 
             // Save the session before responding
             req.session.save((err) => {
                 if (err) return next(err);
 
                 log(`[AUTH] Session userId set to: ${req.session.userId}`);
-                const redirectUrl = returnTo || '/users';
+                const redirectUrl = req.session.returnTo || '/users'; // Use the value from the new session
                 log(`[AUTH] Redirecting to ${redirectUrl}...`);
                 res.redirect(redirectUrl);
             });
@@ -85,9 +86,11 @@ exports.login = async (req, res, next) => {
 exports.logout = (req, res) => {
     req.session.destroy(err => {
         if (err) {
-            return res.redirect('/users');
+            // Even if there's an error destroying the session,
+            // we should still try to clear the cookie and redirect.
+            log(`Error destroying session: ${err}`, 'error');
         }
-        res.clearCookie(process.env.SESS_NAME || 'sid');
+        res.clearCookie(config.session.name);
         res.redirect('/');
     });
 };
