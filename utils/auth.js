@@ -1,5 +1,6 @@
 const { ObjectId } = require('mongodb');
 const { log } = require('./logger');
+const config = require('../config/config');
 
 const attachUser = async (req, res, next) => {
     log(`[MIDDLEWARE] attachUser: Req for [${req.originalUrl}] from origin [${req.headers.origin}] - Checking session with ID: ${req.sessionID}`);
@@ -8,11 +9,12 @@ const attachUser = async (req, res, next) => {
         log(`[MIDDLEWARE] attachUser: Session found with userId: ${req.session.userId}`);
         try {
             const dbs = req.app.locals.dbs;
-            if (!dbs || !dbs.datas) {
-                log('[MIDDLEWARE] attachUser: Database not available.', 'error');
+            const modelDbName = config.db.modelDbName;
+            if (!dbs || !dbs[modelDbName]) {
+                log(`[MIDDLEWARE] attachUser: Database '${modelDbName}' not available.`, 'error');
                 return next();
             }
-            const usersCollection = dbs.datas.collection('users');
+            const usersCollection = dbs[modelDbName].collection('users');
             if (!ObjectId.isValid(req.session.userId)) {
                 log(`[MIDDLEWARE] attachUser: Invalid userId format: ${req.session.userId}`, 'error');
                 return next();

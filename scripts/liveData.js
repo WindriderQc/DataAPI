@@ -3,18 +3,18 @@ const CSVToJSON = require('csvtojson');
 const mqttClient = require('./mqttClient.js');
 const config = require('../config/config');
 
-let dbs; // To store database connections
+let datasDb; // To store the 'datas' database connection
 
 let datas = { version: 1.0 };
 const version = datas.version;
 let intervalIds = [];
 
 async function getISS() {
-    if (!dbs || !dbs.datas) {
+    if (!datasDb) {
         console.error('[liveData] getISS: Database not initialized.');
         return;
     }
-    const issCollection = dbs.datas.collection('isses');
+    const issCollection = datasDb.collection('isses');
 
     try {
         const response = await fetch(config.api.iss.url);
@@ -42,11 +42,11 @@ async function getISS() {
 }
 
 async function getQuakes() {
-    if (!dbs || !dbs.datas) {
+    if (!datasDb) {
         console.error('[liveData] getQuakes: Database not initialized.');
         return;
     }
-    const quakesCollection = dbs.datas.collection('quakes');
+    const quakesCollection = datasDb.collection('quakes');
 
     try {
         const response = await fetch(config.api.quakes.url);
@@ -70,8 +70,8 @@ async function getQuakes() {
     }
 }
 
-function init(dbConnections) {
-    dbs = dbConnections;
+function init(dbConnection) {
+    datasDb = dbConnection;
 
     if (!fs.existsSync(config.api.quakes.path)) {
         console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", config.api.quakes.path, "interval:", config.api.quakes.interval);
