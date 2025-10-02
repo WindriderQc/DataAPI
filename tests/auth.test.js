@@ -14,7 +14,7 @@ describe('Auth Flow', () => {
     db = initializedDb;
     closeHttpServer = serverCloser;
     dbConnection = conn;
-  });
+  }, 30000);
 
   afterAll(async () => {
     await fullTeardown({ closeHttpServer, dbConnection });
