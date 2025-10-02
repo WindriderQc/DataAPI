@@ -54,12 +54,53 @@ async function createApp() {
         log("Initializing mongodb connections...");
         const dbConnection = await mdb.init();
         
-        log("Assigning dbs to app.locals...");
-        app.locals.dbs = {};
-        for (const dbName of config.db.appDbNames) {
-            app.locals.dbs[dbName] = dbConnection.getDb(dbName);
-        }
-        log("DBs assigned.");
+        try {
+            log("Assigning dbs to app.locals...");
+            app.locals.dbs = {};
+            for (const dbName of config.db.appDbNames) {
+                app.locals.dbs[dbName] = dbConnection.getDb(dbName);
+            }
+            log("DBs assigned.");
+
+            // Insert boot log
+            const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
+
+            await userLogsCollection.insertOne({
+                logType: 'boot',
+                client: 'server',
+                content: 'dbServer boot',
+                authorization: 'none',
+                host: config.env === 'production' ? "Production Mode" : "Development Mode",
+                ip: 'localhost',
+                hitCount: 'N/A',
+                created: new Date()
+            });
+            log("Boot log inserted.");
+
+ 
+            // Fetch and log collection info for all dbs
+            app.locals.collectionInfo = [];
+
+            for (const dbName in app.locals.dbs) {
+                const db = app.locals.dbs[dbName];
+                if (db) {
+                    const collections = await db.listCollections().toArray();
+                    for (const coll of collections) {
+                        const count = await db.collection(coll.name).countDocuments();
+                        app.locals.collectionInfo.push({  db: dbName,  collection: coll.name, count: count });
+                    }
+                }
+            }
+            log(`Collection Info for all dbs has been gathered. \n__________________________________________________\n\n`);
+
+            // Initialize and attach models to app.locals
+            app.locals.models = {
+                User: createUserModel(dbConnection.mongooseConnection)
+            };
+            log("Models initialized and attached to app.locals.");
+
+
+        } catch (e) {            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');        }
 
         // Initialize and attach models to app.locals
         app.locals.models = {
