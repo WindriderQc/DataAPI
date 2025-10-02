@@ -2,6 +2,7 @@ const createApp = require('../data_serv');
 const { closeServer: closeMongoServer } = require('../mongooseDB');
 const { logger } = require('../utils/logger');
 const config = require('../config/config');
+const liveDatas = require('../scripts/liveData'); // Import liveDatas
 
 const setup = async () => {
     const { app, dbConnection, mongoStore } = await createApp();
@@ -15,7 +16,8 @@ const setup = async () => {
 };
 
 const fullTeardown = async ({ dbConnection, mongoStore }) => {
-    // Gracefully close all connections
+    // Gracefully close all connections and services
+    await liveDatas.close(); // Explicitly close liveData services
     if (mongoStore && typeof mongoStore.close === 'function') {
         mongoStore.close(); // This is synchronous
     }
