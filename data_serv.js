@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first'); // Prioritize IPv4 to resolve connection timeout issues in some environments
+
 const express = require('express');
 const morgan = require('morgan');
 const path = require('path');
