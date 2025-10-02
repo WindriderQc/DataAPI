@@ -21,7 +21,7 @@ describe('Auth Flow', () => {
   });
 
   beforeEach(async () => {
-    await db.collection('users').deleteMany({});
+    await db.modelDb.collection('users').deleteMany({});
   });
 
   it('should register a new user and redirect to login', async () => {
@@ -35,7 +35,7 @@ describe('Auth Flow', () => {
 
   it('should log in an existing user', async () => {
     const hashedPassword = await bcrypt.hash('password', 10);
-    await db.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
+    await db.modelDb.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
 
     const res = await request(app)
       .post('/login')
@@ -48,7 +48,7 @@ describe('Auth Flow', () => {
 
   it('should fail to log in with incorrect credentials', async () => {
     const hashedPassword = await bcrypt.hash('password', 10);
-    await db.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
+    await db.modelDb.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
 
     const res = await request(app)
       .post('/login')
@@ -68,7 +68,7 @@ describe('Auth Flow', () => {
   it('should allow access to the /users route after login', async () => {
     const agent = request.agent(app);
     const hashedPassword = await bcrypt.hash('password', 10);
-    await db.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
+    await db.modelDb.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
 
     await agent
       .post('/login')
@@ -82,7 +82,7 @@ describe('Auth Flow', () => {
   it('should log out a user', async () => {
     const agent = request.agent(app);
     const hashedPassword = await bcrypt.hash('password', 10);
-    await db.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
+    await db.modelDb.collection('users').insertOne({ name: 'Test User', email: 'test@example.com', password: hashedPassword });
 
     await agent
       .post('/login')
