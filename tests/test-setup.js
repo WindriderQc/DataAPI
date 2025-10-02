@@ -2,17 +2,22 @@ const startServer = require('../data_serv');
 const { closeServer: closeMongoServer } = require('../mongooseDB');
 const mongoose = require('mongoose');
 const { logger } = require('../utils/logger'); // Import the logger instance
+const config = require('../config/config');
 
 const setup = async () => {
     const { app, close: closeHttpServer, dbConnection } = await startServer();
+    const modelDb = dbConnection.getDb(config.db.modelDbName);
     const datasDb = dbConnection.getDb('datas');
 
     // Seed the database with some data for testing
-    await datasDb.collection('users').insertOne({ name: 'Test User' });
+    // User data goes into the main model DB
+    await modelDb.collection('users').insertOne({ name: 'Test User' });
+    // Other test data goes into the 'datas' DB
     await datasDb.collection('devices').insertOne({ name: 'Test Device' });
     await datasDb.collection('mews').insertOne({ message: 'Test Mew' });
 
-    return { app, db: datasDb, closeHttpServer, dbConnection };
+    // Return both db connections for flexibility in tests
+    return { app, db: { modelDb, datasDb }, closeHttpServer, dbConnection };
 };
 
 const fullTeardown = async ({ closeHttpServer, dbConnection }) => {
