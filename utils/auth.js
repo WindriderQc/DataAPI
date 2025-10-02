@@ -4,6 +4,7 @@ const config = require('../config/config');
 
 const attachUser = async (req, res, next) => {
     log(`[MIDDLEWARE] attachUser: Req for [${req.originalUrl}] from origin [${req.headers.origin}] - Checking session with ID: ${req.sessionID}`);
+    log(`[MIDDLEWARE] attachUser: Full session object: ${JSON.stringify(req.session)}`);
     res.locals.user = null;
     if (req.session && req.session.userId) {
         log(`[MIDDLEWARE] attachUser: Session found with userId: ${req.session.userId}`);

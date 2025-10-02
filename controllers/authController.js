@@ -55,23 +55,23 @@ exports.login = async (req, res, next) => {
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
-        log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
-        const returnTo = req.session.returnTo; // Capture the returnTo URL from the old session
+        log(`[AUTH] Login successful for user: ${user._id}.`);
+        log(`[AUTH] PRE-REGENERATE: Session ID: ${req.sessionID}, Session: ${JSON.stringify(req.session)}`);
+        const returnTo = req.session.returnTo;
 
-        // Use callbacks for session manipulation to ensure sequential execution
+        // Use callbacks to be absolutely sure of the execution order
         req.session.regenerate((err) => {
             if (err) return next(err);
+            log(`[AUTH] POST-REGENERATE: New Session ID: ${req.sessionID}`);
 
-            // Store user information and the returnTo URL in the new session
             req.session.userId = user._id.toString();
             req.session.returnTo = returnTo;
+            log(`[AUTH] SESSION TO BE SAVED: ${JSON.stringify(req.session)}`);
 
-            // Save the session before responding
             req.session.save((err) => {
                 if (err) return next(err);
-
-                log(`[AUTH] Session userId set to: ${req.session.userId}`);
-                const redirectUrl = req.session.returnTo || '/users'; // Use the value from the new session
+                log(`[AUTH] SESSION SAVED. Cookie: ${JSON.stringify(req.session.cookie)}`);
+                const redirectUrl = req.session.returnTo || '/users';
                 log(`[AUTH] Redirecting to ${redirectUrl}...`);
                 res.redirect(redirectUrl);
             });

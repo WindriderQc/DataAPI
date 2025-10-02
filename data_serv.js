@@ -20,64 +20,38 @@ const createUserModel = require('./models/userModel');
 
 const IN_PROD = config.env === 'production';
 
-const app = express();
-app.set('trust proxy', 1) // trust first proxy
+async function createApp() {
+    const app = express();
+    app.set('trust proxy', 1);
 
-// Make version available in all templates
-app.locals.appVersion = pjson.version;
+    app.locals.appVersion = pjson.version;
 
+    app.use(express.static(path.join(__dirname, 'public')));
+    app.use(morgan('dev'));
 
-// Middlewares & routes
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(morgan('dev'));
-// Configure CORS to be more restrictive in production
-const corsOptions = {
-    origin: (origin, callback) => {
-        // In development, allow all origins for ease of testing.
-        if (!IN_PROD) {
-            return callback(null, true);
-        }
-
-        // In production, only allow requests from a specific whitelist of origins.
-        const whitelist = (process.env.CORS_WHITELIST || '').split(',');
-
-        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman).
-        let allowed = false;
-        if (whitelist.includes(origin) || !origin) {
-            allowed = true;
-        } else if (origin) {
-            // Also allow localhost origins for local production testing.
-            try {
-                const originUrl = new URL(origin);
-                if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
-                    allowed = true;
-                }
-            } catch (e) {
-                // Malformed origin, ignore.
+    const corsOptions = {
+        origin: (origin, callback) => {
+            if (!IN_PROD) {
+                return callback(null, true);
             }
-        }
+            const whitelist = (process.env.CORS_WHITELIST || '').split(',');
+            if (whitelist.includes(origin) || !origin) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true,
+        optionsSuccessStatus: 200
+    };
 
-        if (allowed) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true, // This is important for sessions/cookies.
-    optionsSuccessStatus: 200
-};
-// CORS middleware is now applied directly to API routes.
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.json({ limit: '10mb' }));
-
-
-
-async function startServer() {
+    app.set('view engine', 'ejs');
+    app.set('views', path.join(__dirname, 'views'));
+    app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    app.use(express.json({ limit: '10mb' }));
 
     try {
-        log("Initializing mongodb connections..."); 
+        log("Initializing mongodb connections...");
         const dbConnection = await mdb.init();
         
         try {
@@ -128,19 +102,22 @@ async function startServer() {
 
         } catch (e) {            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');        }
 
- 
+        // Initialize and attach models to app.locals
+        app.locals.models = {
+            User: createUserModel(dbConnection.mongooseConnection)
+        };
+        log("Models initialized and attached to app.locals.");
 
-        // Initialize LiveData (MQTT client, etc.) only if not in test environment
         if (config.env !== 'test') {
             liveDatas.init(app.locals.dbs.datas);
-            log("LiveData  -  v" + liveDatas.version);
+            log("LiveData - v" + liveDatas.version);
         }
 
-
-
-
-
-        let mongoStore = new MongoDBStore({  uri: dbConnection.getMongoUrl(), collection: 'mySessions',  client: dbConnection.client    });
+        const mongoStore = new MongoDBStore({
+            uri: dbConnection.getMongoUrl(),
+            collection: 'mySessions',
+            client: dbConnection.client,
+        });
         mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
 
         const sessionOptions = {
@@ -152,93 +129,60 @@ async function startServer() {
             cookie: {
                 secure: IN_PROD,
                 httpOnly: true,
-                sameSite: 'lax', // Use 'lax' for better compatibility in proxied environments
+                sameSite: 'lax',
                 maxAge: config.session.maxAge,
             }
         };
-
-        // Set cookie domain only if it's configured
         if (config.session.cookie_domain) {
             sessionOptions.cookie.domain = config.session.cookie_domain;
         }
 
-
-          
-        // Apply rate limiting and API routes
-        const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
+        const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
         app.use('/api/', apiLimiter);
-        // Apply CORS middleware only to API routes
-        app.use('/api/v1', cors(corsOptions), require("./routes/api.routes")); // API routes don't use session middleware
-        // Create a dedicated router for web routes that require session handling
+        app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
+
         const webRouter = express.Router();
         webRouter.use(session(sessionOptions));
-        webRouter.use(attachUser); // Apply attachUser middleware only to web routes
+        webRouter.use(attachUser);
         webRouter.use('/', require("./routes/auth.routes"));
         webRouter.use('/', require("./routes/web.routes"));
-        app.use('/', webRouter); // Mount the web router
+        app.use('/', webRouter);
 
-
-        // Global error handler should be last
         app.use((err, req, res, next) => {
-
-            if (res.headersSent) {     return next(err);    }
-
-            // Handle Mongoose CastError (e.g., for malformed IDs)
-            if (err.name === 'CastError') {
-                return res.status(400).json({  status: 'error',  message: 'Invalid ID format.'    });
+            if (res.headersSent) {
+                return next(err);
             }
-
+            if (err.name === 'CastError') {
+                return res.status(400).json({ status: 'error', message: 'Invalid ID format.' });
+            }
             if (err instanceof GeneralError) {
                 const responseJson = { status: 'error', message: err.message };
-                if (err.errors) {     responseJson.errors = err.errors;       }
+                if (err.errors) {
+                    responseJson.errors = err.errors;
+                }
                 return res.status(err.getCode()).json(responseJson);
             }
-
             log(err.stack, 'error');
-
             return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
         });
 
- 
-
-        
-
-        let server;
-
-        if (config.env !== 'test') {
-            server = app.listen(config.server.port, () => {
-                log(`\n\nData API Server running at port ${config.server.port}`);
-            });
-        }
-
- 
-
-        const closeServer = async () => {
-            if (server) {
-                await new Promise(resolve => server.close(resolve));
-                log('Server closed.');
-            }
-            await liveDatas.close();
-        };
-
- 
-        return { app, close: closeServer, dbConnection };
-
+        return { app, dbConnection, mongoStore };
 
     } catch (err) {
-
-        log(`Failed to initialize database: ${err}`, 'error');
-        if (process.env.NODE_ENV !== 'test') {
-            process.exit(1);
-        } else {
-            throw err;
-        }
+        log(`Failed to initialize application: ${err}`, 'error');
+        throw err; // Re-throw error to be caught by caller
     }
 }
 
- 
+if (require.main === module) {
+    createApp().then(({ app }) => {
+        app.listen(config.server.port, () => {
+            log(`\n\nData API Server running at port ${config.server.port}`);
+        });
+    }).catch(err => {
+        log(`Failed to start server: ${err}`, 'error');
+        process.exit(1);
+    });
+}
 
-// Start the server only if the file is run directly
-if (require.main === module) {  startServer();  }
-
-module.exports = startServer;
+module.exports = createApp;
