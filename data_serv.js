@@ -20,49 +20,74 @@ const createUserModel = require('./models/userModel');
 
 const IN_PROD = config.env === 'production';
 
-async function createApp() {
-    const app = express();
-    app.set('trust proxy', 1);
+const app = express();
+app.set('trust proxy', 1);
 
-    app.locals.appVersion = pjson.version;
+// Make version available in all templates
+app.locals.appVersion = pjson.version;
 
-    app.use(express.static(path.join(__dirname, 'public')));
-    app.use(morgan('dev'));
 
-    const corsOptions = {
-        origin: (origin, callback) => {
-            if (!IN_PROD) {
-                return callback(null, true);
+// Middlewares & routes
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(morgan('dev'));
+// Configure CORS to be more restrictive in production
+const corsOptions = {
+    origin: (origin, callback) => {
+        // In development, allow all origins for ease of testing.
+        if (!IN_PROD) {
+            return callback(null, true);
+        }
+
+        // In production, only allow requests from a specific whitelist of origins.
+        const whitelist = (process.env.CORS_WHITELIST || '').split(',');
+
+        // Allow requests from whitelisted origins or requests with no origin (e.g., Postman).
+        let allowed = false;
+        if (whitelist.includes(origin) || !origin) {
+            allowed = true;
+        } else if (origin) {
+            // Also allow localhost origins for local production testing.
+            try {
+                const originUrl = new URL(origin);
+                if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
+                    allowed = true;
+                }
+            } catch (e) {
+                // Malformed origin, ignore.
             }
-            const whitelist = (process.env.CORS_WHITELIST || '').split(',');
-            if (whitelist.includes(origin) || !origin) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
-        credentials: true,
-        optionsSuccessStatus: 200
-    };
+        }
 
-    app.set('view engine', 'ejs');
-    app.set('views', path.join(__dirname, 'views'));
-    app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-    app.use(express.json({ limit: '10mb' }));
+        if (allowed) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true, // This is important for sessions/cookies.
+    optionsSuccessStatus: 200
+};
+// CORS middleware is now applied directly to API routes.
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 
+
+
+async function startServer() {
     try {
         log("Initializing mongodb connections...");
         const dbConnection = await mdb.init();
         
-        log("Assigning dbs to app.locals...");
-        app.locals.dbs = {};
-        for (const dbName of config.db.appDbNames) {
-            app.locals.dbs[dbName] = dbConnection.getDb(dbName);
-        }
-        log("DBs assigned.");
-
-        // Insert boot log and gather collection info
         try {
+            log("Assigning dbs to app.locals...");
+            app.locals.dbs = {};
+            for (const dbName of config.db.appDbNames) {
+                app.locals.dbs[dbName] = dbConnection.getDb(dbName);
+            }
+            log("DBs assigned.");
+
+            // Insert boot log
             if (config.env !== 'test') {
                 const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
                 await userLogsCollection.insertOne({
@@ -78,6 +103,7 @@ async function createApp() {
                 log("Boot log inserted.");
             }
 
+            // Fetch and log collection info for all dbs
             app.locals.collectionInfo = [];
             for (const dbName in app.locals.dbs) {
                 const db = app.locals.dbs[dbName];
@@ -85,24 +111,26 @@ async function createApp() {
                     const collections = await db.listCollections().toArray();
                     for (const coll of collections) {
                         const count = await db.collection(coll.name).countDocuments();
-                        app.locals.collectionInfo.push({ db: dbName, collection: coll.name, count: count });
+                        app.locals.collectionInfo.push({  db: dbName,  collection: coll.name, count: count });
                     }
                 }
             }
             log(`Collection Info for all dbs has been gathered.`);
+
+            // Initialize and attach models to app.locals
+            app.locals.models = {
+                User: createUserModel(dbConnection.mongooseConnection)
+            };
+            log("Models initialized and attached to app.locals.");
+
         } catch (e) {
-            log(`Could not initialize boot logs or collection info: ${e.message}`, 'warn');
+            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
         }
 
-        // Initialize and attach models to app.locals
-        app.locals.models = {
-            User: createUserModel(dbConnection.mongooseConnection)
-        };
-        log("Models initialized and attached to app.locals.");
-
+        // Initialize LiveData (MQTT client, etc.) only if not in test environment
         if (config.env !== 'test') {
             liveDatas.init(app.locals.dbs.datas);
-            log("LiveData - v" + liveDatas.version);
+            log("LiveData  -  v" + liveDatas.version);
         }
 
         const mongoStore = new MongoDBStore({
@@ -129,7 +157,7 @@ async function createApp() {
             sessionOptions.cookie.domain = config.session.cookie_domain;
         }
 
-        const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
+        const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
         app.use('/api/', apiLimiter);
         app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
 
@@ -158,23 +186,32 @@ async function createApp() {
             return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
         });
 
-        return { app, dbConnection, mongoStore };
+        let server;
+        if (config.env !== 'test') {
+            server = app.listen(config.server.port, () => {
+                log(`\n\nData API Server running at port ${config.server.port}`);
+            });
+        }
 
+        const closeServer = async () => {
+            if (server) {
+                await new Promise(resolve => server.close(resolve));
+                log('Server closed.');
+            }
+            mongoStore.close();
+            await mdb.closeServer();
+            await liveDatas.close();
+        };
+
+        return { app, close: closeServer, dbConnection };
     } catch (err) {
         log(`Failed to initialize application: ${err}`, 'error');
-        throw err; // Re-throw error to be caught by caller
+        throw err;
     }
 }
 
 if (require.main === module) {
-    createApp().then(({ app }) => {
-        app.listen(config.server.port, () => {
-            log(`\n\nData API Server running at port ${config.server.port}`);
-        });
-    }).catch(err => {
-        log(`Failed to start server: ${err}`, 'error');
-        process.exit(1);
-    });
+    startServer();
 }
 
-module.exports = createApp;
+module.exports = startServer;
