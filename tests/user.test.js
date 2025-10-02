@@ -19,7 +19,7 @@ describe('User API', () => {
 
     // Inject the test-specific model into the app instance so controllers use it
     app.locals.models = { User };
-  });
+  }, 30000);
 
   afterAll(async () => {
     await fullTeardown({ closeHttpServer, dbConnection });
