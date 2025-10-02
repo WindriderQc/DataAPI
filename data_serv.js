@@ -82,7 +82,7 @@ async function startServer() {
             for (const dbName of config.db.appDbNames) {
                 app.locals.dbs[dbName] = dbConnection.getDb(dbName);
             }
-            log("DBs assigned.");
+            log("DBs assigned.",  app.locals.dbs);
 
             // Insert boot log
             const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
@@ -118,6 +118,15 @@ async function startServer() {
         } catch (e) {            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');        }
 
  
+
+        // Initialize LiveData (MQTT client, etc.)
+        // The liveData module itself prevents intervals from running in test mode.
+        liveDatas.init(app.locals.dbs.datas);
+        log("LiveData  -  v" + liveDatas.version);
+
+
+
+
 
         let mongoStore = new MongoDBStore({  uri: dbConnection.getMongoUrl(), collection: 'mySessions',  client: dbConnection.client    });
         mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
@@ -175,10 +184,7 @@ async function startServer() {
 
  
 
-        // Initialize LiveData (MQTT client, etc.)
-        // The liveData module itself prevents intervals from running in test mode.
-        liveDatas.init(app.locals.dbs);
-        log("LiveData  -  v" + liveDatas.version);
+        
 
         let server;
 
