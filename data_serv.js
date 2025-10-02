@@ -127,10 +127,11 @@ async function startServer() {
 
  
 
-        // Initialize LiveData (MQTT client, etc.)
-        // The liveData module itself prevents intervals from running in test mode.
-        liveDatas.init(app.locals.dbs.datas);
-        log("LiveData  -  v" + liveDatas.version);
+        // Initialize LiveData (MQTT client, etc.) only if not in test environment
+        if (config.env !== 'test') {
+            liveDatas.init(app.locals.dbs.datas);
+            log("LiveData  -  v" + liveDatas.version);
+        }
 
 
 
