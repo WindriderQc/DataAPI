@@ -155,6 +155,11 @@ async function startServer() {
             }
         };
 
+        // Set cookie domain only if it's configured
+        if (config.session.cookie_domain) {
+            sessionOptions.cookie.domain = config.session.cookie_domain;
+        }
+
         const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
         app.use('/api/', apiLimiter);
         app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
