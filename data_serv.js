@@ -198,6 +198,9 @@ async function startServer() {
                 await new Promise(resolve => server.close(resolve));
                 log('Server closed.');
             }
+            if (dbConnection) {
+                await dbConnection.close();
+            }
             mongoStore.close();
             await mdb.closeServer();
             await liveDatas.close();
