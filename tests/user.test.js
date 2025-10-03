@@ -27,7 +27,7 @@ describe('User API', () => {
     await fullTeardown({ dbConnection, mongoStore, close });
   });
 
-  afterEach(async () => {
+  beforeEach(async () => {
     await User.deleteMany({});
   });
 

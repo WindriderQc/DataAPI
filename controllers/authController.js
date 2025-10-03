@@ -55,30 +55,18 @@ exports.login = async (req, res, next) => {
             return res.status(401).render('login', { error: 'Invalid credentials' });
         }
 
-        log(`[AUTH] Login successful for user: ${user._id}.`);
-        log(`[DEBUG] PRE-REGENERATE: Session ID: ${req.sessionID}, Session: ${JSON.stringify(req.session)}`);
-        const returnTo = req.session.returnTo;
+        log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
+        const returnTo = req.session.returnTo || '/users';
 
         req.session.regenerate((err) => {
-            if (err) {
-                log(`[DEBUG] login: ERROR REGENERATING SESSION: ${err}`, 'error');
-                return next(err);
-            }
-            log(`[DEBUG] POST-REGENERATE: New Session ID: ${req.sessionID}`);
+            if (err) return next(err);
 
             req.session.userId = user._id.toString();
-            req.session.returnTo = returnTo;
-            log(`[DEBUG] SESSION TO BE SAVED: ${JSON.stringify(req.session)}`);
 
             req.session.save((err) => {
-                if (err) {
-                    log(`[DEBUG] login: ERROR SAVING SESSION: ${err}`, 'error');
-                    return next(err);
-                }
-                log(`[DEBUG] SESSION SAVED. Cookie: ${JSON.stringify(req.session.cookie)}`);
-                const redirectUrl = req.session.returnTo || '/users';
-                log(`[DEBUG] Redirecting to ${redirectUrl}...`);
-                res.redirect(redirectUrl);
+                if (err) return next(err);
+                log(`[AUTH] Redirecting to ${returnTo}...`);
+                res.redirect(returnTo);
             });
         });
 
