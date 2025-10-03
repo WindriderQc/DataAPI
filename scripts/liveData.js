@@ -21,21 +21,15 @@ async function getISS() {
         return;
     }
     const issCollection = datasDb.collection('isses');
-    const issApiUrl = new URL(config.api.iss.url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
 
     try {
-        // Resolve the hostname to an IPv4 address to avoid potential DNS/IPv6 issues
-        const { address } = await lookup(issApiUrl.hostname, { family: 4 });
-        const resolvedUrl = `${issApiUrl.protocol}//${address}${issApiUrl.pathname}`;
-
-        console.log(`[liveData] Fetching ISS location from resolved URL: ${resolvedUrl}`);
-
-        const response = await fetch(resolvedUrl, {
-            headers: { 'Host': issApiUrl.hostname } // Preserve the original hostname for the Host header
-        });
+        const response = await fetch(config.api.iss.url, { signal: controller.signal });
+        clearTimeout(timeoutId); // Clear the timeout if the request succeeds
 
         if (!response.ok) {
-            throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+            throw new Error(`API request failed with status ${response.status}`);
         }
 
         const data = await response.json();
@@ -55,8 +49,11 @@ async function getISS() {
 
         await issCollection.insertOne(datas.iss);
     } catch (error) {
-        console.error('[liveData] Failed to get ISS location. Please check the network connection and API status.');
-        console.error('Error details:', error);
+        if (error.name === 'AbortError') {
+            console.error('[liveData] ISS API request timed out after 5 seconds.');
+        } else {
+            console.error('[liveData] Failed to get ISS location:', error.message);
+        }
     }
 }
 
