@@ -149,9 +149,6 @@ function setWorlGraph(data) {
                         projection: {
                             axis: 'x',
                             projection: 'equalEarth',
-                        },
-                        color: {
-                            display: false
                         }
                     },
                     plugins: {
