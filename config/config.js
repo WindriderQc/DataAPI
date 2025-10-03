@@ -3,6 +3,11 @@
 // Load environment variables from .env file
 require('dotenv').config();
 
+const oneDayInMs = 24 * 60 * 60 * 1000;
+const minSessionAge = 60 * 1000; // 1 minute
+const parsedMaxAge = parseInt(process.env.SESSION_MAX_AGE_MS, 10);
+const sessionMaxAge = (!isNaN(parsedMaxAge) && parsedMaxAge > minSessionAge) ? parsedMaxAge : oneDayInMs;
+
 const config = {
     env: process.env.NODE_ENV || 'development',
     server: {
@@ -17,7 +22,7 @@ const config = {
     session: {
         name: 'data-api.sid',
         secret: process.env.SESSION_SECRET || 'a_very_secret_key_that_should_be_changed',
-        maxAge: parseInt(process.env.SESSION_MAX_AGE_MS, 10) || 24 * 60 * 60 * 1000, // 1 day
+        maxAge: sessionMaxAge,
         cookie_domain: process.env.SESSION_COOKIE_DOMAIN,
     },
     rateLimit: {
