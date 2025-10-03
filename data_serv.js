@@ -106,9 +106,10 @@ async function startServer() {
             // Fetch and log collection info for all dbs
             app.locals.collectionInfo = [];
             for (const dbName in app.locals.dbs) {
-                const db = app.locals.dbs[dbName];
+                const db = app.locals.dbs[dbName]; // This is a Mongoose Connection object
                 if (db) {
-                    const collections = await db.listCollections().toArray();
+                    // Access the native Db object via the .db property to call listCollections
+                    const collections = await db.db.listCollections().toArray();
                     for (const coll of collections) {
                         const count = await db.collection(coll.name).countDocuments();
                         app.locals.collectionInfo.push({  db: dbName,  collection: coll.name, count: count });
