@@ -18,7 +18,6 @@ const config = {
         name: 'data-api.sid',
         secret: process.env.SESSION_SECRET || 'a_very_secret_key_that_should_be_changed',
         maxAge: parseInt(process.env.SESSION_MAX_AGE_MS, 10) || 24 * 60 * 60 * 1000, // 1 day
-        cookie_domain: process.env.SESSION_COOKIE_DOMAIN,
     },
     rateLimit: {
         windowMs: 15 * 60 * 1000, // 15 minutes
