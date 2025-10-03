@@ -27,9 +27,7 @@ const fullTeardown = async ({ close, mongoStore, dbConnection }) => {
             await dbConnection.close();
         }
     }
-    //await liveDatas.close(); // Explicitly close liveData services
-    await closeMongoServer();
-
+    // await closeMongoServer(); // This is now called within the main `close()` function from data_serv.js
     logger.close();
 };
 
