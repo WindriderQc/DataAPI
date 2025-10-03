@@ -154,9 +154,6 @@ async function startServer() {
                 maxAge: config.session.maxAge,
             }
         };
-        if (config.session.cookie_domain) {
-            sessionOptions.cookie.domain = config.session.cookie_domain;
-        }
 
         const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
         app.use('/api/', apiLimiter);
