@@ -56,19 +56,17 @@ exports.login = async (req, res, next) => {
         }
 
         log(`[AUTH] Login successful for user: ${user._id}. Regenerating session.`);
-        const returnTo = req.session.returnTo;
+        const returnTo = req.session.returnTo || '/users';
 
         req.session.regenerate((err) => {
             if (err) return next(err);
 
             req.session.userId = user._id.toString();
-            req.session.returnTo = returnTo;
 
             req.session.save((err) => {
                 if (err) return next(err);
-                const redirectUrl = req.session.returnTo || '/users';
-                log(`[AUTH] Redirecting to ${redirectUrl}...`);
-                res.redirect(redirectUrl);
+                log(`[AUTH] Redirecting to ${returnTo}...`);
+                res.redirect(returnTo);
             });
         });
 
