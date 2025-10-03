@@ -165,6 +165,7 @@ async function startServer() {
         app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
 
         const webRouter = express.Router();
+        webRouter.use(cors(corsOptions));
         webRouter.use(session(sessionOptions));
         webRouter.use(attachUser);
         webRouter.use('/', require("./routes/auth.routes"));
