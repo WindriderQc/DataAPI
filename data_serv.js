@@ -40,6 +40,10 @@ const corsOptions = {
 
         // In production, only allow requests from a specific whitelist of origins.
         const whitelist = (process.env.CORS_WHITELIST || '').split(',');
+        // Temporarily hardcode the frontend domain for diagnostics
+        if (!whitelist.includes('https://data.specialblend.ca')) {
+            whitelist.push('https://data.specialblend.ca');
+        }
 
         // Allow requests from whitelisted origins or requests with no origin (e.g., Postman).
         let allowed = false;
