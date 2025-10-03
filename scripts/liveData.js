@@ -9,6 +9,12 @@ let datas = { version: 1.0 };
 const version = datas.version;
 let intervalIds = [];
 
+const dns = require('dns');
+const util = require('util');
+
+// Promisify the dns.lookup function for async/await usage
+const lookup = util.promisify(dns.lookup);
+
 async function getISS() {
     if (!datasDb) {
         console.error('[liveData] getISS: Database not initialized.');
