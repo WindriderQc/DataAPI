@@ -9,25 +9,43 @@ let datas = { version: 1.0 };
 const version = datas.version;
 let intervalIds = [];
 
+const dns = require('dns');
+const util = require('util');
+
+// Promisify the dns.lookup function for async/await usage
+const lookup = util.promisify(dns.lookup);
+
 async function getISS() {
     if (!datasDb) {
         console.error('[liveData] getISS: Database not initialized.');
         return;
     }
     const issCollection = datasDb.collection('isses');
+    const issApiUrl = new URL(config.api.iss.url);
 
     try {
-        const response = await fetch(config.api.iss.url);
+        // Resolve the hostname to an IPv4 address to avoid potential DNS/IPv6 issues
+        const { address } = await lookup(issApiUrl.hostname, { family: 4 });
+        const resolvedUrl = `${issApiUrl.protocol}//${address}${issApiUrl.pathname}`;
+
+        console.log(`[liveData] Fetching ISS location from resolved URL: ${resolvedUrl}`);
+
+        const response = await fetch(resolvedUrl, {
+            headers: { 'Host': issApiUrl.hostname } // Preserve the original hostname for the Host header
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
         const { latitude, longitude } = data;
-
         const timeStamp = new Date();
 
         datas.iss = { latitude, longitude, timeStamp };
         mqttClient.publish(config.mqtt.issTopic, datas.iss);
 
         const countBefore = await issCollection.countDocuments();
-
         if (countBefore >= config.api.iss.maxLogs) {
             const oldestDoc = await issCollection.findOne({}, { sort: { timeStamp: 1 } });
             if (oldestDoc) {
@@ -37,7 +55,8 @@ async function getISS() {
 
         await issCollection.insertOne(datas.iss);
     } catch (error) {
-        console.log(error, 'Better luck next time getting ISS location...  Keep Rolling! ');
+        console.error('[liveData] Failed to get ISS location. Please check the network connection and API status.');
+        console.error('Error details:', error);
     }
 }
 
