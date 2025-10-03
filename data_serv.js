@@ -206,12 +206,17 @@ async function startServer() {
                 await new Promise(resolve => server.close(resolve));
                 log('Server closed.');
             }
-            mongoStore.close();
+            if (mongoStore && typeof mongoStore.close === 'function') {
+                mongoStore.close();
+            }
+            if (dbConnection && typeof dbConnection.close === 'function') {
+                await dbConnection.close();
+            }
             await mdb.closeServer();
             await liveDatas.close();
         };
 
-        return { app, close: closeServer, dbConnection };
+        return { app, close: closeServer, dbConnection, mongoStore };
     } catch (err) {
         log(`Failed to initialize application: ${err}`, 'error');
         throw err;
