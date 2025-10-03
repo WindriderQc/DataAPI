@@ -1,14 +1,11 @@
-process.env.NODE_ENV = 'test'; // Set the environment to 'test'
+process.env.NODE_ENV = 'test';
 const createApp = require('../data_serv');
-const { closeServer: closeMongoServer } = require('../mongooseDB');
-const { logger } = require('../utils/logger');
 const config = require('../config/config');
-const liveDatas = require('../scripts/liveData'); // Import liveDatas
+const { logger } = require('../utils/logger');
 
 const setup = async () => {
     const { app, dbConnection, mongoStore, close } = await createApp();
 
-    // Create the db object that the tests expect
     const modelDb = dbConnection.getDb(config.db.modelDbName);
     const datasDb = dbConnection.getDb('datas');
     const db = { modelDb, datasDb };
@@ -16,18 +13,10 @@ const setup = async () => {
     return { app, db, dbConnection, mongoStore, close };
 };
 
-const fullTeardown = async ({ close, mongoStore, dbConnection }) => {
+const fullTeardown = async ({ close }) => {
     if (typeof close === 'function') {
         await close();
-    } else {
-        if (mongoStore?.client) {
-            await mongoStore.client.close();
-        }
-        if (dbConnection?.close) {
-            await dbConnection.close();
-        }
     }
-    // await closeMongoServer(); // This is now called within the main `close()` function from data_serv.js
     logger.close();
 };
 
