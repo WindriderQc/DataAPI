@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (worldMapTitle) {
                 worldMapTitle.innerText = `- ${selectedCollection.charAt(0).toUpperCase() + selectedCollection.slice(1)}`;
             }
+            listAllLogs(selectedCollection); // Refresh the map and table with the selected source
         });
     });
 
@@ -149,6 +150,9 @@ function setWorlGraph(data) {
                             axis: 'x',
                             projection: 'equalEarth',
                         },
+                        color: {
+                            display: false
+                        }
                     },
                     plugins: {
                         legend: {
