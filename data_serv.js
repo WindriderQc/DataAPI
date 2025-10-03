@@ -40,6 +40,10 @@ const corsOptions = {
 
         // In production, only allow requests from a specific whitelist of origins.
         const whitelist = (process.env.CORS_WHITELIST || '').split(',');
+        // Temporarily hardcode the frontend domain for diagnostics
+        if (!whitelist.includes('https://data.specialblend.ca')) {
+            whitelist.push('https://data.specialblend.ca');
+        }
 
         // Allow requests from whitelisted origins or requests with no origin (e.g., Postman).
         let allowed = false;
@@ -106,9 +110,10 @@ async function startServer() {
             // Fetch and log collection info for all dbs
             app.locals.collectionInfo = [];
             for (const dbName in app.locals.dbs) {
-                const db = app.locals.dbs[dbName];
+                const db = app.locals.dbs[dbName]; // This is a Mongoose Connection object
                 if (db) {
-                    const collections = await db.listCollections().toArray();
+                    // Access the native Db object via the .db property to call listCollections
+                    const collections = await db.db.listCollections().toArray();
                     for (const coll of collections) {
                         const count = await db.collection(coll.name).countDocuments();
                         app.locals.collectionInfo.push({  db: dbName,  collection: coll.name, count: count });
@@ -147,12 +152,14 @@ async function startServer() {
             secret: config.session.secret,
             store: mongoStore,
             cookie: {
-                secure: IN_PROD,
+                secure: 'auto', // Recommended for applications behind a proxy
                 httpOnly: true,
-                sameSite: 'lax',
+                sameSite: IN_PROD ? 'none' : 'lax', // 'none' is required for cross-origin requests
                 maxAge: config.session.maxAge,
             }
         };
+
+        // Set cookie domain only if it's configured
         if (config.session.cookie_domain) {
             sessionOptions.cookie.domain = config.session.cookie_domain;
         }
@@ -162,6 +169,7 @@ async function startServer() {
         app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
 
         const webRouter = express.Router();
+        webRouter.use(cors(corsOptions));
         webRouter.use(session(sessionOptions));
         webRouter.use(attachUser);
         webRouter.use('/', require("./routes/auth.routes"));
@@ -206,7 +214,7 @@ async function startServer() {
             await liveDatas.close();
         };
 
-        return { app, close: closeServer, dbConnection };
+        return { app, close: closeServer, dbConnection, mongoStore };
     } catch (err) {
         log(`Failed to initialize application: ${err}`, 'error');
         throw err;
