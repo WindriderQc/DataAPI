@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon data_serv.js",
     "start": "node data_serv.js",
-    "test": "NODE_ENV=test jest --detectOpenHandles",
+    "test": "NODE_ENV=test jest",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
