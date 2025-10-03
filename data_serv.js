@@ -150,7 +150,7 @@ async function startServer() {
             cookie: {
                 secure: 'auto', // Recommended for applications behind a proxy
                 httpOnly: true,
-                sameSite: 'lax',
+                sameSite: IN_PROD ? 'none' : 'lax', // 'none' is required for cross-origin requests
                 maxAge: config.session.maxAge,
             }
         };
