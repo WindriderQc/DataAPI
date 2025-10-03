@@ -7,12 +7,14 @@ describe('User API', () => {
   let dbConnection;
   let mongoStore;
   let User;
+  let close;
 
   beforeAll(async () => {
-    const { app: expressApp, dbConnection: conn, mongoStore: store } = await setup();
+    const { app: expressApp, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
     app = expressApp;
     dbConnection = conn;
     mongoStore = store;
+    close = closeFunc;
 
     // Create the User model using the Mongoose connection from the test setup
     User = createUserModel(dbConnection.mongooseConnection);
@@ -22,7 +24,7 @@ describe('User API', () => {
   }, 30000);
 
   afterAll(async () => {
-    await fullTeardown({ dbConnection, mongoStore });
+    await fullTeardown({ dbConnection, mongoStore, close });
   });
 
   afterEach(async () => {

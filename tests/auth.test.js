@@ -7,17 +7,19 @@ describe('Auth Flow', () => {
   let db;
   let dbConnection;
   let mongoStore;
+  let close;
 
   beforeAll(async () => {
-    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store } = await setup();
+    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
     app = expressApp;
     db = initializedDb;
     dbConnection = conn;
     mongoStore = store;
+    close = closeFunc;
   }, 30000);
 
   afterAll(async () => {
-    await fullTeardown({ dbConnection, mongoStore });
+    await fullTeardown({ dbConnection, mongoStore, close });
   });
 
   beforeEach(async () => {
