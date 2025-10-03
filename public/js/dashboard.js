@@ -125,8 +125,8 @@ function setWorlGraph(data) {
     };
 
     const countryCounts = data.reduce((acc, entry) => {
-        if (entry.CountryName) {
-            const correctedCountryName = countryNameCorrections[entry.CountryName] || entry.CountryName;
+        if (entry.Country) {
+            const correctedCountryName = countryNameCorrections[entry.Country] || entry.Country;
             acc[correctedCountryName] = (acc[correctedCountryName] || 0) + 1;
         }
         return acc;
