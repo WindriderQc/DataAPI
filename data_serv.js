@@ -148,7 +148,7 @@ async function startServer() {
             secret: config.session.secret,
             store: mongoStore,
             cookie: {
-                secure: IN_PROD,
+                secure: 'auto', // Recommended for applications behind a proxy
                 httpOnly: true,
                 sameSite: 'lax',
                 maxAge: config.session.maxAge,
