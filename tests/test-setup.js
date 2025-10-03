@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test'; // Set the environment to 'test'
 const createApp = require('../data_serv');
 const { closeServer: closeMongoServer } = require('../mongooseDB');
 const { logger } = require('../utils/logger');
@@ -15,20 +16,20 @@ const setup = async () => {
     return { app, db, dbConnection, mongoStore, close };
 };
 
-const fullTeardown = async ({ dbConnection, mongoStore, close }) => {
-    // Gracefully close all connections and services
-    if (close) {
+const fullTeardown = async ({ close, mongoStore, dbConnection }) => {
+    if (typeof close === 'function') {
         await close();
     } else {
-        await liveDatas.close(); // Explicitly close liveData services
-        if (mongoStore && typeof mongoStore.close === 'function') {
-            mongoStore.close(); // This is synchronous
+        if (mongoStore?.client) {
+            await mongoStore.client.close();
         }
-        if (dbConnection && typeof dbConnection.close === 'function') {
+        if (dbConnection?.close) {
             await dbConnection.close();
         }
-        await closeMongoServer();
     }
+    //await liveDatas.close(); // Explicitly close liveData services
+    await closeMongoServer();
+
     logger.close();
 };
 

@@ -10,11 +10,11 @@ describe('User API', () => {
   let close;
 
   beforeAll(async () => {
-    const { app: expressApp, dbConnection: conn, mongoStore: store, close: closeServer } = await setup();
+    const { app: expressApp, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
     app = expressApp;
     dbConnection = conn;
     mongoStore = store;
-    close = closeServer;
+    close = closeFunc;
 
     // Create the User model using the Mongoose connection from the test setup
     User = createUserModel(dbConnection.mongooseConnection);
