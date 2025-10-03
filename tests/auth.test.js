@@ -10,12 +10,12 @@ describe('Auth Flow', () => {
   let close;
 
   beforeAll(async () => {
-    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store, close: closeServer } = await setup();
+    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
     app = expressApp;
     db = initializedDb;
     dbConnection = conn;
     mongoStore = store;
-    close = closeServer;
+    close = closeFunc;
   }, 30000);
 
   afterAll(async () => {
