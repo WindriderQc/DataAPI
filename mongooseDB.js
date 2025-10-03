@@ -1,13 +1,14 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { MongoClient } = require('mongodb');
 const { log } = require('./utils/logger');
 
-let mongoServer;
+let mongoServer; // This can be shared across connections in a test env
 
 const init = async () => {
     let mongourl;
 
-    if (process.env.NODE_ENV === 'test') {
+    if (process.env.NODE_ENV !== 'production') {
         if (!mongoServer) {
             mongoServer = await MongoMemoryServer.create();
         }
@@ -20,29 +21,30 @@ const init = async () => {
         console.log('DB composed url:', mongourl);
     }
 
-    // Establish a single, unified Mongoose connection
+    // Mongoose connection for models
     await mongoose.connect(mongourl);
 
-    const mainConnection = mongoose.connection;
+    // Native client connection for other parts of the app
+    const client = new MongoClient(mongourl, {
+        useUnifiedTopology: true,
+    });
+    await client.connect();
 
-    // Function to get a specific DB from the main Mongoose connection
-    const getDb = (dbName) => mainConnection.useDb(dbName, { useCache: true });
+    const databases = {
+        SBQC: client.db('SBQC'),
+        datas: client.db('datas'),
+    };
+
+    const getDb = (dbName = 'datas') => databases[dbName];
 
     const getMongoUrl = () => mongourl;
 
-    // The close function now only needs to manage the single Mongoose connection
     const close = async () => {
+        await client.close();
         await mongoose.disconnect();
     };
 
-    // Return the necessary components, deriving the native client from the Mongoose connection
-    return {
-        getDb,
-        getMongoUrl,
-        close,
-        client: mainConnection.getClient(),
-        mongooseConnection: mainConnection
-    };
+    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection };
 };
 
 const closeServer = async () => {
