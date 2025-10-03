@@ -74,147 +74,143 @@ app.use(express.json({ limit: '10mb' }));
 
 
 
-async function startServer() {
+async function createApp() {
+    log("Initializing mongodb connections...");
+    const dbConnection = await mdb.init();
+
     try {
-        log("Initializing mongodb connections...");
-        const dbConnection = await mdb.init();
-        
-        try {
-            log("Assigning dbs to app.locals...");
-            app.locals.dbs = {};
-            for (const dbName of config.db.appDbNames) {
-                app.locals.dbs[dbName] = dbConnection.getDb(dbName);
-            }
-            log("DBs assigned.");
-
-            // Insert boot log
-            if (config.env !== 'test') {
-                const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
-                await userLogsCollection.insertOne({
-                    logType: 'boot',
-                    client: 'server',
-                    content: 'dbServer boot',
-                    authorization: 'none',
-                    host: config.env === 'production' ? "Production Mode" : "Development Mode",
-                    ip: 'localhost',
-                    hitCount: 'N/A',
-                    created: new Date()
-                });
-                log("Boot log inserted.");
-            }
-
-            // Fetch and log collection info for all dbs
-            app.locals.collectionInfo = [];
-            for (const dbName in app.locals.dbs) {
-                const db = app.locals.dbs[dbName];
-                if (db) {
-                    const collections = await db.listCollections().toArray();
-                    for (const coll of collections) {
-                        const count = await db.collection(coll.name).countDocuments();
-                        app.locals.collectionInfo.push({  db: dbName,  collection: coll.name, count: count });
-                    }
-                }
-            }
-            log(`Collection Info for all dbs has been gathered.`);
-
-            // Initialize and attach models to app.locals
-            app.locals.models = {
-                User: createUserModel(dbConnection.mongooseConnection)
-            };
-            log("Models initialized and attached to app.locals.");
-
-        } catch (e) {
-            log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
+        log("Assigning dbs to app.locals...");
+        app.locals.dbs = {};
+        for (const dbName of config.db.appDbNames) {
+            app.locals.dbs[dbName] = dbConnection.getDb(dbName);
         }
+        log("DBs assigned.");
 
-        // Initialize LiveData (MQTT client, etc.) only if not in test environment
+        // Insert boot log
         if (config.env !== 'test') {
-            liveDatas.init(app.locals.dbs.datas);
-            log("LiveData  -  v" + liveDatas.version);
-        }
-
-        const mongoStore = new MongoDBStore({
-            uri: dbConnection.getMongoUrl(),
-            collection: 'mySessions',
-            client: dbConnection.client,
-        });
-        mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
-
-        const sessionOptions = {
-            name: config.session.name,
-            resave: false,
-            saveUninitialized: false,
-            secret: config.session.secret,
-            store: mongoStore,
-            cookie: {
-                secure: IN_PROD,
-                httpOnly: true,
-                sameSite: 'lax',
-                maxAge: config.session.maxAge,
-            }
-        };
-        if (config.session.cookie_domain) {
-            sessionOptions.cookie.domain = config.session.cookie_domain;
-        }
-
-        const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false   });
-        app.use('/api/', apiLimiter);
-        app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
-
-        const webRouter = express.Router();
-        webRouter.use(session(sessionOptions));
-        webRouter.use(attachUser);
-        webRouter.use('/', require("./routes/auth.routes"));
-        webRouter.use('/', require("./routes/web.routes"));
-        app.use('/', webRouter);
-
-        app.use((err, req, res, next) => {
-            if (res.headersSent) {
-                return next(err);
-            }
-            if (err.name === 'CastError') {
-                return res.status(400).json({ status: 'error', message: 'Invalid ID format.' });
-            }
-            if (err instanceof GeneralError) {
-                const responseJson = { status: 'error', message: err.message };
-                if (err.errors) {
-                    responseJson.errors = err.errors;
-                }
-                return res.status(err.getCode()).json(responseJson);
-            }
-            log(err.stack, 'error');
-            return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
-        });
-
-        let server;
-        if (config.env !== 'test') {
-            server = app.listen(config.server.port, () => {
-                log(`\n\nData API Server running at port ${config.server.port}`);
+            const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
+            await userLogsCollection.insertOne({
+                logType: 'boot',
+                client: 'server',
+                content: 'dbServer boot',
+                authorization: 'none',
+                host: config.env === 'production' ? "Production Mode" : "Development Mode",
+                ip: 'localhost',
+                hitCount: 'N/A',
+                created: new Date()
             });
+            log("Boot log inserted.");
         }
 
-        const closeServer = async () => {
-            if (server) {
-                await new Promise(resolve => server.close(resolve));
-                log('Server closed.');
+        // Fetch and log collection info for all dbs
+        app.locals.collectionInfo = [];
+        for (const dbName in app.locals.dbs) {
+            const db = app.locals.dbs[dbName];
+            if (db) {
+                const collections = await db.listCollections().toArray();
+                for (const coll of collections) {
+                    const count = await db.collection(coll.name).countDocuments();
+                    app.locals.collectionInfo.push({ db: dbName, collection: coll.name, count: count });
+                }
             }
-            if (dbConnection) {
-                await dbConnection.close();
-            }
-            // mongoStore.close() is not a function; the client is closed by dbConnection.close()
-            await mdb.closeServer();
-            await liveDatas.close();
-        };
+        }
+        log(`Collection Info for all dbs has been gathered.`);
 
-        return { app, close: closeServer, dbConnection };
-    } catch (err) {
-        log(`Failed to initialize application: ${err}`, 'error');
-        throw err;
+        // Initialize and attach models to app.locals
+        app.locals.models = {
+            User: createUserModel(dbConnection.mongooseConnection)
+        };
+        log("Models initialized and attached to app.locals.");
+
+    } catch (e) {
+        log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
     }
+
+    if (config.env !== 'test') {
+        liveDatas.init(app.locals.dbs.datas);
+        log("LiveData  -  v" + liveDatas.version);
+    }
+
+    const mongoStore = new MongoDBStore({
+        uri: dbConnection.getMongoUrl(),
+        collection: 'mySessions',
+        client: dbConnection.client,
+    });
+    mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
+
+    const sessionOptions = {
+        name: config.session.name,
+        resave: false,
+        saveUninitialized: false,
+        secret: config.session.secret,
+        store: mongoStore,
+        cookie: {
+            secure: IN_PROD,
+            httpOnly: true,
+            sameSite: 'lax',
+            maxAge: config.session.maxAge,
+        }
+    };
+    if (config.session.cookie_domain) {
+        sessionOptions.cookie.domain = config.session.cookie_domain;
+    }
+
+    const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
+    app.use('/api/', apiLimiter);
+    app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
+
+    const webRouter = express.Router();
+    webRouter.use(session(sessionOptions));
+    webRouter.use(attachUser);
+    webRouter.use('/', require("./routes/auth.routes"));
+    webRouter.use('/', require("./routes/web.routes"));
+    app.use('/', webRouter);
+
+    app.use((err, req, res, next) => {
+        if (res.headersSent) {
+            return next(err);
+        }
+        if (err.name === 'CastError') {
+            return res.status(400).json({ status: 'error', message: 'Invalid ID format.' });
+        }
+        if (err instanceof GeneralError) {
+            const responseJson = { status: 'error', message: err.message };
+            if (err.errors) {
+                responseJson.errors = err.errors;
+            }
+            return res.status(err.getCode()).json(responseJson);
+        }
+        log(err.stack, 'error');
+        return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
+    });
+
+
+    let server;
+    const close = async () => {
+        if (server) {
+            await new Promise(resolve => server.close(resolve));
+            log('Server closed.');
+        }
+        await dbConnection.close();
+        await mdb.closeServer();
+        await liveDatas.close();
+        mongoStore.client.close();
+    };
+
+    if (require.main === module) {
+        server = app.listen(config.server.port, () => {
+            log(`\n\nData API Server running at port ${config.server.port}`);
+        });
+
+        process.on('SIGTERM', close);
+        process.on('SIGINT', close);
+    }
+
+    return { app, dbConnection, mongoStore, close };
 }
 
 if (require.main === module) {
-    startServer();
+    createApp();
 }
 
-module.exports = startServer;
+module.exports = createApp;
