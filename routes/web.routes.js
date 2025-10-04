@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { requireAuth } = require('../utils/auth');
+const databaseController = require('../controllers/databaseController');
 const { log } = require('../utils/logger');
 const config = require('../config/config');
 const mqttClient = require('../scripts/mqttClient');
@@ -28,6 +29,8 @@ router.get('/', loadDashboardData, (req, res) => {
         regDevices: res.locals.devices
     });
 });
+
+router.get('/databases', requireAuth, databaseController.getDatabasesView);
 
 router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
     res.render('tools', {

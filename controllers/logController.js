@@ -22,15 +22,16 @@ const getUserLogs = async (req, res, next) => {
         ]);
 
         const enrichedLogs = await Promise.all(logs.map(async (log) => {
-            if (!log.CountryName && log.lon && log.lat) {
+            if (!log.CountryName && log.Latitude && log.Longitude) {
                 try {
                     const apiKey = process.env.LOCATION_IQ_API;
-                    const url = `https://us1.locationiq.com/v1/reverse.php?key=${apiKey}&lat=${log.lat}&lon=${log.lon}&format=json`;
+                    const url = `https://us1.locationiq.com/v1/reverse.php?key=${apiKey}&lat=${log.Latitude}&lon=${log.Longitude}&format=json`;
                     const response = await fetch(url);
                     if (response.ok) {
                         const data = await response.json();
                         if (data.address && data.address.country) {
                             log.CountryName = data.address.country;
+                            log.CountryCode = data.address.country_code;
                         }
                     }
                 } catch (err) {

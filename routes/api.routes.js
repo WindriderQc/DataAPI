@@ -1,6 +1,7 @@
 let router = require('express').Router()
 const { body } = require('express-validator');
 const genericController = require('../controllers/genericController');
+const databaseController = require('../controllers/databaseController');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -31,6 +32,8 @@ router.route('/users/:id')
         body('email').optional().isEmail().normalizeEmail()
     ], userController.update)
     .delete(userController.delete);
+
+router.post('/databases/copy-prod-to-dev', databaseController.copyProdToDev);
 
 // Generic routes for collections
 const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms'];
