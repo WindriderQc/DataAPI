@@ -1,9 +1,9 @@
 'use strict';
 
 const countryCodeToName = {
-    "US": "United States of America",
+    "US": "United States of America", "USA": "United States of America",
     "CA": "Canada",
-    "GB": "United Kingdom",
+    "GB": "United Kingdom", "UK": "United Kingdom",
     "AU": "Australia",
     "DE": "Germany",
     "FR": "France",
@@ -18,39 +18,29 @@ const countryCodeToName = {
 const normalizeCountryData = async (log) => {
     const newLog = { ...log };
 
-    // If CountryName already exists, no need to do anything.
     if (newLog.CountryName) {
         return newLog;
     }
 
-    // Find a key that matches 'countryname', 'country', or 'countrycode' case-insensitively
     const keys = Object.keys(newLog);
-    const countryNameKey = keys.find(k => k.toLowerCase() === 'countryname');
-    const countryKey = keys.find(k => k.toLowerCase() === 'country');
-    const countryCodeKey = keys.find(k => k.toLowerCase() === 'countrycode');
+    const keyMap = {
+        countryName: keys.find(k => k.toLowerCase() === 'countryname'),
+        country: keys.find(k => k.toLowerCase() === 'country'),
+        countryCode: keys.find(k => k.toLowerCase() === 'countrycode'),
+        lat: keys.find(k => k.toLowerCase() === 'lat'),
+        lon: keys.find(k => k.toLowerCase() === 'lon')
+    };
 
-    let countryValue;
-    if (countryNameKey) {
-        countryValue = newLog[countryNameKey];
-    } else if (countryKey) {
-        countryValue = newLog[countryKey];
-    } else if (countryCodeKey) {
-        const code = newLog[countryCodeKey].toUpperCase();
-        countryValue = countryCodeToName[code] || newLog[countryCodeKey];
-    }
-
-    if (countryValue) {
-        newLog.CountryName = countryValue;
-        return newLog; // Return early if we found a text-based country
-    }
-
-    // If no country name was found, try geocoding with lat/lon
-    const latKey = keys.find(k => k.toLowerCase() === 'lat');
-    const lonKey = keys.find(k => k.toLowerCase() === 'lon');
-
-    if (latKey && lonKey) {
-        const lat = newLog[latKey];
-        const lon = newLog[lonKey];
+    if (keyMap.countryName) {
+        newLog.CountryName = newLog[keyMap.countryName];
+    } else if (keyMap.country) {
+        newLog.CountryName = newLog[keyMap.country];
+    } else if (keyMap.countryCode) {
+        const code = newLog[keyMap.countryCode].toUpperCase();
+        newLog.CountryName = countryCodeToName[code] || newLog[keyMap.countryCode];
+    } else if (keyMap.lat && keyMap.lon) {
+        const lat = newLog[keyMap.lat];
+        const lon = newLog[keyMap.lon];
         try {
             const apiKey = process.env.LOCATION_IQ_API;
             if (!apiKey) {
