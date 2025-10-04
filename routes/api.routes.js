@@ -57,17 +57,18 @@ router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
 
 
 
+const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
+
 router.get('/proxy-location', async (req, res) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     console.log("Client IP for proxy-location:", clientIp); // Added more specific log
     try {
         // First get public IP of the server, as ip-api.com might block local IPs or server's own IP if called directly.
-        const ipifyResponse = await fetch('https://api64.ipify.org?format=json');
+        const ipifyResponse = await fetchWithTimeoutAndRetry('https://api64.ipify.org?format=json', { timeout: 4000, retries: 1, name: 'ipify' });
         if (!ipifyResponse.ok) throw new Error(`ipify error! Status: ${ipifyResponse.status}`);
         const { ip: publicIp } = await ipifyResponse.json();
         console.log("Public IP via ipify:", publicIp);
-
-        const geoResponse = await fetch(`http://ip-api.com/json/${publicIp}`);
+        const geoResponse = await fetchWithTimeoutAndRetry(`http://ip-api.com/json/${publicIp}`, { timeout: 4000, retries: 1, name: 'ip-api.com' });
         if (!geoResponse.ok) throw new Error(`ip-api.com error! Status: ${geoResponse.status}`);
         res.json(await geoResponse.json());
     } catch (error) {

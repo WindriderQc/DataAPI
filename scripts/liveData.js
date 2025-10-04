@@ -2,12 +2,15 @@ const fs = require('fs');
 const CSVToJSON = require('csvtojson');
 const mqttClient = require('./mqttClient.js');
 const config = require('../config/config');
+const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 
 let datasDb; // To store the 'datas' database connection
 
 let datas = { version: 1.0 };
 const version = datas.version;
 let intervalIds = [];
+
+// use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
     if (!datasDb) {
@@ -17,7 +20,7 @@ async function getISS() {
     const issCollection = datasDb.collection('isses');
 
     try {
-        const response = await fetch(config.api.iss.url);
+        const response = await fetchWithTimeoutAndRetry(config.api.iss.url, { timeout: config.api.iss.timeout, retries: config.api.iss.retries, name: 'ISS API' });
         const data = await response.json();
         const { latitude, longitude } = data;
 
@@ -37,7 +40,7 @@ async function getISS() {
 
         await issCollection.insertOne(datas.iss);
     } catch (error) {
-        console.log(error, 'Better luck next time getting ISS location...  Keep Rolling! ');
+        console.log(error, 'Better luck next time getting ISS location...  Keep Rolling!');
     }
 }
 
@@ -49,7 +52,7 @@ async function getQuakes() {
     const quakesCollection = datasDb.collection('quakes');
 
     try {
-        const response = await fetch(config.api.quakes.url);
+        const response = await fetchWithTimeoutAndRetry(config.api.quakes.url, { timeout: config.api.quakes.timeout, retries: config.api.quakes.retries, name: 'Quakes API' });
         const data = await response.text();
         fs.writeFileSync(config.api.quakes.path, data);
         const quakes = await CSVToJSON().fromString(data);

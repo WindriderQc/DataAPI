@@ -31,14 +31,25 @@ const config = {
         message: 'Too many requests from this IP, please try again after 15 minutes',
     },
     api: {
+        // Global defaults for fetch timeouts and retries (can be overridden per-endpoint)
+        defaultFetchTimeout: parseInt(process.env.DEFAULT_FETCH_TIMEOUT_MS, 10) || 8000,
+        defaultFetchRetries: parseInt(process.env.DEFAULT_FETCH_RETRIES, 10) || 1,
         iss: {
             url: process.env.ISS_API_URL || 'http://api.open-notify.org/iss-now.json',
             interval: parseInt(process.env.ISS_API_INTERVAL_MS, 10) || 5000,
+            // How long to wait for the HTTP request before aborting (ms)
+            timeout: parseInt(process.env.ISS_FETCH_TIMEOUT_MS, 10) || 5000,
+            // Number of retry attempts on failure
+            retries: parseInt(process.env.ISS_FETCH_RETRIES, 10) || 2,
             maxLogs: parseInt(process.env.ISS_MAX_LOGS, 10) || 1000,
         },
         quakes: {
             url: process.env.QUAKES_API_URL || 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.csv',
             interval: parseInt(process.env.QUAKES_API_INTERVAL_MS, 10) || 24 * 60 * 60 * 1000, // 1 day
+            // How long to wait for the HTTP request before aborting (ms)
+            timeout: parseInt(process.env.QUAKES_FETCH_TIMEOUT_MS, 10) || 15000,
+            // Number of retry attempts on failure
+            retries: parseInt(process.env.QUAKES_FETCH_RETRIES, 10) || 2,
             path: process.env.QUAKES_DATA_PATH || './data/quakes.csv',
         },
     },
