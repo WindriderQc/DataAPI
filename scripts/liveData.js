@@ -15,25 +15,19 @@ async function getISS() {
         return;
     }
     const issCollection = datasDb.collection('isses');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
 
     try {
-        const response = await fetch(config.api.iss.url, { signal: controller.signal });
-        clearTimeout(timeoutId); // Clear the timeout if the request succeeds
-
-        if (!response.ok) {
-            throw new Error(`API request failed with status ${response.status}`);
-        }
-
+        const response = await fetch(config.api.iss.url);
         const data = await response.json();
         const { latitude, longitude } = data;
+
         const timeStamp = new Date();
 
         datas.iss = { latitude, longitude, timeStamp };
         mqttClient.publish(config.mqtt.issTopic, datas.iss);
 
         const countBefore = await issCollection.countDocuments();
+
         if (countBefore >= config.api.iss.maxLogs) {
             const oldestDoc = await issCollection.findOne({}, { sort: { timeStamp: 1 } });
             if (oldestDoc) {
@@ -43,11 +37,7 @@ async function getISS() {
 
         await issCollection.insertOne(datas.iss);
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.error('[liveData] ISS API request timed out after 5 seconds.');
-        } else {
-            console.error('[liveData] Failed to get ISS location:', error.message);
-        }
+        console.log(error, 'Better luck next time getting ISS location...  Keep Rolling! ');
     }
 }
 
