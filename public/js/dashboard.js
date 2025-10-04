@@ -132,6 +132,8 @@ function setWorlGraph(data) {
         return acc;
     }, {});
 
+    console.log('Aggregated Country Counts:', countryCounts);
+
     fetch('https://unpkg.com/world-atlas/countries-50m.json')
         .then(response => response.json())
         .then(world => {
