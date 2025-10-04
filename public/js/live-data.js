@@ -1,77 +1,179 @@
-/* global p5, mqtt */
+// Earth Explorer
 
-// This script expects a global `mqttConfig` object to be defined in the EJS template
-if (typeof p5 !== 'undefined' && typeof mqtt !== 'undefined' && typeof mqttConfig !== 'undefined') {
-    new p5(p => {
-        let worldMapImg;
-        let iss = { lat: 0, lon: 0 };
-        const brokerUrl = mqttConfig.brokerUrl;
-        const topic = mqttConfig.issTopic;
-        const options = {
-            username: mqttConfig.username,
-            password: mqttConfig.password,
-            clientId: 'mqttjs_' + Math.random().toString(16).substr(2, 8),
-        };
 
-        // Preload the map image
-        p.preload = () => {
-            worldMapImg = p.loadImage('https://upload.wikimedia.org/wikipedia/commons/8/83/Equirectangular_projection_SW.jpg');
-        };
+/*
+// Latitude and longitude are expected to be in radians!
+float xPos = (_radius) * Mathf.Cos(latitude) * Mathf.Cos(longitude);
+float zPos = (_radius) * Mathf.Cos(latitude) * Mathf.Sin(longitude);
+float yPos = (_radius) * Mathf.Sin(latitude);
+*/
 
-        p.setup = () => {
-            const container = document.getElementById('iss-map-container');
-            const canvas = p.createCanvas(container.offsetWidth, container.offsetHeight);
-            canvas.parent('iss-map-container');
-            p.image(worldMapImg, 0, 0, p.width, p.height);
 
-            // Connect to MQTT broker
-            const client = mqtt.connect(brokerUrl, options);
 
-            client.on('connect', () => {
-                console.log('Connected to MQTT broker from the frontend.');
-                client.subscribe(topic, (err) => {
-                    if (err) {
-                        console.error('Subscription error:', err);
-                    }
-                });
-            });
+// Quebec :  52.9399° N, 73.5491° W
+// Top 100 Canadian municipalities by 2011 population
+// https://github.com/dariusk/corpora/blob/master/data/geography/canadian_municipalities.json
 
-            client.on('message', (receivedTopic, message) => {
-                if (receivedTopic === topic) {
-                    const data = JSON.parse(message.toString());
-                    iss = {
-                        lat: parseFloat(data.latitude),
-                        lon: parseFloat(data.longitude)
-                    };
-                    document.getElementById('lat').textContent = iss.lat.toFixed(4);
-                    document.getElementById('lon').textContent = iss.lon.toFixed(4);
-                    p.redraw();
-                }
-            });
 
-            client.on('error', (err) => {
-                console.error('MQTT connection error:', err);
-                client.end();
-            });
+var mapimg;
+var mapStyle = 'mapbox/dark-v9';   //  mapbox/dark-v9   
 
-            p.noLoop(); // Redraw only on new data
-        };
+var ww = 1200;
+var hh = 800;
 
-        p.draw = () => {
-            p.image(worldMapImg, 0, 0, p.width, p.height);
-            const x = p.map(iss.lon, -180, 180, 0, p.width);
-            const y = p.map(iss.lat, 90, -90, 0, p.height);
-            p.fill(255, 0, 0);
-            p.noStroke();
-            p.ellipse(x, y, 10, 10);
-        };
+var cx, cy;
+var zoom = 1; //  used in gathering Map and Coordinates system conversion
 
-        p.windowResized = () => {
-            const container = document.getElementById('iss-map-container');
-            p.resizeCanvas(container.offsetWidth, container.offsetHeight);
-            p.redraw();
-        };
-    });
-} else {
-    console.error('p5.js, MQTT.js, or mqttConfig is not available.');
+
+
+
+var earthquakes; // preloaded
+var weather;  // actualized
+let cityColor = 'blue'
+
+var Iss;
+var CityX = 0.0000;
+var CityY = 0.0000;
+
+
+
+function preload() 
+{
+  //mapimg = loadImage('https://api.mapbox.com/styles/v1/' + mapStyle + '/static/' +                
+  //                   clon + ',' + clat + ',' + zoom + '/' +  ww + 'x' + hh + '?access_token=TOKEN', printMap);
+  // mapimg.save('darkmap1200x800', 'png');   //  save image from API
+  mapimg = loadImage('img/darkmap1200x800.png')
+  earthquakes = loadStrings('data/quakes.csv')   
+  //loadFont('Montserrat-Regular.otf',  drawText);
 }
+
+
+
+function drawText(font) 
+{
+  //fill('#ED225D');
+  textSize(18);
+ // textFont(font, 36);  
+  stroke('#ff9d00'); 
+  fill('#ff9d00');
+  let s = 'Earthquakes in last month'
+  text(s, -width/2 + 10, -height/2 + 20);
+  stroke(0, 255, 0);
+  fill(0, 255, 0, 255);
+  s = 'International Space Station'
+  text(s, -width/2 +10, -height/2 + 40);  
+  console.log('Legend printed.')
+}
+
+
+function displayEarthquakes()   //  TODO:  faire une generic method pour utiliser avec d'autre CSV/arrays
+{
+  console.log('Quakes all month: ' + earthquakes.length)
+
+  for (var i = 1; i < earthquakes.length; i++) 
+  {
+    let data = earthquakes[i].split(/,/);  //  splitting csv
+    //console.log(data);
+    let lat = data[1];
+    let lon = data[2];
+    let mag = data[4];
+
+    /*let x = Tools.mercX(lon) - cx;
+    let y = Tools.mercY(lat) - cy;*/
+    let {x,y} = Tools.p5.getMercatorCoord(lon, lat)
+    // This addition fixes the case where the longitude is non-zero and
+    // points can go off the screen.
+    /*if(x < - width/2) {
+      x += width;
+    } else if(x > width / 2) {
+      x -= width;
+    }*/
+    mag = pow(10, mag);  //  mapping magnitude exponentially with circle
+    mag = sqrt(mag);
+    let magmax = sqrt(pow(10, 10));
+    let d = map(mag, 0, magmax, 0, 180);
+
+    stroke('#ff9d00');
+    fill('#ff9d00');
+   // stroke(255, 0, 255);
+    //fill(255, 0, 255, 200);
+    ellipse(x, y, d, d);
+  }
+}
+
+
+
+function getISS_location()
+{
+  //var url = 'http://api.open-notify.org/iss-now.json';
+ //const url = '/data/iss'
+  const url = 'https://api.wheretheiss.at/v1/satellites/25544'
+  loadJSON(url, (data) => {
+        Iss = data
+
+        let {x,y} = Tools.p5.getMercatorCoord(Iss.longitude,Iss.latitude)
+
+        stroke(0, 255, 0)
+        fill(0, 255, 0, 200)
+        ellipse(x, y, 4, 4)
+  })
+}
+
+
+function drawBase(withGrid = false) 
+{  
+    image(mapimg, 0, 0)
+
+
+
+    stroke(0, 0, 255)  // BLUE
+    fill(0, 0, 255, 120)    //  BLUE + ALPHA
+    let {x,y} = Tools.p5.getMercatorCoord(-71.2080,46.8139)
+    ellipse(x, y, 10, 10)  // Show Qc City  -  46.8139° N, 71.2080° W
+
+    drawText()
+
+    displayEarthquakes()
+    
+    if(withGrid) Tools.p5.displayGrid(8,6,color(0,255,0,10), 1)
+}
+
+
+function windowResized() 
+{
+  resizeCanvas(windowWidth, windowHeight);
+  drawBase()
+}
+
+
+function setup() {
+ 
+  var canvas = createCanvas(ww, hh)
+  canvas.parent(document.getElementById('mapDiv'))
+
+  translate(width / 2, height / 2); //  set the 0,0 in the center of map
+  imageMode(CENTER)
+  drawBase()
+
+  getISS_location()
+  setInterval(getISS_location, 5000)
+
+  
+
+
+}
+
+
+function draw()
+{
+  translate(width / 2, height / 2); //  set the 0,0 in the center of map
+
+ 
+}
+
+
+
+
+
+
+
