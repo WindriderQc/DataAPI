@@ -108,7 +108,7 @@ function setWorlGraph(data) {
         return acc;
     }, {});
 
-    console.log('Aggregated Country Counts:', countryCounts);
+    updateMapDataFeed(countryCounts);
 
     fetch('https://unpkg.com/world-atlas/countries-50m.json')
         .then(response => response.json())
@@ -170,6 +170,38 @@ function setWorlGraph(data) {
             worldMap = new Chart(document.getElementById('worldMap'), config);
             generateCustomLegend(); // Call the function to generate our custom legend
         });
+}
+
+function updateMapDataFeed(countryCounts) {
+    const dataFeedContainer = document.getElementById('mapDataFeed');
+    if (!dataFeedContainer) return;
+
+    let tableHTML = `
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Country</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for (const [country, value] of Object.entries(countryCounts)) {
+        tableHTML += `
+            <tr>
+                <td>${country}</td>
+                <td>${value}</td>
+            </tr>
+        `;
+    }
+
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+
+    dataFeedContainer.innerHTML = tableHTML;
 }
 
 const loadingElement = document.querySelector('.loading');
