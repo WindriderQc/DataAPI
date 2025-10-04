@@ -1,70 +1,49 @@
-const mdb = require('../mongooseDB')
-const Device = require('../models/deviceModel')
-const Heartbeat = require('../models/heartbeatModel')
-const User = require('../models/userModel')
-const Alarm = require('../models/alarmModel')
-const Contact = require('../models/contactModel')
-const Iss = require('../models/issModel')
-const Quake = require('../models/quakeModel')
+const config = require('../config/config');
+const { getDbInfo } = require('../utils/db-utils');
 
+exports.getDatabasesView = async (req, res, next) => {
+    try {
+        const dbs = req.app.locals.dbs;
+        const prodDbName = config.db.modelDbName;
+        const devDbName = 'devDatas'; // As per requirement
 
+        const prodDbInfo = await getDbInfo(dbs[prodDbName]);
+        const devDbInfo = await getDbInfo(dbs[devDbName]);
 
-exports.countDocuments_ = async () => 
-{
-    let counts = {}
-    counts["devices"] = await Device.countDocuments()
-    counts["heartbeats"] = await Heartbeat.countDocuments()
-    counts["users"] = await User.countDocuments()
-    counts["alarms"] = await Alarm.countDocuments()
-    counts["contacts"] = await Contact.countDocuments()
-    counts["isses"] = await Iss.countDocuments()
-    counts["quakes"] = await Quake.countDocuments()
-    return counts
-}
+        res.render('databases', {
+            title: 'Databases',
+            prodDbInfo,
+            devDbInfo,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 
+exports.copyProdToDev = async (req, res, next) => {
+    try {
+        const dbs = req.app.locals.dbs;
+        const prodDbName = config.db.modelDbName;
+        const devDbName = 'devDatas'; // As per requirement
+        const sourceDb = dbs[prodDbName];
+        const destDb = dbs[devDbName];
 
-exports.index = async (req, res) => 
-{
-    console.log("DB Info requested")
-    Promise.all([
-        this.countDocuments_(),
-        mdb.getCollections()
-    ])
-    .then((counts, list) =>  res.json({  status: 'success',  message: 'Welcome to SBQC Data API  💻 🖱️ 🦾 ', data: { data: counts, Collections: list}   }))
-    .catch(err =>  res.json({ status:'error', message: err}) )
-}
+        const collections = await sourceDb.listCollections().toArray();
 
+        for (const collection of collections) {
+            const sourceCollection = sourceDb.collection(collection.name);
+            const destCollection = destDb.collection(collection.name);
 
-exports.countDocuments = async (req, res) =>  
-{
-    countDocuments_()
-    .then(counts =>  res.json({ status: "success", message: 'Documents counts retrieved successfully', data: counts  })   )
-    .catch(err => res.json({ status:'error', message: err}))
-}
+            await destCollection.deleteMany({});
+            const cursor = sourceCollection.find();
+            const docs = await cursor.toArray();
+            if(docs.length > 0) {
+                await destCollection.insertMany(docs);
+            }
+        }
 
-
-exports.getCollectionList = async (req, res) => 
-{
-    mdb.getCollections()
-    .then(list =>   res.json(list) )
-    .catch(err => res.json({ status:'error', message: err}))
-}
-
-/*
-function getCollection(colName) {
-    
-    console.log( colName)
-    let collection
-        if (colName == "devices")    collection = Device
-        else if (colName == "heartbeats")  collection = Heartbeat
-        else if (colName == "users")      collection = User
-        else if (colName == "alarms")     collection = Alarm
-        //else if (colName == "posts")      collection = posts
-        else  collection = Device
-
-    console.log("selecting:",colName, collection)
-        return collection
-      
-}*/
-
-
+        res.status(200).json({ status: 'success', message: 'Production database copied to development successfully.' });
+    } catch (err) {
+        next(err);
+    }
+};
