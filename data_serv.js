@@ -75,6 +75,53 @@ app.use(express.json({ limit: '10mb' }));
 
 
 async function createApp() {
+    // Quick startup disk-space checks to fail fast on low-disk machines.
+    // Defaults are conservative for production but permissive for tests.
+    const { execSync } = require('child_process');
+    function getAvailableKB(path) {
+        try {
+            const out = execSync(`df -k ${path}`).toString();
+            const lines = out.trim().split(/\r?\n/);
+            if (lines.length < 2) return null;
+            const parts = lines[lines.length - 1].split(/\s+/);
+            // Filesystem 1K-blocks Used Available Use% Mounted on
+            const availKB = parseInt(parts[3], 10);
+            return Number.isFinite(availKB) ? availKB : null;
+        } catch (e) {
+            log(`Could not determine disk free space for ${path}: ${e.message}`, 'warn');
+            return null;
+        }
+    }
+
+    function ensureFreeSpace() {
+        const env = config.env || process.env.NODE_ENV || 'development';
+        const defaultRootMB = env === 'test' ? 10 : parseInt(process.env.MIN_FREE_SPACE_MB || '1024', 10); // MB
+        const defaultTmpMB = env === 'test' ? 5 : parseInt(process.env.MIN_FREE_SPACE_TMP_MB || '512', 10); // MB
+
+        const rootAvailKB = getAvailableKB('/');
+        const tmpAvailKB = getAvailableKB('/tmp');
+
+        if (rootAvailKB !== null) {
+            const rootAvailMB = Math.floor(rootAvailKB / 1024);
+            if (rootAvailMB < defaultRootMB) {
+                throw new Error(`Insufficient free space on /: ${rootAvailMB} MB available, require at least ${defaultRootMB} MB`);
+            }
+        }
+        if (tmpAvailKB !== null) {
+            const tmpAvailMB = Math.floor(tmpAvailKB / 1024);
+            if (tmpAvailMB < defaultTmpMB) {
+                throw new Error(`Insufficient free space on /tmp: ${tmpAvailMB} MB available, require at least ${defaultTmpMB} MB`);
+            }
+        }
+    }
+
+    try {
+        ensureFreeSpace();
+    } catch (err) {
+        log(`Startup aborted by disk-space check: ${err.message}`, 'error');
+        throw err;
+    }
+
     log("Initializing mongodb connections...");
     const dbConnection = await mdb.init();
 
