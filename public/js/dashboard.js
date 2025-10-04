@@ -159,15 +159,6 @@ function setWorlGraph(data) {
                             //display: false
                         }
                     },
-                    /*scales: {
-                        xy: {
-                            projection: 'equalEarth'
-                        },
-                        color: {
-                            axis: 'x',
-                            display: false
-                        }
-                    },*/
                     plugins: {
                         legend: {
                             display: false // Keep the default legend off
