@@ -1,10 +1,17 @@
-/* global p5 */
+/* global p5, mqtt */
 
-// Ensure p5.js is loaded before running the sketch
-if (typeof p5 !== 'undefined') {
+// This script expects a global `mqttConfig` object to be defined in the EJS template
+if (typeof p5 !== 'undefined' && typeof mqtt !== 'undefined' && typeof mqttConfig !== 'undefined') {
     new p5(p => {
         let worldMapImg;
         let iss = { lat: 0, lon: 0 };
+        const brokerUrl = mqttConfig.brokerUrl;
+        const topic = mqttConfig.issTopic;
+        const options = {
+            username: mqttConfig.username,
+            password: mqttConfig.password,
+            clientId: 'mqttjs_' + Math.random().toString(16).substr(2, 8),
+        };
 
         // Preload the map image
         p.preload = () => {
@@ -17,48 +24,48 @@ if (typeof p5 !== 'undefined') {
             canvas.parent('iss-map-container');
             p.image(worldMapImg, 0, 0, p.width, p.height);
 
-            // Connect to the Server-Sent Events endpoint
-            const eventSource = new EventSource('/live-data/iss');
+            // Connect to MQTT broker
+            const client = mqtt.connect(brokerUrl, options);
 
-            eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                iss = {
-                    lat: parseFloat(data.latitude),
-                    lon: parseFloat(data.longitude)
-                };
+            client.on('connect', () => {
+                console.log('Connected to MQTT broker from the frontend.');
+                client.subscribe(topic, (err) => {
+                    if (err) {
+                        console.error('Subscription error:', err);
+                    }
+                });
+            });
 
-                // Update the latitude and longitude display
-                document.getElementById('lat').textContent = iss.lat.toFixed(4);
-                document.getElementById('lon').textContent = iss.lon.toFixed(4);
+            client.on('message', (receivedTopic, message) => {
+                if (receivedTopic === topic) {
+                    const data = JSON.parse(message.toString());
+                    iss = {
+                        lat: parseFloat(data.latitude),
+                        lon: parseFloat(data.longitude)
+                    };
+                    document.getElementById('lat').textContent = iss.lat.toFixed(4);
+                    document.getElementById('lon').textContent = iss.lon.toFixed(4);
+                    p.redraw();
+                }
+            });
 
-                // Redraw the map with the new ISS location
-                p.redraw();
-            };
+            client.on('error', (err) => {
+                console.error('MQTT connection error:', err);
+                client.end();
+            });
 
-            eventSource.onerror = (err) => {
-                console.error('EventSource failed:', err);
-                eventSource.close();
-            };
-
-            // No need for a continuous loop, only redraw when new data arrives
-            p.noLoop();
+            p.noLoop(); // Redraw only on new data
         };
 
         p.draw = () => {
-            // Draw the map
             p.image(worldMapImg, 0, 0, p.width, p.height);
-
-            // Calculate the ISS position on the map
             const x = p.map(iss.lon, -180, 180, 0, p.width);
             const y = p.map(iss.lat, 90, -90, 0, p.height);
-
-            // Draw the ISS marker
             p.fill(255, 0, 0);
             p.noStroke();
             p.ellipse(x, y, 10, 10);
         };
 
-        // Handle window resizing
         p.windowResized = () => {
             const container = document.getElementById('iss-map-container');
             p.resizeCanvas(container.offsetWidth, container.offsetHeight);
@@ -66,5 +73,5 @@ if (typeof p5 !== 'undefined') {
         };
     });
 } else {
-    console.error('p5.js is not loaded.');
+    console.error('p5.js, MQTT.js, or mqttConfig is not available.');
 }
