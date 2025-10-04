@@ -1,19 +1,21 @@
 const config = require('../config/config');
-const { getDbInfo } = require('../utils/db-utils');
 
 exports.getDatabasesView = async (req, res, next) => {
     try {
-        const dbs = req.app.locals.dbs;
-        const prodDbName = config.db.modelDbName;
-        const devDbName = 'devDatas'; // As per requirement
+        const { collectionInfo } = req.app.locals;
 
-        const prodDbInfo = await getDbInfo(dbs[prodDbName]);
-        const devDbInfo = await getDbInfo(dbs[devDbName]);
+        // Group collections by database
+        const databases = collectionInfo.reduce((acc, { db, collection, count }) => {
+            if (!acc[db]) {
+                acc[db] = [];
+            }
+            acc[db].push({ name: collection, count });
+            return acc;
+        }, {});
 
         res.render('databases', {
             title: 'Databases',
-            prodDbInfo,
-            devDbInfo,
+            databases,
         });
     } catch (err) {
         next(err);

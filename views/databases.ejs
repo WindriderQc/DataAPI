@@ -17,39 +17,23 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <!-- Production Database -->
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                Production (<%= prodDbInfo.name %>)
+                    <% Object.keys(databases).forEach((dbName, index) => { %>
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-<%= index === 0 ? 'primary' : 'success' %> text-white">
+                                    <%= dbName %>
+                                </div>
+                                <ul class="list-group list-group-flush">
+                                    <% databases[dbName].forEach(coll => { %>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <%= coll.name %>
+                                            <span class="badge bg-<%= index === 0 ? 'primary' : 'success' %> rounded-pill"><%= coll.count %></span>
+                                        </li>
+                                    <% }) %>
+                                </ul>
                             </div>
-                            <ul class="list-group list-group-flush" id="prod-db-info">
-                                <% prodDbInfo.collections.forEach(coll => { %>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <%= coll.name %>
-                                        <span class="badge bg-primary rounded-pill"><%= coll.count %></span>
-                                    </li>
-                                <% }) %>
-                            </ul>
                         </div>
-                    </div>
-
-                    <!-- Development Database -->
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-success text-white">
-                                Development (<%= devDbInfo.name %>)
-                            </div>
-                            <ul class="list-group list-group-flush" id="dev-db-info">
-                                <% devDbInfo.collections.forEach(coll => { %>
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <%= coll.name %>
-                                        <span class="badge bg-success rounded-pill"><%= coll.count %></span>
-                                    </li>
-                                <% }) %>
-                            </ul>
-                        </div>
-                    </div>
+                    <% }) %>
                 </div>
             </div>
         </div>
