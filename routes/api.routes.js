@@ -53,6 +53,9 @@ router.route('/quakes').get(liveDatasController.quakes)
 router.route('/iss/all').delete(liveDatasController.deleteAllIss)
 router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
 
+const logController = require('../controllers/logController');
+router.get('/v2/logs/countries', logController.getCountryCounts);
+
 
 
 
@@ -78,7 +81,6 @@ router.get('/proxy-location', async (req, res) => {
 });
 
 // User/System logs manipulation routes
-const logController = require('../controllers/logController');
 
 router.get('/v2/logs', logController.getUserLogs);
 router.post('/v2/logs', [
