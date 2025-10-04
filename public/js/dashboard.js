@@ -108,7 +108,7 @@ function setWorlGraph(data) {
         return acc;
     }, {});
 
-    console.log('Aggregated Country Counts:', countryCounts);
+    updateMapDataFeed(countryCounts);
 
     fetch('https://unpkg.com/world-atlas/countries-50m.json')
         .then(response => response.json())
@@ -117,8 +117,7 @@ function setWorlGraph(data) {
             const validCountryNames = new Set(countries.map(country => country.properties.name));
             Object.keys(countryCounts).forEach(countryName => {
                 if (!validCountryNames.has(countryName)) {
-                    // This console.warn is being removed as per code review feedback.
-                    // console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
+                     console.warn(`Country name not found in ChartGeo countries list: ${countryName}`);
                 }
             });
             const chartData = {
@@ -129,7 +128,7 @@ function setWorlGraph(data) {
                         feature: country,
                         value: countryCounts[country.properties.name] || 0
                     })),
-                    backgroundColor: (context) => {
+                    /*backgroundColor: (context) => {
                         const dataItem = context.dataset.data[context.dataIndex];
                         if (!dataItem || !dataItem.value) {
                             return 'rgba(200, 200, 200, 0.25)'; // Default grey for missing values
@@ -137,7 +136,7 @@ function setWorlGraph(data) {
                         const value = dataItem.value;
                         if (value < 40) return `rgba(0, 200, 100, ${(value * 5) / 200 + 0.15})`;
                         return `rgba(0, 100, 200, ${(value * 3) / 100 + 0.1})`;
-                    },
+                    },*/
                 }]
             };
 
@@ -148,6 +147,12 @@ function setWorlGraph(data) {
                     showOutline: false,
                     showGraticule: false,
                     scales: {
+                        projection: {
+                            axis: 'x',
+                            projection: 'equalEarth',
+                        },
+                    },
+                    /*scales: {
                         xy: {
                             projection: 'equalEarth'
                         },
@@ -155,7 +160,7 @@ function setWorlGraph(data) {
                             axis: 'x',
                             display: false
                         }
-                    },
+                    },*/
                     plugins: {
                         legend: {
                             display: false // Keep the default legend off
@@ -170,6 +175,38 @@ function setWorlGraph(data) {
             worldMap = new Chart(document.getElementById('worldMap'), config);
             generateCustomLegend(); // Call the function to generate our custom legend
         });
+}
+
+function updateMapDataFeed(countryCounts) {
+    const dataFeedContainer = document.getElementById('mapDataFeed');
+    if (!dataFeedContainer) return;
+
+    let tableHTML = `
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Country</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for (const [country, value] of Object.entries(countryCounts)) {
+        tableHTML += `
+            <tr>
+                <td>${country}</td>
+                <td>${value}</td>
+            </tr>
+        `;
+    }
+
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+
+    dataFeedContainer.innerHTML = tableHTML;
 }
 
 const loadingElement = document.querySelector('.loading');
@@ -235,23 +272,4 @@ function loadDataTable(dataset) {
         destroy: true,
         scrollX: true
     });
-}
-
-// Sidebar toggle functionality
-var mySidebar = document.getElementById("mySidebar");
-var overlayBg = document.getElementById("myOverlay");
-
-window.w3_open = function() {
-    if (mySidebar.style.display === 'block') {
-        mySidebar.style.display = 'none';
-        overlayBg.style.display = "none";
-    } else {
-        mySidebar.style.display = 'block';
-        overlayBg.style.display = "block";
-    }
-}
-
-window.w3_close = function() {
-    mySidebar.style.display = "none";
-    overlayBg.style.display = "none";
 }
