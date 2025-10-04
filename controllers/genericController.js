@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb');
 const { BadRequest, NotFoundError } = require('../utils/errors');
 const config = require('../config/config');
+const { normalizeCountryData } = require('../utils/location-normalizer');
 
 const genericController = (collectionName) => ({
   getAll: async (req, res, next) => {
@@ -14,10 +15,11 @@ const genericController = (collectionName) => ({
       const query = { ...req.query };
       delete query.db;
       const documents = await collection.find(query).toArray();
+      const enrichedDocuments = await Promise.all(documents.map(normalizeCountryData));
       res.json({
         status: 'success',
         message: 'Documents retrieved successfully',
-        data: documents,
+        data: enrichedDocuments,
       });
     } catch (error) {
       next(error);
