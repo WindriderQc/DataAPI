@@ -18,8 +18,19 @@ const countryCodeToName = {
 const normalizeCountryData = async (log) => {
     const newLog = { ...log };
 
+    // If a CountryName exists, normalize it (trim). If after trimming it's empty, continue
     if (newLog.CountryName) {
-        return newLog;
+        try {
+            const s = String(newLog.CountryName).trim();
+            if (s.length > 0) {
+                newLog.CountryName = s;
+                return newLog;
+            }
+            // empty after trim -> treat as missing and continue normalization
+            delete newLog.CountryName;
+        } catch (e) {
+            // if conversion fails, continue to other normalization paths
+        }
     }
 
     const keys = Object.keys(newLog);
