@@ -3,6 +3,8 @@
 /**
  * @fileoverview Controller for handling user and system logs.
  */
+const { normalizeCountryData } = require('../utils/location-normalizer');
+
 
 const getUserLogs = async (req, res, next) => {
     try {
@@ -21,24 +23,7 @@ const getUserLogs = async (req, res, next) => {
             logsdb.find({}).sort({ created: sort === 'desc' ? -1 : 1 }).skip(skip).limit(1000).toArray()
         ]);
 
-        const enrichedLogs = await Promise.all(logs.map(async (log) => {
-            if (!log.CountryName && log.lon && log.lat) {
-                try {
-                    const apiKey = process.env.LOCATION_IQ_API;
-                    const url = `https://us1.locationiq.com/v1/reverse.php?key=${apiKey}&lat=${log.lat}&lon=${log.lon}&format=json`;
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.address && data.address.country) {
-                            log.CountryName = data.address.country;
-                        }
-                    }
-                } catch (err) {
-                    console.error('Error fetching country from LocationIQ:', err);
-                }
-            }
-            return log;
-        }));
+        const enrichedLogs = await Promise.all(logs.map(normalizeCountryData));
 
         res.json({
             logs: enrichedLogs,
