@@ -147,12 +147,12 @@ function setWorlGraph(data) {
                 options: {
                     showOutline: false,
                     showGraticule: false,
-                    scales: {
-                        xy: {
-                            projection: 'equalEarth'
+                     scales: {
+                        projection: {
+                            axis: 'x',
+                            projection: 'equalEarth',
                         },
                         color: {
-                            axis: 'x',
                             display: false
                         }
                     },

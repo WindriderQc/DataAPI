@@ -48,7 +48,9 @@ const normalizeCountryData = async (log) => {
                 return newLog;
             }
             const url = `https://us1.locationiq.com/v1/reverse.php?key=${apiKey}&lat=${lat}&lon=${lon}&format=json`;
-            const response = await fetch(url);
+            const { fetchWithTimeoutAndRetry } = require('./fetch-utils');
+            const config = require('../config/config');
+            const response = await fetchWithTimeoutAndRetry(url, { timeout: config.api.defaultFetchTimeout, retries: config.api.defaultFetchRetries, name: 'LocationIQ' });
             if (response.ok) {
                 const data = await response.json();
                 if (data.address && data.address.country) {
