@@ -71,7 +71,7 @@ router.get('/dashboard', async (req, res) => {
 })
 */
 
-router.get('/live-data', requireAuth, (req, res) => {
+router.get('/live-data',  (req, res) => {
     const mqttConfig = {
         brokerUrl: config.mqtt.brokerUrl.replace(/^mqtt/, 'ws'), // Use WebSocket protocol for frontend
         issTopic: config.mqtt.issTopic,
