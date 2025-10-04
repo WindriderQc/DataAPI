@@ -23,8 +23,13 @@
 
     <%- include('partials/footer') %>
 
-    <!-- p5.js and its addons -->
+    <!-- p5.js and MQTT.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <script>
+        const mqttConfig = <%- mqttConfig %>;
+    </script>
 
     <!-- Custom script for this page -->
     <script src="/js/live-data.js"></script>

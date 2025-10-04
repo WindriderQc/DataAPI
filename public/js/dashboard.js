@@ -4,54 +4,30 @@ import { API } from '/js/utils/index.js';
 let worldMap;
 
 document.addEventListener('DOMContentLoaded', async function() {
+    let source = 'userLogs'; // Default source
+    let selectedCollection = null;
     const summaryCards = document.querySelectorAll('.summary-card');
-    const worldMapTitle = document.getElementById('worldMapTitle');
-    const sourceSelect = document.getElementById('sourceSelect');
 
-    // Function to update the view based on the selected collection
-    function selectCollection(collectionName) {
-        // Update cards
-        summaryCards.forEach(c => {
-            if (c.getAttribute('data-collection') === collectionName) {
-                c.classList.add('selected');
-            } else {
-                c.classList.remove('selected');
-            }
-        });
-
-        // Update title
-        if (worldMapTitle) {
-            worldMapTitle.innerText = `- ${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)}`;
-        }
-
-        // Update dropdown
-        if (sourceSelect) {
-            sourceSelect.value = collectionName;
-        }
-
-        // Fetch new data
-        listAllLogs(collectionName);
-    }
-
-    // Set up click listeners for summary cards
     summaryCards.forEach(card => {
         card.addEventListener('click', function() {
-            const collectionName = this.getAttribute('data-collection');
-            selectCollection(collectionName);
+            summaryCards.forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedCollection = this.getAttribute('data-collection');
+            const worldMapTitle = document.getElementById('worldMapTitle');
+            if (worldMapTitle) {
+                worldMapTitle.innerText = `- ${selectedCollection.charAt(0).toUpperCase() + selectedCollection.slice(1)}`;
+            }
+            listAllLogs(selectedCollection); // Refresh the map and table with the selected source
         });
     });
 
-    // Set up change listener for the dropdown
-    if (sourceSelect) {
-        sourceSelect.addEventListener('change', function() {
-            selectCollection(this.value);
-        });
-    }
+    const sourceSelect = document.getElementById('sourceSelect');
+    sourceSelect.addEventListener('change', function() {
+        source = this.value;
+        listAllLogs(source);
+    });
 
-    // Set initial state
-    const initialCollection = 'userLogs';
-    selectCollection(initialCollection);
-
+    listAllLogs("userLogs");
     await getUserInfo();
 
     // Draggable scroll for summary cards
@@ -176,6 +152,9 @@ function setWorlGraph(data) {
                             axis: 'x',
                             projection: 'equalEarth',
                         },
+                        color: {
+                            display: false
+                        }
                     },
                     plugins: {
                         legend: {
