@@ -1,6 +1,6 @@
 {
   "name": "data-api",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "A RESTful API service for managing various data entities and providing live data feeds.",
   "main": "data_serv.js",
   "scripts": {
@@ -23,6 +23,7 @@
   "homepage": "https://github.com/WindriderQc/DataAPI#readme",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "uuid": "^9.0.0",
     "connect-mongodb-session": "^5.0.0",
     "cors": "^2.8.5",
     "csvtojson": "^2.0.10",
