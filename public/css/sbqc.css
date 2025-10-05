@@ -150,3 +150,10 @@
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: 4px;
 }
+
+/* MQTT status indicator */
+.mqtt-status { font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+.mqtt-status.connected { background: #198754; color: white; }
+.mqtt-status.disconnected { background: #6c757d; color: white; }
+.mqtt-status.connecting { background: #ffc107; color: black; }
+.mqtt-status.error { background: #dc3545; color: white; }

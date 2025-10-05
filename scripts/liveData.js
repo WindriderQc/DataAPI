@@ -24,9 +24,27 @@ async function getISS() {
     try {
         const response = await fetchWithTimeoutAndRetry(config.api.iss.url, { timeout: config.api.iss.timeout, retries: config.api.iss.retries, name: 'ISS API' });
         const data = await response.json();
-        const { latitude, longitude } = data;
+        //console.log(data);
+        if (data.message !== 'success') { return; }
 
-        const timeStamp = new Date();
+        // Keep the simple shape but normalize types:
+        // latitude/longitude -> Number, timeStamp -> Date
+        const latitude = Number(data.iss_position && data.iss_position.latitude);
+        const longitude = Number(data.iss_position && data.iss_position.longitude);
+
+        // Convert timestamp (likely seconds) to Date. If timestamp looks like ms already, use it.
+        let timeStamp;
+        if (data.timestamp !== undefined) {
+            const tsNum = Number(data.timestamp);
+            timeStamp = tsNum > 1e12 ? new Date(tsNum) : new Date(tsNum * 1000);
+        } else {
+            timeStamp = new Date();
+        }
+
+        if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+            log('[liveData] Invalid ISS coordinates received; skipping write/publish.', 'warn');
+            return;
+        }
 
         const newIssData = { latitude, longitude, timeStamp };
         dataStore.iss = newIssData;

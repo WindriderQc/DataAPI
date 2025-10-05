@@ -75,8 +75,17 @@ router.get('/dashboard', async (req, res) => {
 */
 
 router.get('/live-data',  (req, res) => {
+    // Normalize broker URL so frontend receives a ws:// or wss:// URL regardless of env var scheme
+    let brokerUrl = config.mqtt.brokerUrl || '';
+    brokerUrl = brokerUrl.trim();
+    // Convert mqtt:// -> ws://, mqtts:// -> wss://, http:// -> ws://, https:// -> wss://
+    brokerUrl = brokerUrl.replace(/^mqtt:\/\//i, 'ws://')
+                       .replace(/^mqtts:\/\//i, 'wss://')
+                       .replace(/^http:\/\//i, 'ws://')
+                       .replace(/^https:\/\//i, 'wss://');
+
     const mqttConfig = {
-        brokerUrl: config.mqtt.brokerUrl.replace(/^mqtt/, 'ws'), // Use WebSocket protocol for frontend
+        brokerUrl,
         issTopic: config.mqtt.issTopic,
         username: config.mqtt.username,
         password: config.mqtt.password
