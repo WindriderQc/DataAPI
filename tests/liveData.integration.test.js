@@ -35,7 +35,11 @@ describe('LiveData integration (DB write + MQTT publish)', () => {
       if (url && url.includes('iss')) {
         return {
           ok: true,
-          json: async () => ({ latitude: 10.123, longitude: -20.456 }),
+          json: async () => ({
+            timestamp: 1759648887,
+            iss_position: { latitude: '8.7368', longitude: '3.6946' },
+            message: 'success'
+          }),
         };
       }
       // quakes CSV: simple header + one row

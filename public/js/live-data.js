@@ -35,6 +35,10 @@ var Iss;
 var CityX = 0.0000;
 var CityY = 0.0000;
 
+// MQTT client (browser) - will be initialized with mqttConfig injected by the page
+let _mqttClient = null;
+let _mqttConnected = false;
+
 
 
 function preload() 
@@ -62,13 +66,13 @@ function drawText(font)
   fill(0, 255, 0, 255);
   s = 'International Space Station'
   text(s, -width/2 +10, -height/2 + 40);  
-  console.log('Legend printed.')
+  //console.log('Legend printed.')
 }
 
 
 function displayEarthquakes()
 {
-  console.log('Quakes all month: ' + earthquakes.length)
+  //console.log('Quakes all month: ' + earthquakes.length)
 
   for (var i = 1; i < earthquakes.length; i++) 
   {
@@ -105,8 +109,22 @@ function displayEarthquakes()
 
 function getISS_location()
 {
-  //var url = 'http://api.open-notify.org/iss-now.json';
- //const url = '/data/iss'
+  // If we have live MQTT data, use it; otherwise fetch once from public API
+  if (_mqttConnected && Iss && Iss.latitude !== undefined && Iss.longitude !== undefined) {
+    let {x,y} = Tools.p5.getMercatorCoord(Iss.longitude, Iss.latitude)
+    stroke(0, 255, 0)
+    fill(0, 255, 0, 200)
+    ellipse(x, y, 4, 4)
+    // Update info panel if present
+    const latEl = document.getElementById('lat');
+    const lonEl = document.getElementById('lon');
+    if (latEl) latEl.textContent = Iss.latitude;
+    if (lonEl) lonEl.textContent = Iss.longitude;
+    return;
+  }
+
+  console.log('Fetching ISS location from public API...')
+  // Fallback: fetch from public API once
   const url = 'https://api.wheretheiss.at/v1/satellites/25544'
   loadJSON(url, (data) => {
         Iss = data
@@ -116,7 +134,91 @@ function getISS_location()
         stroke(0, 255, 0)
         fill(0, 255, 0, 200)
         ellipse(x, y, 4, 4)
+        const latEl = document.getElementById('lat');
+        const lonEl = document.getElementById('lon');
+        if (latEl) latEl.textContent = Iss.latitude;
+        if (lonEl) lonEl.textContent = Iss.longitude;
   })
+}
+
+
+// Initialize MQTT in the browser using mqtt.js (loaded in the page)
+function initFrontendMQTT(mqttConfig) {
+  if (!mqttConfig || !mqttConfig.brokerUrl) return;
+  try {
+    const options = {};
+    if (mqttConfig.username) options.username = mqttConfig.username;
+    if (mqttConfig.password) options.password = mqttConfig.password;
+
+  // Normalize brokerUrl to ws:// or wss:// so common config forms work (http(s), mqtt(s), ws(s))
+  let brokerUrl = mqttConfig.brokerUrl || '';
+  brokerUrl = brokerUrl.trim();
+  if (brokerUrl.startsWith('https://')) brokerUrl = brokerUrl.replace(/^https?:\/\//, 'wss://');
+  else if (brokerUrl.startsWith('http://')) brokerUrl = brokerUrl.replace(/^https?:\/\//, 'ws://');
+  else if (brokerUrl.startsWith('mqtt://')) brokerUrl = brokerUrl.replace(/^mqtt:\/\//, 'ws://');
+  else if (brokerUrl.startsWith('mqtts://')) brokerUrl = brokerUrl.replace(/^mqtts:\/\//, 'wss://');
+
+  // indicate connecting state in UI
+  const statusEl = document.getElementById('mqtt-status');
+  if (statusEl) { statusEl.textContent = 'Connecting'; statusEl.className = 'mqtt-status connecting'; }
+
+    // mqttConfig.brokerUrl is expected to be a ws:// or wss:// URL after normalization
+    if (!brokerUrl) {
+      console.warn('[live-data] No broker URL provided after normalization; skipping MQTT init.');
+      if (statusEl) { statusEl.textContent = 'No broker'; statusEl.className = 'mqtt-status disconnected'; }
+      return;
+    }
+    console.log('[live-data] attempting MQTT connect to', brokerUrl);
+    _mqttClient = mqtt.connect(brokerUrl, options);
+
+    _mqttClient.on('connect', () => {
+      _mqttConnected = true;
+      console.log('[live-data] Connected to MQTT broker');
+      const status = document.getElementById('mqtt-status');
+      if (status) { status.textContent = 'Connected'; status.className = 'mqtt-status connected'; }
+      if (mqttConfig.issTopic) {
+        _mqttClient.subscribe(mqttConfig.issTopic, (err) => {
+          if (err) console.error('[live-data] MQTT subscribe error', err);
+        });
+      }
+    });
+
+  _mqttClient.on('message', (topic, message) => {
+      try {
+        const payload = JSON.parse(message.toString());
+        // Accept { latitude, longitude, timeStamp } or nested iss_position
+        if (payload.iss_position) {
+          Iss = {
+            latitude: Number(payload.iss_position.latitude),
+            longitude: Number(payload.iss_position.longitude),
+            timeStamp: payload.timestamp ? new Date(Number(payload.timestamp) * 1000) : new Date()
+          };
+        } else if (payload.latitude !== undefined && payload.longitude !== undefined) {
+          Iss = {
+            latitude: Number(payload.latitude),
+            longitude: Number(payload.longitude),
+            timeStamp: payload.timeStamp ? new Date(payload.timeStamp) : new Date()
+          };
+        }
+  // Trigger a redraw/update: redraw base then draw the ISS overlay
+  drawBase();
+  try { getISS_location(); } catch (e) { /* ignore if not available */ }
+      } catch (e) {
+        console.error('[live-data] Error parsing MQTT message', e);
+      }
+    });
+
+    _mqttClient.on('error', (err) => {
+      console.error('[live-data] MQTT error', err);
+      const status = document.getElementById('mqtt-status');
+      if (status) { status.textContent = 'Error'; status.className = 'mqtt-status error'; }
+    });
+
+    _mqttClient.on('close', () => { _mqttConnected = false; console.log('[live-data] MQTT disconnected'); const status = document.getElementById('mqtt-status'); if (status) { status.textContent = 'Disconnected'; status.className = 'mqtt-status disconnected'; } });
+    _mqttClient.on('reconnect', () => { const status = document.getElementById('mqtt-status'); if (status) { status.textContent = 'Reconnecting'; status.className = 'mqtt-status connecting'; } });
+  } catch (err) {
+    console.error('[live-data] Failed to init MQTT client', err);
+  }
 }
 
 
@@ -156,8 +258,17 @@ function setup() {
   drawBase()
 
   getISS_location()
-  setInterval(getISS_location, 5000)
+  setInterval(getISS_location, 10000)
 
+  // Initialize MQTT if mqttConfig is provided on the page
+  try {
+    if (typeof mqttConfig !== 'undefined') {
+      initFrontendMQTT(JSON.parse(mqttConfig));
+    }
+  } catch (e) {
+    // mqttConfig is already an object in some render paths
+    try { initFrontendMQTT(mqttConfig); } catch (err) { console.warn('No mqttConfig available'); }
+  }
   
 
 
