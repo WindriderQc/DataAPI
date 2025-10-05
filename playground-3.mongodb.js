@@ -9,9 +9,9 @@
 // For more documentation on playgrounds please refer to
 // https://www.mongodb.com/docs/mongodb-vscode/playgrounds/
 
-use('SBQC');
+use('datas');
 
-(async () => {
+/*(async () => {
   // Use the exact collection name used by the app (case-sensitive)
   const cursor = db.getCollection('userLogs').find({
     CountryName: { $exists: true, $type: 'string', $regex: /\S/ }
@@ -23,4 +23,18 @@ use('SBQC');
 
   console.log(`Found ${results.length} documents`);
   return results.slice(0, 50); // return these so the playground displays them
-})();
+})();*/
+
+use('datas');
+
+db.getCollection('mySessions').aggregate([
+  { $match: {} }, // change to a query if you want a subset
+  {
+    $merge: {
+      into: { db: "datas", coll: "mySessions" },
+      on: "_id",
+      whenMatched: "keepExisting",   // "keepExisting" | "merge" | "replace" | pipeline
+      whenNotMatched: "insert"
+    }
+  }
+], { allowDiskUse: true });
