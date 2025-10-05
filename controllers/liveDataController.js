@@ -2,7 +2,7 @@ const { NotFoundError } = require('../utils/errors');
 
 exports.quakes = async (req, res, next) => {
     try {
-        const db = req.app.locals.dbs.data;
+    const db = req.app.locals.dbs.mainDb;
         const quakesCollection = db.collection('quakes');
         const [count, quakes] = await Promise.all([
             quakesCollection.countDocuments(),
@@ -16,7 +16,7 @@ exports.quakes = async (req, res, next) => {
 
 exports.iss = async (req, res, next) => {
     try {
-        const db = req.app.locals.dbs.data;
+    const db = req.app.locals.dbs.mainDb;
         const issCollection = db.collection('isses');
         const [total, data] = await Promise.all([
             issCollection.countDocuments({}),
@@ -30,7 +30,7 @@ exports.iss = async (req, res, next) => {
 
 exports.deleteAllIss = async (req, res, next) => {
     try {
-        const db = req.app.locals.dbs.data;
+    const db = req.app.locals.dbs.mainDb;
         const issCollection = db.collection('isses');
         const ack = await issCollection.deleteMany({});
         res.json({ status: "success", message: 'All Iss deleted', data: ack });
@@ -41,7 +41,7 @@ exports.deleteAllIss = async (req, res, next) => {
 
 exports.deleteAllQuakes = async (req, res, next) => {
     try {
-        const db = req.app.locals.dbs.data;
+    const db = req.app.locals.dbs.mainDb;
         const quakesCollection = db.collection('quakes');
         const ack = await quakesCollection.deleteMany({});
         res.json({ status: "success", message: 'All Quakes deleted', data: ack });

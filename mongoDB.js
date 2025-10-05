@@ -53,7 +53,13 @@ const init = async () => {
     };
 
 
-    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection, db: getDb(config.db.mainDb) };
+    // Provide a convenient map of commonly used DB handles (matches app expectations)
+    // Simplified: only expose `mainDb`. The application now uses a single DB per environment.
+    const dbs = {
+        mainDb: getDb(config.db.mainDb),
+    };
+
+    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection, db: getDb(config.db.mainDb), dbs };
 };
 
 const closeServer = async () => {

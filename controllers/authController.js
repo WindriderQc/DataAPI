@@ -7,7 +7,7 @@ const config = require('../config/config');
 exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
     // Use the main application database connection directly
-    const db = req.app.locals.dbs.main;
+    const db = req.app.locals.dbs.mainDb;
     const usersCollection = db.collection('users');
 
     try {
@@ -38,8 +38,8 @@ exports.register = async (req, res, next) => {
 exports.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-        // Use the main application database connection directly
-        const db = req.app.locals.dbs.main;
+    // Use the main application database connection directly
+    const db = req.app.locals.dbs.mainDb;
         const usersCollection = db.collection('users');
         log(`[AUTH] Attempting login for email: ${email}`);
 

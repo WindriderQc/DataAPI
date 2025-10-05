@@ -3,21 +3,23 @@ const CSVToJSON = require('csvtojson');
 const mqttClient = require('./mqttClient.js');
 const config = require('../config/config');
 const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
+const { log } = require('../utils/logger');
 
-let datasDb; // To store the 'datas' database connection
+let mainDb; // The active database connection
 
-let datas = { version: 1.0 };
-const version = datas.version;
+let dataStore = { version: 1.0 };
+const version = dataStore.version;
 let intervalIds = [];
+let initialized = false; // guard to prevent double initialization
 
 // use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
-    if (!datasDb) {
+    if (!mainDb) {
         console.error('[liveData] getISS: Database not initialized.');
         return;
     }
-    const issCollection = datasDb.collection('isses');
+    const issCollection = mainDb.collection('isses');
 
     try {
         const response = await fetchWithTimeoutAndRetry(config.api.iss.url, { timeout: config.api.iss.timeout, retries: config.api.iss.retries, name: 'ISS API' });
@@ -26,8 +28,8 @@ async function getISS() {
 
         const timeStamp = new Date();
 
-        datas.iss = { latitude, longitude, timeStamp };
-        mqttClient.publish(config.mqtt.issTopic, datas.iss);
+    dataStore.iss = { latitude, longitude, timeStamp };
+    mqttClient.publish(config.mqtt.issTopic, dataStore.iss);
 
         const countBefore = await issCollection.countDocuments();
 
@@ -38,18 +40,18 @@ async function getISS() {
             }
         }
 
-        await issCollection.insertOne(datas.iss);
+    await issCollection.insertOne(dataStore.iss);
     } catch (error) {
         console.log(error, 'Better luck next time getting ISS location...  Keep Rolling!');
     }
 }
 
 async function getQuakes() {
-    if (!datasDb) {
+    if (!mainDb) {
         console.error('[liveData] getQuakes: Database not initialized.');
         return;
     }
-    const quakesCollection = datasDb.collection('quakes');
+    const quakesCollection = mainDb.collection('quakes');
 
     try {
         const response = await fetchWithTimeoutAndRetry(config.api.quakes.url, { timeout: config.api.quakes.timeout, retries: config.api.quakes.retries, name: 'Quakes API' });
@@ -74,12 +76,20 @@ async function getQuakes() {
 }
 
 function init(dbConnection) {
-    datasDb = dbConnection;
+    if (initialized) {
+        log('LiveData.init called but already initialized; ignoring duplicate call.', 'warn');
+        return;
+    }
+
+    // dbConnection should be the active DB handle
+    mainDb = dbConnection;
+
+    log(`LiveData initializing at ${new Date().toISOString()}`);
 
     if (!fs.existsSync(config.api.quakes.path)) {
-        console.log("No Earthquakes datas, requesting data to API now and will actualize daily.", config.api.quakes.path, "interval:", config.api.quakes.interval);
+        log(`No Earthquakes data file found. Will request from API now and update daily: ${config.api.quakes.path}`);
     } else {
-        console.log('quakes file found');
+        log('quakes file found');
     }
 
     mqttClient.init();
@@ -88,6 +98,8 @@ function init(dbConnection) {
     if (config.env !== 'test') {
         setAutoUpdate(true);
     }
+
+    initialized = true;
 }
 
 function setAutoUpdate(updateNow = false) {
@@ -97,8 +109,8 @@ function setAutoUpdate(updateNow = false) {
     };
 
     if (updateNow) {
-        getQuakes();
-        getISS();
+    getQuakes();
+    getISS();
     }
 
     intervalIds.push(setInterval(getQuakes, intervals.quakes));
@@ -111,6 +123,7 @@ async function close() {
     intervalIds.forEach(clearInterval);
     intervalIds = [];
     await mqttClient.close();
+    initialized = false;
 }
 
 module.exports = {

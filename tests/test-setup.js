@@ -6,11 +6,10 @@ const { logger } = require('../utils/logger');
 const setup = async () => {
     const { app, dbConnection, mongoStore, close } = await createApp();
 
-    // The dbConnection object now provides direct access to the configured databases.
-    // We map them to the legacy 'db' object structure that the tests expect.
+    // The dbConnection object now provides direct access to the configured database.
+    // Expose `mainDb` which tests and application code will use.
     const db = {
-        modelDb: dbConnection.dbs.main,
-        datasDb: dbConnection.dbs.data,
+        mainDb: dbConnection.dbs.mainDb,
     };
 
     return { app, db, dbConnection, mongoStore, close };

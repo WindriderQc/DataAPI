@@ -172,4 +172,32 @@ client.on('message', (receivedTopic, message) => {
 client.on('error', (error) => {
   console.error('MQTT client error:', error);
 });
+
+Database connections
+--------------------
+
+This application manages one MongoDB database per environment. The configuration and runtime access are simplified:
+
+- MongoDB database names (actual DB names on the server). These are configured in `config/config.js`:
+  - `config.db.mainDb` — the active database name (production: `datas`, non-production: `devdatas`).
+  - `config.db.devDb`  — alias for the active database (kept for compatibility).
+
+- Runtime DB handles exposed by the server at `app.locals.dbs`. Use these keys in application code:
+  - `app.locals.dbs.mainDb` — the `Db` instance connected to the active database (production: `datas`, non-prod: `devdatas`).
+
+Example usage in controllers:
+
+```js
+const db = req.app.locals.dbs.mainDb;
+const users = await db.collection('users').find().toArray();
 ```
+
+For compatibility, modules should use `app.locals.dbs.mainDb` as the single entry point for DB access.
+
+If you need the `Db` instance keyed by the actual MongoDB database name (for dynamic lookup), you can also use:
+
+```js
+const db = req.app.locals.dbs[config.db.mainDb];
+```
+
+Prefer `app.locals.dbs.mainDb` in application code for clarity.

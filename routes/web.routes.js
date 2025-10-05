@@ -6,10 +6,10 @@ const config = require('../config/config');
 // Middleware to load common data for dashboard-like pages
 const loadDashboardData = async (req, res, next) => {
     try {
-        const dbs = req.app.locals.dbs;
-        // Access collections from their respective databases
-        res.locals.users = await dbs.main.collection('users').find().toArray();
-        res.locals.devices = await dbs.data.collection('devices').find().toArray();
+    const dbs = req.app.locals.dbs;
+    // Access collections from their respective databases
+    res.locals.users = await dbs.mainDb.collection('users').find().toArray();
+    res.locals.devices = await dbs.mainDb.collection('devices').find().toArray();
         next();
     } catch (err) {
         next(err); // Pass errors to the global error handler
@@ -43,8 +43,8 @@ router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {
-        // Use the main application database connection directly
-        const db = req.app.locals.dbs.main;
+    // Use the main application database connection directly
+    const db = req.app.locals.dbs.mainDb;
         const users = await db.collection('users').find().toArray();
         log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
         res.render('users', {

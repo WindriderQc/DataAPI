@@ -8,12 +8,16 @@ const minSessionAge = 60 * 1000; // 1 minute
 const parsedMaxAge = parseInt(process.env.SESSION_MAX_AGE_MS, 10);
 const sessionMaxAge = (!isNaN(parsedMaxAge) && parsedMaxAge > minSessionAge) ? parsedMaxAge : oneDayInMs;
 
-// Determine database name prefix based on environment
+// Determine environment
 const env = process.env.NODE_ENV || 'development';
 
-// Define base database names
-const mainDbName = process.env.MONGO_DB_NAME || 'datas';
-const devDbName = 'devDatas';
+// Use a single database name per environment:
+// - production -> 'datas'
+// - non-production (development, staging, etc.) -> 'devdatas'
+// Allow overriding via MONGO_DB_NAME if needed.
+const defaultProdDb = 'datas';
+const defaultDevDb = 'devdatas';
+const mainDbName = process.env.MONGO_DB_NAME || (env === 'production' ? defaultProdDb : defaultDevDb);
 
 
 const config = {
@@ -22,13 +26,16 @@ const config = {
         port: parseInt(process.env.PORT, 10) || 3003,
     },
     db: {
-        connectionString: process.env.MONGO_URL+mainDbName+process.env.MONGO_OPTIONS || 'mongodb://127.0.0.1:27017/',
-        // List of all database names managed by the application
-        appDbNames: [mainDbName, devDbName],
+        // Construct a safe connection string; if MONGO_URL is provided it should include the host
+        // and we'll append the database name and any options if present. If no MONGO_URL is set,
+        // fall back to a local mongodb URI.
+        connectionString: (process.env.MONGO_URL ? (process.env.MONGO_URL + mainDbName + (process.env.MONGO_OPTIONS || '')) : 'mongodb://127.0.0.1:27017/'),
+        // List of all database names managed by the application. We only create one DB handle
+        // per environment (mainDbName).
+        appDbNames: [mainDbName],
         // The primary database for core application models (e.g., users, sessions)
         mainDb: mainDbName,
-        // The database for logging time-series data from external sources
-        devDb: devDbName,
+    // Note: use `mainDb` key throughout the codebase
     },
     session: {
         name: 'data-api.sid',

@@ -83,11 +83,17 @@ async function createApp() {
         log("Assigning dbs to app.locals...");
         // The dbs object now contains main and data properties for direct access
         app.locals.dbs = dbConnection.dbs;
-        log("DB assigned: main, data");
+    log("DB assigned: mainDb");
+    try {
+        const activeName = app.locals.dbs.mainDb && app.locals.dbs.mainDb.databaseName ? app.locals.dbs.mainDb.databaseName : config.db.mainDb;
+        log(`Active database name: ${activeName}`);
+    } catch (e) {
+        // ignore logging errors
+    }
 
         // Insert boot log into the main application database
-        if (config.env !== 'test') {
-            const userLogsCollection = app.locals.dbs.main.collection('userLogs');
+            if (config.env !== 'test') {
+            const userLogsCollection = app.locals.dbs.mainDb.collection('userLogs');
             await userLogsCollection.insertOne({
                 logType: 'boot',
                 client: 'server',
@@ -125,11 +131,8 @@ async function createApp() {
         log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
     }
 
-    if (config.env !== 'test') {
-        // Initialize liveData with the dedicated 'data' database connection
-        liveDatas.init(app.locals.dbs.data);
-        log("LiveData  -  v" + liveDatas.version);
-    }
+    // LiveData will be initialized after the server is successfully listening
+    // to avoid performing DB mutations before the app has fully started.
     // Do not auto-start LiveData until the server is successfully listening.
     // liveDatas may perform DB mutations (e.g., flushing the Quake collection),
     // so we initialize it only after the server has bound to the port.
@@ -207,7 +210,8 @@ async function createApp() {
                 log(`\n\nData API Server running at port ${port}`);
                 try {
                     if (config.env !== 'test') {
-                        liveDatas.init(app.locals.dbs.datas);
+                        // LiveData uses the mainDb in single-DB-per-env setup
+                        liveDatas.init(app.locals.dbs.mainDb);
                         log("LiveData  -  v" + liveDatas.version);
                     }
                 } catch (e) {

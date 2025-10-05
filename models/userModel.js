@@ -32,7 +32,7 @@ userSchema.methods.comparePassword = function(candidatePassword) {
 
 // Factory function to create a User model on a specific Mongoose connection
 module.exports = (connection) => {
-  // Use the provided Mongoose connection to get the correct DB and compile the model
-  const db = connection.useDb(config.db.modelDbName);
-  return db.model('User', userSchema);
+    // Use the provided Mongoose connection to get the correct DB and compile the model
+    const db = connection.useDb(config.db.mainDb, { useCache: true });
+    return db.model('User', userSchema);
 };
