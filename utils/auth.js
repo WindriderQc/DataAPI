@@ -10,12 +10,12 @@ const attachUser = async (req, res, next) => {
         log(`[MIDDLEWARE] attachUser: Session found with userId: ${req.session.userId}`);
         try {
             const dbs = req.app.locals.dbs;
-            const modelDbName = config.db.modelDbName;
-            if (!dbs || !dbs[modelDbName]) {
-                log(`[MIDDLEWARE] attachUser: Database '${modelDbName}' not available.`, 'error');
+            const modelDbName = config.db.mainDb; // main application DB
+            if (!dbs || !dbs.mainDb) {
+                log(`[MIDDLEWARE] attachUser: Database 'mainDb' not available.`, 'error');
                 return next();
             }
-            const usersCollection = dbs[modelDbName].collection('users');
+            const usersCollection = dbs.mainDb.collection('users');
             if (!ObjectId.isValid(req.session.userId)) {
                 log(`[MIDDLEWARE] attachUser: Invalid userId format: ${req.session.userId}`, 'error');
                 return next();

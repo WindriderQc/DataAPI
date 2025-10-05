@@ -66,7 +66,7 @@ function drawText(font)
 }
 
 
-function displayEarthquakes()   //  TODO:  faire une generic method pour utiliser avec d'autre CSV/arrays
+function displayEarthquakes()
 {
   console.log('Quakes all month: ' + earthquakes.length)
 

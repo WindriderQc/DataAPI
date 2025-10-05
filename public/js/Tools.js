@@ -12,7 +12,7 @@ const Tools = {
     sleep: (ms) =>{        return new Promise(resolve => setTimeout(resolve, ms))        },
 
 
-    getHostIP: ()=> {       return window.location.hostname                              },  //let serv = 'https://' + window.location.hostname    TODO: https
+    getHostIP: ()=> {       return window.location.hostname                              },
 
 
     randomScalingFactor: () => {        return Math.round(Math.random() * 100)           },  // provide a random number from 0 to 100

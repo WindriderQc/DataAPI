@@ -12,8 +12,8 @@ const getUserLogs = async (req, res, next) => {
         skip = parseInt(skip) || 0;
         skip = skip < 0 ? 0 : skip;
 
-        // Use the main application database connection directly
-        const db = req.app.locals.dbs.main;
+    // Use the main application database connection directly
+    const db = req.app.locals.dbs.mainDb;
         if (!db) {
             return res.status(500).json({ error: 'Main database not found.' });
         }
@@ -57,7 +57,7 @@ const createUserLog = async (req, res, next) => {
         const { source = 'userLogs' } = req.query;
 
         // Use the main application database connection directly
-        const db = req.app.locals.dbs.main;
+    const db = req.app.locals.dbs.mainDb;
         if (!db) {
             return res.status(500).json({ error: 'Main database not found.' });
         }
@@ -80,7 +80,7 @@ module.exports = {
             const { source = 'userLogs' } = req.query;
 
             // Use the main application database connection directly
-            const db = req.app.locals.dbs.main;
+            const db = req.app.locals.dbs.mainDb;
             if (!db) {
                 return res.status(500).json({ error: 'Main database not found.' });
             }

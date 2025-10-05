@@ -2,13 +2,9 @@ const { ObjectId } = require('mongodb');
 const { BadRequest, NotFoundError } = require('../utils/errors');
 const { normalizeCountryData } = require('../utils/location-normalizer');
 
-// Define which collections are stored in the dedicated 'data' database.
-// All other collections will default to the 'main' database.
-const dataDbCollections = ['heartbeats', 'alarms', 'isses', 'quakes'];
-
+// All collections now live in the same active database (mainDb).
 const genericController = (collectionName) => {
-  // Determine which database connection to use based on the collection.
-  const dbKey = dataDbCollections.includes(collectionName) ? 'data' : 'main';
+  const dbKey = 'mainDb';
 
   return {
     getAll: async (req, res, next) => {
