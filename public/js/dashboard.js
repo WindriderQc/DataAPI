@@ -100,13 +100,27 @@ function setWorlGraph(data) {
         "South Korea": "Korea, Republic of",
     };
 
-    const countryCounts = data.reduce((acc, entry) => {
-        if (entry.CountryName) {
-            const correctedCountryName = countryNameCorrections[entry.CountryName] || entry.CountryName;
-            acc[correctedCountryName] = (acc[correctedCountryName] || 0) + 1;
-        }
-        return acc;
-    }, {});
+    // data can be either:
+    // - an array of raw log objects where each entry has CountryName
+    // - an aggregated array from the server: [{ _id: 'CountryName', count: N }, ...]
+    let countryCounts = {};
+    if (Array.isArray(data) && data.length > 0 && data[0] && Object.prototype.hasOwnProperty.call(data[0], '_id')) {
+        // aggregated response
+        data.forEach(item => {
+            const name = item._id;
+            if (!name) return;
+            const corrected = countryNameCorrections[name] || name;
+            countryCounts[corrected] = (countryCounts[corrected] || 0) + (parseInt(item.count, 10) || 0);
+        });
+    } else if (Array.isArray(data)) {
+        // raw logs fall-back
+        data.forEach(entry => {
+            const name = entry && (entry.CountryName || entry.countryName || entry.country);
+            if (!name) return;
+            const corrected = countryNameCorrections[name] || name;
+            countryCounts[corrected] = (countryCounts[corrected] || 0) + 1;
+        });
+    }
 
     updateMapDataFeed(countryCounts);
 
@@ -147,13 +161,16 @@ function setWorlGraph(data) {
                 options: {
                     showOutline: false,
                     showGraticule: false,
-                    scales: {
-                        xy: {
-                            projection: 'equalEarth'
+                     scales: {
+                        projection: {
+                            axis: 'x',
+                            projection: 'equalEarth',
                         },
                         color: {
                             axis: 'x',
-                            display: false
+                            quantize: 5, // Example: 5 color steps
+                            interpolate: 'YlGnBu', // Example: Yellow-Green-Blue color scheme
+                            //display: false
                         }
                     },
                     plugins: {
@@ -212,7 +229,34 @@ function listAllLogs(source) {
     fetch(url)
         .then(response => response.json())
         .then(result => {
-            setWorlGraph(result.logs || []);
+            // Debugging: log meta and how many logs were returned
+            try {
+                console.log('[dashboard] get logs meta:', result.meta || {});
+                const returned = (result.logs || []).length;
+                console.log('[dashboard] logs returned:', returned);
+                const sampleCountries = (result.logs || []).slice(0, 50).map(l => l && (l.CountryName || l.countryName || l.country)).filter(Boolean).slice(0,20);
+                console.log('[dashboard] sample CountryName values:', sampleCountries);
+            } catch (e) {
+                console.warn('[dashboard] debug logging failed', e.message);
+            }
+
+            // Use the server-side aggregation endpoint to get authoritative counts
+            // This avoids counting only the paginated subset (1000 items).
+            fetch(`api/v1/v2/logs/countries?source=${source}`)
+                .then(r => r.json())
+                .then(countryResp => {
+                    if (countryResp && countryResp.status === 'success' && Array.isArray(countryResp.data)) {
+                        // countryResp.data is an array of {_id: 'CountryName', count: N}
+                        setWorlGraph(countryResp.data);
+                    } else {
+                        // Fallback to the (paginated) logs if aggregation failed
+                        setWorlGraph(result.logs || []);
+                    }
+                })
+                .catch(err => {
+                    console.warn('[dashboard] failed to fetch aggregated country counts, falling back to paginated logs', err && err.message);
+                    setWorlGraph(result.logs || []);
+                });
 
             if (!result.logs || result.logs.length === 0) {
                 loadDataTable({ data: [], columns: [] });

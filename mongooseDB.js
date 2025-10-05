@@ -7,18 +7,29 @@ let mongoServer; // This can be shared across connections in a test env
 
 const init = async () => {
     let mongourl;
-
-    if (process.env.NODE_ENV !== 'production') {
+    // Use an in-memory MongoDB server in test environment for isolation, even if MONGO_URL exists.
+    if (process.env.NODE_ENV === 'test') {
         if (!mongoServer) {
             mongoServer = await MongoMemoryServer.create();
         }
         mongourl = mongoServer.getUri();
+        console.log('Using mongodb-memory-server for test environment with uri:', mongourl);
+    } else if (process.env.MONGO_URL) {
+        // Prefer a configured MongoDB URL when available for non-test environments
+        mongourl = process.env.MONGO_URL + (process.env.MONGO_DB_NAME || '') + (process.env.MONGO_OPTIONS || '');
+        console.log('DB composed url from MONGO_URL:', mongourl);
     } else {
-        if (!process.env.MONGO_URL) {
-            throw new Error('MONGO_URL environment variable is not set for production environment.');
+        // Only start an in-memory MongoDB server when explicitly enabled outside of tests
+        const useMemory = process.env.USE_MONGO_MEMORY === 'true';
+        if (useMemory) {
+            if (!mongoServer) {
+                mongoServer = await MongoMemoryServer.create();
+            }
+            mongourl = mongoServer.getUri();
+            console.log('Using mongodb-memory-server with uri:', mongourl);
+        } else {
+            throw new Error('MONGO_URL is not set and mongodb-memory-server is disabled. Set MONGO_URL or enable memory server with USE_MONGO_MEMORY=true');
         }
-        mongourl = process.env.MONGO_URL + process.env.MONGO_DB_NAME + process.env.MONGO_OPTIONS;
-        console.log('DB composed url:', mongourl);
     }
 
     // Mongoose connection for models
