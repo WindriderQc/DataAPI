@@ -9,7 +9,7 @@
 // For more documentation on playgrounds please refer to
 // https://www.mongodb.com/docs/mongodb-vscode/playgrounds/
 
-use('data');
+use('datas');
 
 /*(async () => {
   // Use the exact collection name used by the app (case-sensitive)
@@ -25,8 +25,7 @@ use('data');
   return results.slice(0, 50); // return these so the playground displays them
 })();*/
 
-use('data');
-
+use('datas');
 // Example: merge all documents from `userLogs` into `mySessions` in the same server
 db.getCollection('userLogs').aggregate([
   { $match: {} },
