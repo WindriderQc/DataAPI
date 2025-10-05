@@ -31,7 +31,11 @@ const ctx = (obj) => {
     }
 };
 
-const normalizeCountryData = async (log) => {
+function roundKey(lat, lon, precision = 3) {
+    return `${Number(lat).toFixed(precision)}:${Number(lon).toFixed(precision)}`;
+}
+
+const normalizeCountryData = async (log, db = null, collectionName = null, docId = null) => {
     const newLog = { ...log };
 
     const isMissingName = (v) => {
@@ -123,28 +127,38 @@ const normalizeCountryData = async (log) => {
         }
 
         logger.log('debug', `[location-normalizer] Using lat/lon fields (${ctx(newLog)}): ${keyMap.lat}=${lat}, ${keyMap.lon}=${lon}`);
+
         try {
-            logger.log('info', `[location-normalizer] Attempting reverse geocoding from lat/lon (${ctx(newLog)}): lat=${lat}, lon=${lon}`);
-            const apiKey = process.env.LOCATION_IQ_API;
-            if (!apiKey) {
-                console.error("LOCATION_IQ_API key is missing from environment variables.");
-                return newLog;
-            }
-            const url = `https://us1.locationiq.com/v1/reverse.php?key=${apiKey}&lat=${lat}&lon=${lon}&format=json`;
-            const { fetchWithTimeoutAndRetry } = require('./fetch-utils');
-            const config = require('../config/config');
-            const response = await fetchWithTimeoutAndRetry(url, { timeout: config.api.defaultFetchTimeout, retries: config.api.defaultFetchRetries, name: 'LocationIQ' });
-            if (response.ok) {
-                const data = await response.json();
-                if (data.address && data.address.country) {
-                    newLog.CountryName = data.address.country;
-                    logger.log('info', `[location-normalizer] Reverse geocoding succeeded (${ctx(newLog)}): "${newLog.CountryName}"`);
+            logger.log('info', `[location-normalizer] Looking up geocode cache for lat=${lat}, lon=${lon} (${ctx(newLog)})`);
+            const key = roundKey(lat, lon);
+            if (db) {
+                const cacheColl = db.collection('geocodeCache');
+                const cached = await cacheColl.findOne({ _id: key });
+                if (cached && cached.result && cached.result.country) {
+                    newLog.CountryName = cached.result.country;
+                    logger.log('info', `[location-normalizer] Cache hit for ${key} -> ${newLog.CountryName}`);
+                } else if (collectionName && docId) {
+                    // enqueue job idempotently (use updateOne with $setOnInsert)
+                    try {
+                        const jobsColl = db.collection('geocodeJobs');
+                        await jobsColl.updateOne(
+                            { collection: collectionName, docId },
+                            { $setOnInsert: { collection: collectionName, docId, lat, lon, status: 'pending', attempts: 0, createdAt: new Date(), nextRun: new Date() } },
+                            { upsert: true }
+                        );
+                        logger.log('info', `[location-normalizer] Enqueued geocode job for ${collectionName}/${docId}`);
+                    } catch (e) {
+                        logger.log('warn', `[location-normalizer] Failed to enqueue geocode job (${ctx(newLog)}): ${e && e.message ? e.message : e}`);
+                    }
+                } else {
+                    logger.log('info', `[location-normalizer] No DB/target available to enqueue geocode job for ${key}`);
                 }
             } else {
-                 logger.log('warn', `[location-normalizer] LocationIQ API request failed with status: ${response.status} (${ctx(newLog)})`);
+                // No DB available — skip network call to provider to avoid rate limits
+                logger.log('info', `[location-normalizer] No DB connection provided; skipping geocode provider call for ${key}`);
             }
         } catch (err) {
-            logger.log('warn', `[location-normalizer] Error during reverse geocoding (${ctx(newLog)}): ${err && err.message ? err.message : err}`);
+            logger.log('warn', `[location-normalizer] Error during geocode cache/queue handling (${ctx(newLog)}): ${err && err.message ? err.message : err}`);
         }
     }
 

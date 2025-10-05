@@ -24,7 +24,8 @@ const getUserLogs = async (req, res, next) => {
             logsdb.find({}).sort({ created: sort === 'desc' ? -1 : 1 }).skip(skip).limit(1000).toArray()
         ]);
 
-        const enrichedLogs = await Promise.all(logs.map(normalizeCountryData));
+    // Pass db and collection info so the normalizer can use cache/queue instead of calling LocationIQ directly
+    const enrichedLogs = await Promise.all(logs.map(l => normalizeCountryData(l, db, source, l._id)));
 
         // Debugging info: how many returned logs have a CountryName after enrichment
         try {
