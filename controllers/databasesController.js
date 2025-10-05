@@ -166,24 +166,34 @@ exports.copyProdToDev = async (req, res) => {
                         const doc = await cursor.next();
                         batch.push(doc);
                         if (batch.length >= BATCH_SIZE) {
+                            const insertedCount = batch.length;
                             await destCollection.insertMany(batch);
-                            copied += batch.length;
+                            copied += insertedCount;
+                            // update processedDocs by the inserted amount (not cumulative)
+                            processedDocs += insertedCount;
+                            // ensure processedDocs doesn't exceed totalDocs
+                            if (processedDocs > totalDocs) processedDocs = totalDocs;
                             batch = [];
-                            processedDocs += copied;
-                            // compute overall percent
-                            const overallPercent = Math.round((processedDocs / Math.max(1, totalDocs)) * 100);
-                            emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: copied, processedDocs, totalDocs, overallPercent, status: 'partial' });
+                            // compute overall percent and clamp
+                            let overallPercent = Math.round((processedDocs / Math.max(1, totalDocs)) * 100);
+                            if (overallPercent > 100) overallPercent = 100;
+                            const safeCopied = Math.min(copied, coll.count || copied);
+                            emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: safeCopied, processedDocs, totalDocs, overallPercent, status: 'partial' });
                         }
                     }
                     if (batch.length > 0) {
+                        const insertedCount = batch.length;
                         await destCollection.insertMany(batch);
-                        copied += batch.length;
-                        processedDocs += batch.length;
+                        copied += insertedCount;
+                        processedDocs += insertedCount;
+                        if (processedDocs > totalDocs) processedDocs = totalDocs;
                     }
 
                     processedCollections++;
-                    const overallPercent = Math.round((processedDocs / Math.max(1, totalDocs)) * 100);
-                    emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: copied, processedDocs, totalDocs, overallPercent, status: 'done' });
+                    let overallPercent = Math.round((processedDocs / Math.max(1, totalDocs)) * 100);
+                    if (overallPercent > 100) overallPercent = 100;
+                    const safeCopied = Math.min(copied, coll.count || copied);
+                    emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: safeCopied, processedDocs, totalDocs, overallPercent, status: 'done' });
                     log(`Copied ${copied} documents to ${collName}.`);
                 } catch (err) {
                     processedCollections++;

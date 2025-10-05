@@ -43,7 +43,7 @@ async function getISS() {
 
     await issCollection.insertOne(newIssData);
     } catch (error) {
-        log(error, 'Better luck next time getting ISS location...  Keep Rolling!');
+        log(`Better luck next time getting ISS location... Keep Rolling! ${error && error.message ? error.message : ''}`, 'warn');
     }
 }
 
@@ -72,7 +72,7 @@ async function getQuakes() {
             });
         }
     } catch (error) {
-        log(error, 'Better luck next time getting quakes...  Keep Rolling!');
+        log(`Better luck next time getting quakes... Keep Rolling! ${error && error.message ? error.message : ''}`, 'warn');
     }
 }
 
