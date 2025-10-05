@@ -59,6 +59,49 @@ router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
 // Database management routes
 router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
 
+// Server-Sent Events endpoint for copy progress
+router.get('/databases/copy-progress/:jobId', (req, res) => {
+    const { jobId } = req.params;
+    const { get } = require('../utils/progressBus');
+    const emitter = get(jobId);
+    if (!emitter) {
+        return res.status(404).json({ status: 'error', message: 'Job not found' });
+    }
+
+    // set SSE headers
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+    });
+
+    const onProgress = (data) => {
+        res.write(`event: progress\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const onComplete = (data) => {
+        res.write(`event: complete\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const onError = (data) => {
+        res.write(`event: error\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    emitter.on('progress', onProgress);
+    emitter.on('complete', onComplete);
+    emitter.on('error', onError);
+
+    // cleanup when client disconnects
+    req.on('close', () => {
+        emitter.off('progress', onProgress);
+        emitter.off('complete', onComplete);
+        emitter.off('error', onError);
+    });
+});
+
 
 const logController = require('../controllers/logController');
 router.get('/v2/logs/countries', logController.getCountryCounts);

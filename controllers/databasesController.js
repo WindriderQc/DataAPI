@@ -97,65 +97,111 @@ exports.getDatabasesPage = async (req, res, next) => {
 /**
  * API endpoint to copy all collections from the production database to the development database.
  */
-exports.copyProdToDev = async (req, res) => {
-    const { collectionInfo } = req.app.locals;
-    if (!collectionInfo) {
-        return res.status(500).json({ status: 'error', message: 'collectionInfo is not available in app.locals.' });
-    }
+const { create: createProgress, emit: emitProgress, remove: removeProgress } = require('../utils/progressBus');
+const { v4: uuidv4 } = require('uuid');
 
+exports.copyProdToDev = async (req, res) => {
     const serverUrl = config.db.connectionString.replace(/\/[^/]+$/, '');
     const client = new MongoClient(serverUrl);
 
-    try {
-        await client.connect();
-        const sourceDb = client.db('datas');
-        const destDb = client.db('devdatas');
+    // create a job id and progress emitter
+    const jobId = uuidv4();
+    const emitter = createProgress(jobId);
 
-        log('Starting database copy from PROD (datas) to DEV (devdatas)...');
+    // respond immediately with the job id so the client can open the SSE
+    res.json({ status: 'started', jobId });
 
-        // Get the authoritative list of collections from the source DB to avoid
-        // relying on app.locals.collectionInfo which may contain mixed/invalid entries.
-        const sourceCollections = await sourceDb.listCollections().toArray();
-        for (const coll of sourceCollections) {
-            const collName = coll && coll.name;
-            if (!collName) {
-                log(`Skipping invalid collection entry from source DB: ${JSON.stringify(coll)}`, 'warn');
-                continue;
+    // run copy in background
+    (async () => {
+        try {
+            await client.connect();
+            const sourceDb = client.db('datas');
+            const destDb = client.db('devdatas');
+
+            log('Starting database copy from PROD (datas) to DEV (devdatas)...');
+
+            const sourceCollections = await sourceDb.listCollections().toArray();
+            // enrich collections with document counts for per-collection progress
+            const enriched = [];
+            let totalDocs = 0;
+            for (const c of sourceCollections) {
+                const collName = c && c.name;
+                if (!collName) continue;
+                let cnt = 0;
+                try { cnt = await sourceDb.collection(collName).countDocuments(); } catch (e) { cnt = 0; }
+                enriched.push({ name: collName, count: cnt });
+                totalDocs += cnt;
             }
 
-            try {
-                const sourceCollection = sourceDb.collection(collName);
-                const destCollection = destDb.collection(collName);
+            const totalCollections = enriched.length;
+            let processedCollections = 0;
+            let processedDocs = 0;
 
-                log(`Copying collection: ${collName}...`);
+            // Emit initial progress summary
+            emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: null, currentCollectionTotal: 0, copiedInCollection: 0, processedDocs, totalDocs, overallPercent: 0 });
 
-                // Fetch all data from the source
-                const data = await sourceCollection.find({}).toArray();
-
-                // Clear the destination collection before inserting
-                await destCollection.deleteMany({});
-
-                // Insert data if there is any
-                if (data.length > 0) {
-                    await destCollection.insertMany(data);
-                    log(`Copied ${data.length} documents to ${collName}.`);
-                } else {
-                    log(`No documents to copy for collection: ${collName}.`);
+            for (const coll of enriched) {
+                const collName = coll.name;
+                if (!collName) {
+                    log(`Skipping invalid collection entry from source DB: ${JSON.stringify(coll)}`, 'warn');
+                    processedCollections++;
+                    emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: null, currentCollectionTotal: 0, copiedInCollection: 0, processedDocs, totalDocs, overallPercent: Math.round((processedDocs / Math.max(1, totalDocs)) * 100) });
+                    continue;
                 }
-            } catch (err) {
-                log(`Error copying collection ${collName}: ${err && err.message ? err.message : err}`, 'error');
-                // Continue with the next collection instead of failing everything
-                continue;
+
+                try {
+                    const sourceCollection = sourceDb.collection(collName);
+                    const destCollection = destDb.collection(collName);
+
+                    log(`Copying collection: ${collName}...`);
+                    emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: 0, processedDocs, totalDocs, overallPercent: Math.round((processedDocs / Math.max(1, totalDocs)) * 100), status: 'starting' });
+
+                    // copy in batches to avoid memory spikes
+                    const cursor = sourceCollection.find({});
+                    await destCollection.deleteMany({});
+                    let batch = [];
+                    const BATCH_SIZE = 500;
+                    let copied = 0;
+                    while (await cursor.hasNext()) {
+                        const doc = await cursor.next();
+                        batch.push(doc);
+                        if (batch.length >= BATCH_SIZE) {
+                            await destCollection.insertMany(batch);
+                            copied += batch.length;
+                            batch = [];
+                            processedDocs += copied;
+                            // compute overall percent
+                            const overallPercent = Math.round((processedDocs / Math.max(1, totalDocs)) * 100);
+                            emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: copied, processedDocs, totalDocs, overallPercent, status: 'partial' });
+                        }
+                    }
+                    if (batch.length > 0) {
+                        await destCollection.insertMany(batch);
+                        copied += batch.length;
+                        processedDocs += batch.length;
+                    }
+
+                    processedCollections++;
+                    const overallPercent = Math.round((processedDocs / Math.max(1, totalDocs)) * 100);
+                    emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: copied, processedDocs, totalDocs, overallPercent, status: 'done' });
+                    log(`Copied ${copied} documents to ${collName}.`);
+                } catch (err) {
+                    processedCollections++;
+                    log(`Error copying collection ${collName}: ${err && err.message ? err.message : err}`, 'error');
+                    emitProgress(jobId, 'progress', { processedCollections, totalCollections, currentCollection: collName, currentCollectionTotal: coll.count, copiedInCollection: 0, processedDocs, totalDocs, overallPercent: Math.round((processedDocs / Math.max(1, totalDocs)) * 100), status: 'error', error: err && err.message });
+                    continue;
+                }
             }
+
+            emitProgress(jobId, 'complete', { processed: totalCollections, total: totalCollections, processedDocs, totalDocs });
+            log('Database copy completed successfully.');
+        } catch (error) {
+            log(`Error copying database: ${error}`, 'error');
+            emitProgress(jobId, 'error', { message: error && error.message });
+        } finally {
+            try { await client.close(); } catch (e) {}
+            // cleanup emitter after short delay to allow client to fetch final events
+            setTimeout(() => removeProgress(jobId), 30 * 1000);
         }
-
-        log('Database copy completed successfully.');
-        res.json({ status: 'success', message: 'Production database copied to development successfully.' });
-
-    } catch (error) {
-        log(`Error copying database: ${error}`, 'error');
-        res.status(500).json({ status: 'error', message: 'An error occurred during the database copy process.' });
-    } finally {
-        await client.close();
-    }
+    })();
 };
