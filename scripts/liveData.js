@@ -15,8 +15,11 @@ let initialized = false; // guard to prevent double initialization
 // use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
+    if (config.env === 'test') {
+        return; // Do not run in test environment
+    }
     if (!mainDb) {
-        console.error('[liveData] getISS: Database not initialized.');
+        log('[liveData] getISS: Database not initialized.', 'error');
         return;
     }
     const issCollection = mainDb.collection('isses');
@@ -28,8 +31,9 @@ async function getISS() {
 
         const timeStamp = new Date();
 
-    dataStore.iss = { latitude, longitude, timeStamp };
-    mqttClient.publish(config.mqtt.issTopic, dataStore.iss);
+    const newIssData = { latitude, longitude, timeStamp };
+    dataStore.iss = newIssData;
+    mqttClient.publish(config.mqtt.issTopic, newIssData);
 
         const countBefore = await issCollection.countDocuments();
 
@@ -40,15 +44,15 @@ async function getISS() {
             }
         }
 
-    await issCollection.insertOne(dataStore.iss);
+    await issCollection.insertOne(newIssData);
     } catch (error) {
-        console.log(error, 'Better luck next time getting ISS location...  Keep Rolling!');
+        log(error, 'Better luck next time getting ISS location...  Keep Rolling!');
     }
 }
 
 async function getQuakes() {
     if (!mainDb) {
-        console.error('[liveData] getQuakes: Database not initialized.');
+        log('[liveData] getQuakes: Database not initialized.', 'error');
         return;
     }
     const quakesCollection = mainDb.collection('quakes');
@@ -59,19 +63,19 @@ async function getQuakes() {
         fs.writeFileSync(config.api.quakes.path, data);
         const quakes = await CSVToJSON().fromString(data);
 
-        console.log('Flushing the Quake collection...');
+        log('Flushing the Quake collection...');
         await quakesCollection.deleteMany({});
-        console.log('Quake collection flushed.');
+        log('Quake collection flushed.');
 
         if (quakes.length > 0) {
             await quakesCollection.insertMany(quakes, { ordered: false }).catch(err => {
                 if (err.code !== 11000) { // Ignore duplicate key errors
-                    console.log('Error saving Quake locations to database:', err);
+                    log(`Error saving Quake locations to database: ${err}`, 'error');
                 }
             });
         }
     } catch (error) {
-        console.log(error, 'Better luck next time getting quakes...  Keep Rolling! ');
+        log(error, 'Better luck next time getting quakes...  Keep Rolling!');
     }
 }
 

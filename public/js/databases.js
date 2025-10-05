@@ -9,16 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBarContainer.style.display = 'block';
         progressBar.style.width = '0%';
         progressBar.setAttribute('aria-valuenow', 0);
-
-        // Simulate progress
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 10;
-            if (progress <= 90) { // Stop at 90% until fetch is complete
-                progressBar.style.width = `${progress}%`;
-                progressBar.setAttribute('aria-valuenow', progress);
-            }
-        }, 200);
+        progressBar.classList.add('progress-bar-animated');
 
         try {
             const response = await fetch('/api/v1/databases/copy-prod-to-dev', {
@@ -29,37 +20,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            clearInterval(interval); // Stop the simulation
-
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
 
             const result = await response.json();
+            if (!result || !result.jobId) throw new Error('No jobId returned');
 
-            // Complete the progress bar
-            progressBar.style.width = '100%';
-            progressBar.setAttribute('aria-valuenow', 100);
-            progressBar.classList.remove('progress-bar-animated');
-            progressBar.classList.add('bg-success');
+            const jobId = result.jobId;
+            const evtSource = new EventSource(`/api/v1/databases/copy-progress/${jobId}`);
 
+            evtSource.addEventListener('progress', (e) => {
+                const data = JSON.parse(e.data);
+                const { processedCollections, totalCollections, currentCollection, currentCollectionTotal, copiedInCollection, processedDocs, totalDocs, overallPercent, status } = data;
+                const percent = overallPercent || 0;
+                progressBar.style.width = `${percent}%`;
+                progressBar.setAttribute('aria-valuenow', percent);
 
-            if (result.status === 'success') {
-                // Wait a moment so the user can see the "completed" bar
-                setTimeout(() => {
-                    // Reload the page to show updated data
-                    window.location.reload();
-                }, 1000);
-            } else {
-                throw new Error(result.message || 'Copy operation failed.');
-            }
+                const progressText = document.getElementById('copy-progress-text');
+                progressText.style.display = 'block';
+                let text = `Overall: ${processedDocs}/${totalDocs} docs (${percent}%); Collections: ${processedCollections}/${totalCollections}`;
+                if (currentCollection) {
+                    text += ` — Copying: ${currentCollection} (${copiedInCollection}/${currentCollectionTotal}) [${status || 'in-progress'}]`;
+                }
+                progressText.textContent = text;
+            });
+
+            evtSource.addEventListener('complete', (e) => {
+                const data = JSON.parse(e.data);
+                progressBar.style.width = `100%`;
+                progressBar.setAttribute('aria-valuenow', 100);
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-success');
+                const progressText = document.getElementById('copy-progress-text');
+                if (data && data.processedDocs !== undefined && data.totalDocs !== undefined) {
+                    progressText.textContent = `Completed: ${data.processedDocs}/${data.totalDocs} documents copied.`;
+                } else {
+                    progressText.textContent = 'Completed.';
+                }
+                setTimeout(() => window.location.reload(), 800);
+                evtSource.close();
+            });
+
+            evtSource.addEventListener('error', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    console.error('Copy error event:', data);
+                } catch (_) {}
+                alert('An error occurred during database copy. Check server logs.');
+                copyButton.disabled = false;
+                progressBarContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressBar.setAttribute('aria-valuenow', 0);
+                progressBar.classList.remove('bg-success');
+                progressBar.classList.add('progress-bar-animated');
+                evtSource.close();
+            });
 
         } catch (error) {
-            clearInterval(interval);
-            console.error('Error copying database:', error);
-            alert('An error occurred while copying the database. Check the console for details.');
-            
-            // Reset UI
+            console.error('Error starting copy job:', error);
+            alert('An error occurred while starting the copy job. Check the console for details.');
             copyButton.disabled = false;
             progressBarContainer.style.display = 'none';
             progressBar.style.width = '0%';
