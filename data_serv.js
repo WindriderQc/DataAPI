@@ -81,15 +81,13 @@ async function createApp() {
 
     try {
         log("Assigning dbs to app.locals...");
-        app.locals.dbs = {};
-        for (const dbName of config.db.appDbNames) {
-            app.locals.dbs[dbName] = dbConnection.getDb(dbName);
-        }
-        log("DBs assigned.");
+        // The dbs object now contains main and data properties for direct access
+        app.locals.dbs = dbConnection.dbs;
+        log("DBs assigned: main, data");
 
-        // Insert boot log
+        // Insert boot log into the main application database
         if (config.env !== 'test') {
-            const userLogsCollection = app.locals.dbs[config.db.appDbNames[0]].collection('userLogs');
+            const userLogsCollection = app.locals.dbs.main.collection('userLogs');
             await userLogsCollection.insertOne({
                 logType: 'boot',
                 client: 'server',
@@ -127,12 +125,18 @@ async function createApp() {
         log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
     }
 
+    if (config.env !== 'test') {
+        // Initialize liveData with the dedicated 'data' database connection
+        liveDatas.init(app.locals.dbs.data);
+        log("LiveData  -  v" + liveDatas.version);
+    }
     // Do not auto-start LiveData until the server is successfully listening.
     // liveDatas may perform DB mutations (e.g., flushing the Quake collection),
     // so we initialize it only after the server has bound to the port.
 
     const mongoStore = new MongoDBStore({
-        uri: dbConnection.getMongoUrl(),
+        uri: dbConnection.getMongoUrl(), // Kept for reference, but client option takes precedence
+        databaseName: config.db.mainDb, // Explicitly use the main app database for sessions
         collection: 'mySessions',
         client: dbConnection.client,
     });

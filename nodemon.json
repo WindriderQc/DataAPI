@@ -1,0 +1,10 @@
+{
+  "watch": ["."],
+  "ignore": [
+    "jules-scratch/",
+    "app.log",
+    "node_modules/",
+    "data/"
+  ],
+  "ext": "js,mjs,cjs,json,ejs,css"
+}

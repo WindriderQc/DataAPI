@@ -1,120 +1,124 @@
 const { ObjectId } = require('mongodb');
 const { BadRequest, NotFoundError } = require('../utils/errors');
-const config = require('../config/config');
 const { normalizeCountryData } = require('../utils/location-normalizer');
 
-const genericController = (collectionName) => ({
-  getAll: async (req, res, next) => {
-    try {
-      const { db = config.db.defaultDbName } = req.query;
-      const dbs = req.app.locals.dbs;
-      if (!dbs || !dbs[db]) {
-        return next(new NotFoundError(`Database '${db}' not found`));
-      }
-      const collection = dbs[db].collection(collectionName);
-      const query = { ...req.query };
-      delete query.db;
-      const documents = await collection.find(query).toArray();
-      const enrichedDocuments = await Promise.all(documents.map(normalizeCountryData));
-      res.json({
-        status: 'success',
-        message: 'Documents retrieved successfully',
-        data: enrichedDocuments,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+// Define which collections are stored in the dedicated 'data' database.
+// All other collections will default to the 'main' database.
+const dataDbCollections = ['heartbeats', 'alarms', 'isses', 'quakes'];
 
-  getById: async (req, res, next) => {
-    try {
-      const { db = config.db.defaultDbName } = req.query;
-      const dbs = req.app.locals.dbs;
-      if (!dbs || !dbs[db]) {
-        return next(new NotFoundError(`Database '${db}' not found`));
-      }
-      const collection = dbs[db].collection(collectionName);
-      if (!ObjectId.isValid(req.params.id)) {
-        return next(new BadRequest('Invalid ID format'));
-      }
-      const document = await collection.findOne({ _id: new ObjectId(req.params.id) });
-      if (!document) {
-        return next(new NotFoundError('Document not found'));
-      }
-      res.json({
-        status: 'success',
-        message: 'Document retrieved successfully',
-        data: document,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+const genericController = (collectionName) => {
+  // Determine which database connection to use based on the collection.
+  const dbKey = dataDbCollections.includes(collectionName) ? 'data' : 'main';
 
-  create: async (req, res, next) => {
-    try {
-      const { db = config.db.defaultDbName } = req.query;
-      const dbs = req.app.locals.dbs;
-      if (!dbs || !dbs[db]) {
-        return next(new NotFoundError(`Database '${db}' not found`));
+  return {
+    getAll: async (req, res, next) => {
+      try {
+        const db = req.app.locals.dbs[dbKey];
+        if (!db) {
+          return next(new NotFoundError(`Database connection '${dbKey}' not found for collection '${collectionName}'.`));
+        }
+        const collection = db.collection(collectionName);
+        const query = { ...req.query };
+        // The 'db' query param is no longer used for selection, but might be passed by old clients. Remove it.
+        delete query.db;
+        const documents = await collection.find(query).toArray();
+        const enrichedDocuments = await Promise.all(documents.map(normalizeCountryData));
+        res.json({
+          status: 'success',
+          message: 'Documents retrieved successfully',
+          data: enrichedDocuments,
+        });
+      } catch (error) {
+        next(error);
       }
-      const collection = dbs[db].collection(collectionName);
-      const result = await collection.insertOne(req.body);
-      const createdDocument = { ...req.body, _id: result.insertedId };
-      res.status(201).json({
-        status: 'success',
-        message: 'Document created successfully',
-        data: createdDocument,
-      });
-    } catch (error) {
-      next(new BadRequest(error.message));
-    }
-  },
+    },
 
-  update: async (req, res, next) => {
-    try {
-      const { db = config.db.defaultDbName } = req.query;
-      const dbs = req.app.locals.dbs;
-      if (!dbs || !dbs[db]) {
-        return next(new NotFoundError(`Database '${db}' not found`));
+    getById: async (req, res, next) => {
+      try {
+        const db = req.app.locals.dbs[dbKey];
+        if (!db) {
+          return next(new NotFoundError(`Database connection '${dbKey}' not found for collection '${collectionName}'.`));
+        }
+        const collection = db.collection(collectionName);
+        if (!ObjectId.isValid(req.params.id)) {
+          return next(new BadRequest('Invalid ID format'));
+        }
+        const document = await collection.findOne({ _id: new ObjectId(req.params.id) });
+        if (!document) {
+          return next(new NotFoundError('Document not found'));
+        }
+        res.json({
+          status: 'success',
+          message: 'Document retrieved successfully',
+          data: document,
+        });
+      } catch (error) {
+        next(error);
       }
-      const collection = dbs[db].collection(collectionName);
-      if (!ObjectId.isValid(req.params.id)) {
-        return next(new BadRequest('Invalid ID format'));
-      }
-      const result = await collection.updateOne(
-        { _id: new ObjectId(req.params.id) },
-        { $set: req.body }
-      );
-       if (result.matchedCount === 0) {
-        return next(new NotFoundError('Document not found'));
-      }
-      res.json({ status: 'success', message: 'Document updated successfully' });
-    } catch (error) {
-      next(new BadRequest(error.message));
-    }
-  },
+    },
 
-  delete: async (req, res, next) => {
-    try {
-      const { db = config.db.defaultDbName } = req.query;
-      const dbs = req.app.locals.dbs;
-      if (!dbs || !dbs[db]) {
-        return next(new NotFoundError(`Database '${db}' not found`));
+    create: async (req, res, next) => {
+      try {
+        const db = req.app.locals.dbs[dbKey];
+        if (!db) {
+          return next(new NotFoundError(`Database connection '${dbKey}' not found for collection '${collectionName}'.`));
+        }
+        const collection = db.collection(collectionName);
+        const result = await collection.insertOne(req.body);
+        const createdDocument = { ...req.body, _id: result.insertedId };
+        res.status(201).json({
+          status: 'success',
+          message: 'Document created successfully',
+          data: createdDocument,
+        });
+      } catch (error) {
+        next(new BadRequest(error.message));
       }
-      const collection = dbs[db].collection(collectionName);
-      if (!ObjectId.isValid(req.params.id)) {
-        return next(new BadRequest('Invalid ID format'));
+    },
+
+    update: async (req, res, next) => {
+      try {
+        const db = req.app.locals.dbs[dbKey];
+        if (!db) {
+          return next(new NotFoundError(`Database connection '${dbKey}' not found for collection '${collectionName}'.`));
+        }
+        const collection = db.collection(collectionName);
+        if (!ObjectId.isValid(req.params.id)) {
+          return next(new BadRequest('Invalid ID format'));
+        }
+        const result = await collection.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: req.body }
+        );
+         if (result.matchedCount === 0) {
+          return next(new NotFoundError('Document not found'));
+        }
+        res.json({ status: 'success', message: 'Document updated successfully' });
+      } catch (error) {
+        next(new BadRequest(error.message));
       }
-      const result = await collection.deleteOne({ _id: new ObjectId(req.params.id) });
-      if (result.deletedCount === 0) {
-        return next(new NotFoundError('Document not found'));
+    },
+
+    delete: async (req, res, next) => {
+      try {
+        const db = req.app.locals.dbs[dbKey];
+        if (!db) {
+          return next(new NotFoundError(`Database connection '${dbKey}' not found for collection '${collectionName}'.`));
+        }
+        const collection = db.collection(collectionName);
+        if (!ObjectId.isValid(req.params.id)) {
+          return next(new BadRequest('Invalid ID format'));
+        }
+        const result = await collection.deleteOne({ _id: new ObjectId(req.params.id) });
+        if (result.deletedCount === 0) {
+          return next(new NotFoundError('Document not found'));
+        }
+        res.json({ status: 'success', message: 'Document deleted successfully' });
+      } catch (error) {
+        next(error);
       }
-      res.json({ status: 'success', message: 'Document deleted successfully' });
-    } catch (error) {
-      next(error);
-    }
-  },
-});
+    },
+  };
+};
 
 module.exports = genericController;
