@@ -8,15 +8,16 @@ const { normalizeCountryData } = require('../utils/location-normalizer');
 
 const getUserLogs = async (req, res, next) => {
     try {
-        let { skip = 0, sort = 'desc', source = 'userLogs', db = 'SBQC' } = req.query;
+        let { skip = 0, sort = 'desc', source = 'userLogs' } = req.query;
         skip = parseInt(skip) || 0;
         skip = skip < 0 ? 0 : skip;
 
-        const dbs = req.app.locals.dbs;
-        if (!dbs || !dbs[db]) {
-            return res.status(500).json({ error: `Database '${db}' not found.` });
+        // Use the main application database connection directly
+        const db = req.app.locals.dbs.main;
+        if (!db) {
+            return res.status(500).json({ error: 'Main database not found.' });
         }
-        const logsdb = dbs[db].collection(source);
+        const logsdb = db.collection(source);
 
         const [total, logs] = await Promise.all([
             logsdb.countDocuments(),
@@ -35,7 +36,7 @@ const getUserLogs = async (req, res, next) => {
 
         res.json({
             logs: enrichedLogs,
-            meta: { total, skip, source, db, has_more: logs.length > 0 && (skip + logs.length < total) }
+            meta: { total, skip, source, db: db.databaseName, has_more: logs.length > 0 && (skip + logs.length < total) }
         });
     } catch (error) {
         next(error);
@@ -53,14 +54,15 @@ const createUserLog = async (req, res, next) => {
         const log = req.body;
         log.created = new Date();
 
-        const { db = 'SBQC', source = 'userLogs' } = req.query;
-        const dbs = req.app.locals.dbs;
+        const { source = 'userLogs' } = req.query;
 
-        if (!dbs || !dbs[db]) {
-            return res.status(500).json({ error: `Database '${db}' not found.` });
+        // Use the main application database connection directly
+        const db = req.app.locals.dbs.main;
+        if (!db) {
+            return res.status(500).json({ error: 'Main database not found.' });
         }
 
-        const logsdb = dbs[db].collection(source);
+        const logsdb = db.collection(source);
         const createdLog = await logsdb.insertOne(log);
 
         console.log(`Log document was inserted with the _id: ${createdLog.insertedId}`);
@@ -75,12 +77,14 @@ module.exports = {
     // Return counts grouped by country for a given collection
     getCountryCounts: async (req, res, next) => {
         try {
-            const { source = 'userLogs', db = 'SBQC' } = req.query;
-            const dbs = req.app.locals.dbs;
-            if (!dbs || !dbs[db]) {
-                return res.status(500).json({ error: `Database '${db}' not found.` });
+            const { source = 'userLogs' } = req.query;
+
+            // Use the main application database connection directly
+            const db = req.app.locals.dbs.main;
+            if (!db) {
+                return res.status(500).json({ error: 'Main database not found.' });
             }
-            const logsdb = dbs[db].collection(source);
+            const logsdb = db.collection(source);
 
             const pipeline = [
                 { $match: { CountryName: { $exists: true, $type: 'string', $regex: /\S/ } } },
