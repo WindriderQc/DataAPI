@@ -113,24 +113,39 @@ exports.copyProdToDev = async (req, res) => {
 
         log('Starting database copy from PROD (datas) to DEV (devdatas)...');
 
-        for (const collection of collectionInfo) {
-            const sourceCollection = sourceDb.collection(collection.name);
-            const destCollection = destDb.collection(collection.name);
+        // Get the authoritative list of collections from the source DB to avoid
+        // relying on app.locals.collectionInfo which may contain mixed/invalid entries.
+        const sourceCollections = await sourceDb.listCollections().toArray();
+        for (const coll of sourceCollections) {
+            const collName = coll && coll.name;
+            if (!collName) {
+                log(`Skipping invalid collection entry from source DB: ${JSON.stringify(coll)}`, 'warn');
+                continue;
+            }
 
-            log(`Copying collection: ${collection.name}...`);
+            try {
+                const sourceCollection = sourceDb.collection(collName);
+                const destCollection = destDb.collection(collName);
 
-            // Fetch all data from the source
-            const data = await sourceCollection.find({}).toArray();
+                log(`Copying collection: ${collName}...`);
 
-            // Clear the destination collection before inserting
-            await destCollection.deleteMany({});
+                // Fetch all data from the source
+                const data = await sourceCollection.find({}).toArray();
 
-            // Insert data if there is any
-            if (data.length > 0) {
-                await destCollection.insertMany(data);
-                log(`Copied ${data.length} documents to ${collection.name}.`);
-            } else {
-                log(`No documents to copy for collection: ${collection.name}.`);
+                // Clear the destination collection before inserting
+                await destCollection.deleteMany({});
+
+                // Insert data if there is any
+                if (data.length > 0) {
+                    await destCollection.insertMany(data);
+                    log(`Copied ${data.length} documents to ${collName}.`);
+                } else {
+                    log(`No documents to copy for collection: ${collName}.`);
+                }
+            } catch (err) {
+                log(`Error copying collection ${collName}: ${err && err.message ? err.message : err}`, 'error');
+                // Continue with the next collection instead of failing everything
+                continue;
             }
         }
 
