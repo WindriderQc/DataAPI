@@ -99,8 +99,6 @@ function displayEarthquakes()
 
     stroke('#ff9d00');
     fill('#ff9d00');
-   // stroke(255, 0, 255);
-    //fill(255, 0, 255, 200);
     ellipse(x, y, d, d);
   }
 }
