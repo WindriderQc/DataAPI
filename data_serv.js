@@ -75,6 +75,53 @@ app.use(express.json({ limit: '10mb' }));
 
 
 async function createApp() {
+    // Quick startup disk-space checks to fail fast on low-disk machines.
+    // Defaults are conservative for production but permissive for tests.
+    const { execSync } = require('child_process');
+    function getAvailableKB(path) {
+        try {
+            const out = execSync(`df -k ${path}`).toString();
+            const lines = out.trim().split(/\r?\n/);
+            if (lines.length < 2) return null;
+            const parts = lines[lines.length - 1].split(/\s+/);
+            // Filesystem 1K-blocks Used Available Use% Mounted on
+            const availKB = parseInt(parts[3], 10);
+            return Number.isFinite(availKB) ? availKB : null;
+        } catch (e) {
+            log(`Could not determine disk free space for ${path}: ${e.message}`, 'warn');
+            return null;
+        }
+    }
+
+    function ensureFreeSpace() {
+        const env = config.env || process.env.NODE_ENV || 'development';
+        const defaultRootMB = env === 'test' ? 10 : parseInt(process.env.MIN_FREE_SPACE_MB || '1024', 10); // MB
+        const defaultTmpMB = env === 'test' ? 5 : parseInt(process.env.MIN_FREE_SPACE_TMP_MB || '512', 10); // MB
+
+        const rootAvailKB = getAvailableKB('/');
+        const tmpAvailKB = getAvailableKB('/tmp');
+
+        if (rootAvailKB !== null) {
+            const rootAvailMB = Math.floor(rootAvailKB / 1024);
+            if (rootAvailMB < defaultRootMB) {
+                throw new Error(`Insufficient free space on /: ${rootAvailMB} MB available, require at least ${defaultRootMB} MB`);
+            }
+        }
+        if (tmpAvailKB !== null) {
+            const tmpAvailMB = Math.floor(tmpAvailKB / 1024);
+            if (tmpAvailMB < defaultTmpMB) {
+                throw new Error(`Insufficient free space on /tmp: ${tmpAvailMB} MB available, require at least ${defaultTmpMB} MB`);
+            }
+        }
+    }
+
+    try {
+        ensureFreeSpace();
+    } catch (err) {
+        log(`Startup aborted by disk-space check: ${err.message}`, 'error');
+        throw err;
+    }
+
     log("Initializing mongodb connections...");
     const dbConnection = await mdb.init();
 
@@ -198,12 +245,83 @@ async function createApp() {
     };
 
     if (require.main === module) {
-        server = app.listen(config.server.port, () => {
-            log(`\n\nData API Server running at port ${config.server.port}`);
+        const pidFile = process.env.DATA_API_PID_FILE || '/tmp/data-api-server.pid';
+
+        const writePidFile = () => {
+            try {
+                require('fs').writeFileSync(pidFile, String(process.pid), { flag: 'w', mode: 0o644 });
+                log(`Wrote pid file ${pidFile}`);
+            } catch (e) {
+                log(`Could not write pid file ${pidFile}: ${e.message}`, 'warn');
+            }
+        };
+
+        const removePidFile = () => {
+            try {
+                const fs = require('fs');
+                if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
+                log(`Removed pid file ${pidFile}`);
+            } catch (e) {
+                // non-fatal
+            }
+        };
+
+        const startServer = (port) => {
+            server = app.listen(port, () => {
+                log(`\n\nData API Server running at port ${port}`);
+            });
+
+            server.on('error', (err) => {
+                if (err && err.code === 'EADDRINUSE') {
+                    log(`Port ${port} is already in use.`, 'error');
+                    // If the env allows fallback, try next port once
+                    const allowFallback = process.env.ALLOW_PORT_FALLBACK === 'true';
+                    const fallbackPort = parseInt(process.env.PORT_FALLBACK || (port + 1), 10);
+                    if (allowFallback && fallbackPort !== port) {
+                        log(`Attempting to start on fallback port ${fallbackPort} (ALLOW_PORT_FALLBACK=true).`, 'warn');
+                        // Delay briefly before attempting fallback to avoid race conditions.
+                        setTimeout(() => startServer(fallbackPort), 250);
+                        return;
+                    }
+
+                    log(`To find and stop the process using the port, you can run:\n  sudo lsof -i :${port}\n  sudo fuser -k ${port}/tcp`, 'info');
+                    // exit the process with a non-zero code to indicate failure (but let logs flush)
+                    setTimeout(() => process.exit(1), 200);
+                } else {
+                    log(`Server error during startup: ${err && err.message ? err.message : err}`, 'error');
+                    setTimeout(() => process.exit(1), 200);
+                }
+            });
+
+            process.on('SIGTERM', close);
+            process.on('SIGINT', close);
+        };
+
+        // Ensure we remove pid file and call close() on various exit scenarios
+        process.on('exit', () => {
+            // synchronous cleanup
+            try { removePidFile(); } catch (e) {}
         });
 
-        process.on('SIGTERM', close);
-        process.on('SIGINT', close);
+        process.on('uncaughtException', async (err) => {
+            log(`Uncaught exception: ${err && err.stack ? err.stack : err}`, 'error');
+            try { await close(); } catch (e) {}
+            removePidFile();
+            // rethrow after cleanup to allow process to exit with non-zero
+            setTimeout(() => process.exit(1), 50);
+        });
+
+        process.on('unhandledRejection', async (reason) => {
+            log(`Unhandled rejection: ${reason}`, 'error');
+            try { await close(); } catch (e) {}
+            removePidFile();
+            setTimeout(() => process.exit(1), 50);
+        });
+
+        // Write pid file for external cleanup and monitoring
+        writePidFile();
+
+        startServer(config.server.port);
     }
 
     return { app, dbConnection, mongoStore, close };
