@@ -37,8 +37,8 @@ const DeviceSchema = mongoose.Schema({
 
 const config = require('../config/config');
 
-// Use the dataDb name from the centralized configuration
-const dataDbConnection = mongoose.connection.useDb(config.db.dataDb, { useCache: true });
+// Use the primary database name from the centralized configuration
+const mainDbConnection = mongoose.connection.useDb(config.db.mainDb, { useCache: true });
 
-module.exports = dataDbConnection.model('Device', DeviceSchema);
+module.exports = mainDbConnection.model('Device', DeviceSchema);
 

@@ -3,6 +3,8 @@ const { BadRequest, NotFoundError } = require('../utils/errors');
 const { normalizeCountryData } = require('../utils/location-normalizer');
 
 // All collections now live in the same active database (mainDb).
+const geocodeCandidates = new Set(['quakes', 'isses']);
+
 const genericController = (collectionName) => {
   const dbKey = 'mainDb';
 
@@ -61,6 +63,23 @@ const genericController = (collectionName) => {
         }
         const collection = db.collection(collectionName);
         const result = await collection.insertOne(req.body);
+        // If this collection likely needs geocoding, enqueue a job
+        try {
+          if (geocodeCandidates.has(collectionName)) {
+            const latKey = Object.keys(req.body).find(k => ['lat','latitude','y'].includes(k.toLowerCase()));
+            const lonKey = Object.keys(req.body).find(k => ['lon','lng','longitude','long','x'].includes(k.toLowerCase()));
+            if (latKey && lonKey) {
+              const lat = Number(req.body[latKey]);
+              const lon = Number(req.body[lonKey]);
+              if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                await db.collection('geocodeJobs').insertOne({ collection: collectionName, docId: result.insertedId, lat, lon, status: 'pending', attempts: 0, createdAt: new Date(), nextRun: new Date() });
+              }
+            }
+          }
+        } catch (e) {
+          // enqueue failures shouldn't block the main flow; log and continue
+          console.warn('Failed to enqueue geocode job:', e && e.message ? e.message : e);
+        }
         const createdDocument = { ...req.body, _id: result.insertedId };
         res.status(201).json({
           status: 'success',
