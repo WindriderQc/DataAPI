@@ -11,22 +11,38 @@ const getDbStats = async (db, collectionInfo) => {
 
     for (const collection of collectionInfo) {
         try {
-            const coll = db.collection(collection.name);
-            const [count, collectionStats] = await Promise.all([
-                coll.countDocuments(),
-                coll.stats(),
-            ]);
+            // collection entries may come in different shapes depending on how
+            // app.locals.collectionInfo was populated. Support both { name: 'x' }
+            // and { collection: 'x' } shapes, and fall back to the raw value.
+            const collName = collection.name || collection.collection || collection;
+            if (!collName) throw new Error('collection name undefined');
+
+            const coll = db.collection(collName);
+
+            // Some driver/builds may not expose collection.stats() as a function
+            // (older/newer driver differences). Try coll.stats(), otherwise use
+            // the database command fallback.
+            const countPromise = coll.countDocuments();
+            let statsPromise;
+            if (typeof coll.stats === 'function') {
+                statsPromise = coll.stats();
+            } else {
+                statsPromise = db.command({ collStats: collName });
+            }
+
+            const [count, collectionStats] = await Promise.all([countPromise, statsPromise]);
 
             stats.collections.push({
-                name: collection.name,
+                name: collName,
                 count: count,
                 size: collectionStats.size,
                 storageSize: collectionStats.storageSize,
             });
         } catch (error) {
-            log(`Could not retrieve stats for collection ${collection.name} in db ${db.databaseName}: ${error.message}`, 'error');
+            const collName = collection && (collection.name || collection.collection) || String(collection);
+            log(`Could not retrieve stats for collection ${collName} in db ${db.databaseName}: ${error.message}`, 'error');
             stats.collections.push({
-                name: collection.name,
+                name: collName,
                 count: 'N/A',
                 size: 'N/A',
                 storageSize: 'N/A',
