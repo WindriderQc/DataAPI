@@ -35,8 +35,10 @@ const DeviceSchema = mongoose.Schema({
     }
 })
 
-const dbName = process.env.NODE_ENV === 'production' ? 'datas' : 'devdatas'
-const myDB = mongoose.connection.useDb(dbName)
+const config = require('../config/config');
 
-module.exports = myDB.model('Device', DeviceSchema)
+// Use the dataDb name from the centralized configuration
+const dataDbConnection = mongoose.connection.useDb(config.db.dataDb, { useCache: true });
+
+module.exports = dataDbConnection.model('Device', DeviceSchema);
 

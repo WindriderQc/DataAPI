@@ -1,61 +1,63 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const { MongoClient } = require('mongodb');
+const config = require('./config/config');
 const { log } = require('./utils/logger');
 
-let mongoServer; // This can be shared across connections in a test env
+let mongoServer;
 
 const init = async () => {
     let mongourl;
-    // Use an in-memory MongoDB server in test environment for isolation, even if MONGO_URL exists.
-    if (process.env.NODE_ENV === 'test') {
+
+    // For 'test' environment, always use an isolated in-memory server.
+    if (config.env === 'test') {
         if (!mongoServer) {
             mongoServer = await MongoMemoryServer.create();
         }
         mongourl = mongoServer.getUri();
-        console.log('Using mongodb-memory-server for test environment with uri:', mongourl);
+        log(`Using mongodb-memory-server for test environment: ${mongourl}`);
     } else if (process.env.MONGO_URL) {
-        // Prefer a configured MongoDB URL when available for non-test environments
-        mongourl = process.env.MONGO_URL + (process.env.MONGO_DB_NAME || '') + (process.env.MONGO_OPTIONS || '');
-        console.log('DB composed url from MONGO_URL:', mongourl);
+        // For other environments (dev, prod), prioritize MONGO_URL.
+        mongourl = process.env.MONGO_URL;
+        log(`Connecting to MongoDB cluster at: ${mongourl}`);
     } else {
-        // Only start an in-memory MongoDB server when explicitly enabled outside of tests
-        const useMemory = process.env.USE_MONGO_MEMORY === 'true';
-        if (useMemory) {
-            if (!mongoServer) {
-                mongoServer = await MongoMemoryServer.create();
-            }
-            mongourl = mongoServer.getUri();
-            console.log('Using mongodb-memory-server with uri:', mongourl);
-        } else {
-            throw new Error('MONGO_URL is not set and mongodb-memory-server is disabled. Set MONGO_URL or enable memory server with USE_MONGO_MEMORY=true');
-        }
+        // If no MONGO_URL and not in test mode, we cannot proceed.
+        throw new Error('MONGO_URL environment variable is not set. A database connection is required for this environment.');
     }
 
-    // Mongoose connection for models
+    // Mongoose connects to the server. The individual models will use `useDb`
+    // to select the correct database from this single connection pool.
     await mongoose.connect(mongourl);
+    log(`Mongoose connected to server.`);
 
-    // Native client connection for other parts of the app
-    const client = new MongoClient(mongourl, {
-        useUnifiedTopology: true,
-    });
+    // Native client also connects to the server.
+    const client = new MongoClient(mongourl);
     await client.connect();
+    log('MongoDB native client connected successfully to server.');
 
-    const databases = {
-        SBQC: client.db('SBQC'),
-        datas: client.db('datas'),
-    };
+    // Create a dictionary of database connections based on the config
+    const databases = config.db.appDbNames.reduce((acc, dbName) => {
+        acc[dbName] = client.db(dbName);
+        log(`Connection established for database: ${dbName}`);
+        return acc;
+    }, {});
 
-    const getDb = (dbName = 'datas') => databases[dbName];
+    const getDb = (dbName = config.db.mainDb) => databases[dbName];
 
     const getMongoUrl = () => mongourl;
 
     const close = async () => {
         await client.close();
         await mongoose.disconnect();
+        log('MongoDB connections closed.');
     };
 
-    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection };
+    const allDbs = {
+        main: getDb(config.db.mainDb),
+        data: getDb(config.db.dataDb),
+    };
+
+    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection, dbs: allDbs };
 };
 
 const closeServer = async () => {

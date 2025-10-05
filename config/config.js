@@ -8,16 +8,35 @@ const minSessionAge = 60 * 1000; // 1 minute
 const parsedMaxAge = parseInt(process.env.SESSION_MAX_AGE_MS, 10);
 const sessionMaxAge = (!isNaN(parsedMaxAge) && parsedMaxAge > minSessionAge) ? parsedMaxAge : oneDayInMs;
 
+// Determine database name prefix based on environment
+const env = process.env.NODE_ENV || 'development';
+const dbNamePrefix = env === 'production' ? '' : 'dev';
+
+// Define base database names
+const mainDbName = 'SBQC';
+const dataDbName = 'datas';
+
+// Construct final database names with environment prefix
+const finalMainDbName = `${dbNamePrefix}${mainDbName}`;
+const finalDataDbName = `${dbNamePrefix}${dataDbName}`;
+
 const config = {
-    env: process.env.NODE_ENV || 'development',
+    env: env,
     server: {
         port: parseInt(process.env.PORT, 10) || 3003,
     },
     db: {
         connectionString: process.env.DB_CONNECTION_STRING || 'mongodb://127.0.0.1:27017/',
-        appDbNames: (process.env.DB_APP_DB_NAMES || 'SBQC,datas').split(','),
-        modelDbName: process.env.DB_MODEL_DB_NAME || 'SBQC',
-        defaultDbName: process.env.DB_DEFAULT_DB_NAME || 'SBQC',
+        // List of all database names managed by the application
+        appDbNames: [finalMainDbName, finalDataDbName],
+        // The primary database for core application models (e.g., users, sessions)
+        mainDb: finalMainDbName,
+        // The database for logging time-series data from external sources
+        dataDb: finalDataDbName,
+        // The modelDbName is the main database
+        modelDbName: finalMainDbName,
+        // The defaultDbName is now the main database
+        defaultDbName: finalMainDbName,
     },
     session: {
         name: 'data-api.sid',
