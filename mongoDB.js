@@ -42,7 +42,7 @@ const init = async () => {
         return acc;
     }, {});
 
-    const getDb = (dbName = config.db.mainDb) => databases[dbName];
+    const getDb = (dbName = config.db.mainDb) => { const db = databases[dbName]; if (!db) throw new Error(`Unknown database: ${dbName}`); return db; };
 
     const getMongoUrl = () => mongourl;
 
@@ -52,12 +52,8 @@ const init = async () => {
         log('MongoDB connections closed.');
     };
 
-    const allDbs = {
-        main: getDb(config.db.mainDb),
-        data: getDb(config.db.dataDb),
-    };
 
-    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection, dbs: allDbs };
+    return { getDb, getMongoUrl, close, client, mongooseConnection: mongoose.connection, db: getDb(config.db.mainDb) };
 };
 
 const closeServer = async () => {

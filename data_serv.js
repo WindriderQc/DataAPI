@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const mdb = require('./mongooseDB');
+const mdb = require('./mongoDB.js');
 const liveDatas = require('./scripts/liveData.js');
 const session = require('express-session');
 const MongoDBStore = require('connect-mongodb-session')(session);
@@ -83,7 +83,7 @@ async function createApp() {
         log("Assigning dbs to app.locals...");
         // The dbs object now contains main and data properties for direct access
         app.locals.dbs = dbConnection.dbs;
-        log("DBs assigned: main, data");
+        log("DB assigned: main, data");
 
         // Insert boot log into the main application database
         if (config.env !== 'test') {
