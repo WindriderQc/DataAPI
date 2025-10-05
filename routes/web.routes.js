@@ -7,9 +7,9 @@ const config = require('../config/config');
 const loadDashboardData = async (req, res, next) => {
     try {
         const dbs = req.app.locals.dbs;
-        const dbName = config.db.defaultDbName;
-        res.locals.users = await dbs[dbName].collection('users').find().toArray();
-        res.locals.devices = await dbs[dbName].collection('devices').find().toArray();
+        // Access collections from their respective databases
+        res.locals.users = await dbs.main.collection('users').find().toArray();
+        res.locals.devices = await dbs.data.collection('devices').find().toArray();
         next();
     } catch (err) {
         next(err); // Pass errors to the global error handler
@@ -43,9 +43,9 @@ router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {
-        const dbs = req.app.locals.dbs;
-        const dbName = config.db.modelDbName;
-        const users = await dbs[dbName].collection('users').find().toArray();
+        // Use the main application database connection directly
+        const db = req.app.locals.dbs.main;
+        const users = await db.collection('users').find().toArray();
         log(`[ROUTES] GET /users: Found ${users.length} users. Rendering page.`);
         res.render('users', {
             users: users,
