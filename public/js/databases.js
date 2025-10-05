@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressBar = document.getElementById('progress-bar');
 
     copyButton.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to overwrite the development database with data from production? This action cannot be undone.')) {
+            return; // Stop if user cancels
+        }
+
         // Disable button and show progress bar
         copyButton.disabled = true;
         progressBarContainer.style.display = 'block';

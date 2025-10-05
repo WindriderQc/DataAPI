@@ -28,9 +28,9 @@ async function getISS() {
 
         const timeStamp = new Date();
 
-    const newIssData = { latitude, longitude, timeStamp };
-    dataStore.iss = newIssData;
-    mqttClient.publish(config.mqtt.issTopic, newIssData);
+        const newIssData = { latitude, longitude, timeStamp };
+        dataStore.iss = newIssData;
+        mqttClient.publish(config.mqtt.issTopic, newIssData);
 
         const countBefore = await issCollection.countDocuments();
 
@@ -41,9 +41,9 @@ async function getISS() {
             }
         }
 
-    await issCollection.insertOne(newIssData);
+        await issCollection.insertOne(newIssData);
     } catch (error) {
-        log(`Better luck next time getting ISS location... Keep Rolling! ${error && error.message ? error.message : ''}`, 'warn');
+        log(`Error getting ISS location: ${error.message}`, 'error');
     }
 }
 
@@ -72,7 +72,7 @@ async function getQuakes() {
             });
         }
     } catch (error) {
-        log(`Better luck next time getting quakes... Keep Rolling! ${error && error.message ? error.message : ''}`, 'warn');
+        log(`Error getting quakes: ${error.message}`, 'error');
     }
 }
 
@@ -103,21 +103,20 @@ function init(dbConnection) {
     initialized = true;
 }
 
-function setAutoUpdate(updateNow = false) {
+async function setAutoUpdate(updateNow = false) {
     const intervals = {
         quakes: config.api.quakes.interval,
         iss: config.api.iss.interval,
     };
 
     if (updateNow) {
-    getQuakes();
-    getISS();
+        await Promise.all([getQuakes(), getISS()]);
     }
 
     intervalIds.push(setInterval(getQuakes, intervals.quakes));
     intervalIds.push(setInterval(getISS, intervals.iss));
 
-    console.log("LiveData configured  -  Intervals: ", intervals);
+    log(`LiveData configured - Intervals: ${JSON.stringify(intervals)}`);
 }
 
 async function close() {

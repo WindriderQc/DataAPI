@@ -1,8 +1,31 @@
+<%
+    // Helper function to format bytes into a human-readable string (KB, MB, GB)
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // Helper function to format numbers with commas
+    function formatNumber(num) {
+        return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
+    }
+%>
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <%- include('partials/mainHead', { title: 'Databases' }) %>
+    <style>
+        .collection-stats {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
 </head>
 
 <body class="fixed-nav sticky-footer bg-light sidenav-toggled" id="page-top">
@@ -26,8 +49,13 @@
                             <ul class="list-group list-group-flush" id="prod-db-info">
                                 <% prodDbInfo.collections.forEach(coll => { %>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <%= coll.name %>
-                                        <span class="badge bg-primary rounded-pill"><%= coll.count %></span>
+                                        <div>
+                                            <%= coll.name %>
+                                            <div class="collection-stats">
+                                                Size: <%= formatBytes(coll.size) %> | Storage: <%= formatBytes(coll.storageSize) %>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill"><%= formatNumber(coll.count) %></span>
                                     </li>
                                 <% }) %>
                             </ul>
@@ -43,8 +71,13 @@
                             <ul class="list-group list-group-flush" id="dev-db-info">
                                 <% devDbInfo.collections.forEach(coll => { %>
                                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <%= coll.name %>
-                                        <span class="badge bg-success rounded-pill"><%= coll.count %></span>
+                                        <div>
+                                            <%= coll.name %>
+                                            <div class="collection-stats">
+                                                Size: <%= formatBytes(coll.size) %> | Storage: <%= formatBytes(coll.storageSize) %>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-success rounded-pill"><%= formatNumber(coll.count) %></span>
                                     </li>
                                 <% }) %>
                             </ul>
