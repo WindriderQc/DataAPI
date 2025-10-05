@@ -15,9 +15,6 @@ let initialized = false; // guard to prevent double initialization
 // use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
-    if (config.env === 'test') {
-        return; // Do not run in test environment
-    }
     if (!mainDb) {
         log('[liveData] getISS: Database not initialized.', 'error');
         return;
@@ -31,9 +28,9 @@ async function getISS() {
 
         const timeStamp = new Date();
 
-    const newIssData = { latitude, longitude, timeStamp };
-    dataStore.iss = newIssData;
-    mqttClient.publish(config.mqtt.issTopic, newIssData);
+        const newIssData = { latitude, longitude, timeStamp };
+        dataStore.iss = newIssData;
+        mqttClient.publish(config.mqtt.issTopic, newIssData);
 
         const countBefore = await issCollection.countDocuments();
 
@@ -44,9 +41,9 @@ async function getISS() {
             }
         }
 
-    await issCollection.insertOne(newIssData);
+        await issCollection.insertOne(newIssData);
     } catch (error) {
-        log(error, 'Better luck next time getting ISS location...  Keep Rolling!');
+        log(`Error getting ISS location: ${error.message}`, 'error');
     }
 }
 
@@ -75,7 +72,7 @@ async function getQuakes() {
             });
         }
     } catch (error) {
-        log(error, 'Better luck next time getting quakes...  Keep Rolling!');
+        log(`Error getting quakes: ${error.message}`, 'error');
     }
 }
 
@@ -106,21 +103,20 @@ function init(dbConnection) {
     initialized = true;
 }
 
-function setAutoUpdate(updateNow = false) {
+async function setAutoUpdate(updateNow = false) {
     const intervals = {
         quakes: config.api.quakes.interval,
         iss: config.api.iss.interval,
     };
 
     if (updateNow) {
-    getQuakes();
-    getISS();
+        await Promise.all([getQuakes(), getISS()]);
     }
 
     intervalIds.push(setInterval(getQuakes, intervals.quakes));
     intervalIds.push(setInterval(getISS, intervals.iss));
 
-    console.log("LiveData configured  -  Intervals: ", intervals);
+    log(`LiveData configured - Intervals: ${JSON.stringify(intervals)}`);
 }
 
 async function close() {
