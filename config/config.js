@@ -18,6 +18,7 @@ const env = process.env.NODE_ENV || 'development';
 const defaultProdDb = 'datas';
 const defaultDevDb = 'devdatas';
 const mainDbName = process.env.MONGO_DB_NAME || (env === 'production' ? defaultProdDb : defaultDevDb);
+const devDbName = defaultDevDb;
 
 
 const config = {
@@ -32,9 +33,10 @@ const config = {
         connectionString: (process.env.MONGO_URL ? (process.env.MONGO_URL + mainDbName + (process.env.MONGO_OPTIONS || '')) : 'mongodb://127.0.0.1:27017/'),
         // List of all database names managed by the application. We only create one DB handle
         // per environment (mainDbName).
-        appDbNames: [mainDbName],
+        appDbNames: [mainDbName, devDbName],
         // The primary database for core application models (e.g., users, sessions)
         mainDb: mainDbName,
+        devDb: devDbName,
     // Note: use `mainDb` key throughout the codebase
     },
     session: {
