@@ -159,7 +159,14 @@ async function createApp() {
         }
     };
     if (config.session.cookie_domain) {
-        sessionOptions.cookie.domain = config.session.cookie_domain;
+        // Only set an explicit cookie domain in production. Setting a domain like
+        // ".example.com" during local development causes the browser to not
+        // send the cookie for localhost requests which breaks login/session flows.
+        if (IN_PROD) {
+            sessionOptions.cookie.domain = config.session.cookie_domain;
+        } else {
+            log(`Session cookie domain '${config.session.cookie_domain}' present but ignored in non-production environment.`, 'warn');
+        }
     }
 
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
