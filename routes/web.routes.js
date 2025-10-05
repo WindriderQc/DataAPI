@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { requireAuth } = require('../utils/auth');
 const { log } = require('../utils/logger');
 const config = require('../config/config');
+const databasesController = require('../controllers/databasesController');
 
 // Middleware to load common data for dashboard-like pages
 const loadDashboardData = async (req, res, next) => {
@@ -56,6 +57,8 @@ router.get('/users', requireAuth, async (req, res, next) => {
         next(err);
     }
 });
+
+router.get('/databases', requireAuth, databasesController.getDatabasesPage);
 
 /*
 router.get('/dashboard', async (req, res) => {
