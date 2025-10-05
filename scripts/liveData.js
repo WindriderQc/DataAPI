@@ -131,8 +131,8 @@ async function setAutoUpdate(updateNow = false) {
         await Promise.all([getQuakes(), getISS()]);
     }
 
-    intervalIds.push(setInterval(getQuakes, intervals.quakes));
-    intervalIds.push(setInterval(getISS, intervals.iss));
+    intervalIds.push(setInterval(getQuakes, intervals.quakes));  //  quakes is actualized rarely, saving to mongodb
+    intervalIds.push(setInterval(getISS, intervals.iss));   //  iss is actualized frequently, broadcasting to mqtt
 
     log(`LiveData configured - Intervals: ${JSON.stringify(intervals)}`);
 }
