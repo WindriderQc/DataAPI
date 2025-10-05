@@ -15,9 +15,6 @@ let initialized = false; // guard to prevent double initialization
 // use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
-    if (config.env === 'test') {
-        return; // Do not run in test environment
-    }
     if (!mainDb) {
         log('[liveData] getISS: Database not initialized.', 'error');
         return;
