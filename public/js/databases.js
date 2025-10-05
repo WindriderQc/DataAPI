@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
 
         try {
-            const response = await fetch('/api/databases/copy-prod-to-dev', {
+            const response = await fetch('/api/v1/databases/copy-prod-to-dev', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
