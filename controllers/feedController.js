@@ -1,158 +1,89 @@
 const moment = require('moment');
-const mongoose = require('mongoose');
-
-// Helper function to create a User model instance for the correct connection
-const getUserModel = (db) => require('../models/userModel')(db.client);
+const AppEvent = require('../models/appEventModel');
 
 /**
- * Fetches the latest user logs and formats them for the feed.
- * @param {Db} db The main database connection.
- * @param {number} limit The maximum number of items to fetch.
- * @returns {Promise<Array>} An array of feed items.
+ * Maps an AppEvent document to a feed item format.
+ * @param {object} event - The AppEvent document from the database.
+ * @returns {object} A formatted feed item.
  */
-const getUserLogsFeed = async (db, limit) => {
-    try {
-        const userLogs = await db.collection('userLogs')
-            .find({})
-            .sort({ created: -1 })
-            .limit(limit)
-            .toArray();
+const formatEventForFeed = (event) => {
+    const iconMap = {
+        info: 'fa-info-circle',
+        warning: 'fa-exclamation-triangle',
+        error: 'fa-bell',
+        success: 'fa-check-circle',
+        user: 'fa-user',
+        device: 'fa-share-alt',
+        userLog: 'fa-eye'
+    };
 
-        return userLogs.map(log => ({
-            type: 'userLog',
-            message: `New activity from ${log.CountryName || 'an unknown location'}.`,
-            timestamp: log.created,
-            icon: 'fa-eye',
-            color: 'primary'
-        }));
-    } catch (error) {
-        console.error('Error fetching user logs feed:', error);
-        return [];
-    }
+    const colorMap = {
+        info: 'info',
+        warning: 'warning',
+        error: 'danger',
+        success: 'success',
+        user: 'primary',
+        device: 'success',
+        userLog: 'primary'
+    };
+
+    return {
+        message: event.message,
+        timestamp: event.timestamp,
+        timeAgo: moment(event.timestamp).fromNow(),
+        icon: iconMap[event.type] || 'fa-info-circle',
+        color: colorMap[event.type] || 'secondary'
+    };
 };
 
 /**
- * Generates a feed of application events.
- * In the future, this could come from a dedicated events collection.
- * @returns {Promise<Array>} An array of feed items.
+ * Fetches the initial feed data from the AppEvents collection.
+ * This is used to populate the feed when the page first loads.
+ *
+ * @returns {Promise<Array>} A promise that resolves to a sorted array of feed items.
  */
-const getAppEventsFeed = async () => {
-    // This is a placeholder. Real events would be stored and fetched from the DB.
-    return [
-        {
-            type: 'event',
-            message: 'CPU usage is high on server-02.',
-            timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 mins ago
-            icon: 'fa-laptop',
-            color: 'danger'
-        },
-        {
-            type: 'event',
-            message: 'Database backup completed successfully.',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-            icon: 'fa-database',
-            color: 'success'
-        }
-    ];
-};
-
-/**
- * Fetches the latest registered devices.
- * @param {Db} db The main database connection.
- * @param {number} limit The maximum number of items to fetch.
- * @returns {Promise<Array>} An array of feed items.
- */
-const getDevicesFeed = async (db, limit) => {
+exports.getFeedData = async () => {
     try {
-        const devices = await db.collection('devices')
-            .find({})
-            .sort({ lastBoot: -1 })
-            .limit(limit)
-            .toArray();
-        return devices.map(device => ({
-            type: 'device',
-            message: `New device '${device.id}' registered.`,
-            timestamp: device.lastBoot,
-            icon: 'fa-share-alt',
-            color: 'success'
-        }));
-    } catch (error) {
-        console.error('Error fetching devices feed:', error);
-        return [];
-    }
-};
-
-/**
- * Fetches the latest registered users.
- * @param {Db} db The main database connection.
- * @param {number} limit The maximum number of items to fetch.
- * @returns {Promise<Array>} An array of feed items.
- */
-const getUsersFeed = async (db, limit) => {
-    try {
-        const User = getUserModel(db);
-        const users = await User.find({})
-            .sort({ creationDate: -1 })
-            .limit(limit)
+        const events = await AppEvent.find({})
+            .sort({ timestamp: -1 })
+            .limit(50)
             .lean(); // Use .lean() for faster, plain JS objects
 
-        return users.map(user => ({
-            type: 'user',
-            message: `Welcome to our new user: ${user.name}!`,
-            timestamp: user.creationDate,
-            icon: 'fa-user',
-            color: 'warning'
-        }));
+        return events.map(formatEventForFeed);
     } catch (error) {
-        console.error('Error fetching users feed:', error);
+        console.error('Error fetching initial feed data:', error);
         return [];
     }
 };
 
+const sendFeedEvents = (req, res) => {
+    // Set headers for SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders(); // Flush the headers to establish the connection
 
-/**
- * Fetches, combines, and sorts all feed data.
- * @param {Object} dbs The database connections object.
- * @returns {Promise<Array>} A sorted array of all feed items.
- */
-exports.getFeedData = async (dbs) => {
-    const mainDb = dbs.mainDb;
-    if (!mainDb) {
-        return [];
-    }
+    const sendEvent = (data) => {
+        const formattedData = formatEventForFeed(data);
+        res.write(`data: ${JSON.stringify(formattedData)}\n\n`);
+    };
 
-    const limit = 50; // Fetch up to 50 items per feed source
+    // Listen for new events and send them to the client
+    const appEmitter = require('../utils/eventEmitter');
+    appEmitter.on('newEvent', sendEvent);
 
-    // Fetch all feeds in parallel
-    const [
-        userLogsFeed,
-        appEventsFeed,
-        devicesFeed,
-        usersFeed
-    ] = await Promise.all([
-        getUserLogsFeed(mainDb, limit),
-        getAppEventsFeed(), // This one is static for now
-        getDevicesFeed(mainDb, limit),
-        getUsersFeed(mainDb, limit)
-    ]);
+    // Keep the connection open
+    const heartbeat = setInterval(() => {
+        res.write(': heartbeat\n\n');
+    }, 15000); // Send a comment every 15 seconds to prevent timeout
 
-    // Combine all feed items into one array
-    const allFeeds = [
-        ...userLogsFeed,
-        ...appEventsFeed,
-        ...devicesFeed,
-        ...usersFeed
-    ];
-
-    // Sort all feed items by timestamp in descending order
-    allFeeds.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    // Take the most recent 50 items overall
-    const recentFeeds = allFeeds.slice(0, limit);
-
-    // Format timestamps to be human-readable
-    return recentFeeds.map(item => ({
-        ...item,
-        timeAgo: moment(item.timestamp).fromNow()
-    }));
+    // Clean up when the client disconnects
+    req.on('close', () => {
+        appEmitter.removeListener('newEvent', sendEvent);
+        clearInterval(heartbeat);
+        res.end();
+        console.log('SSE client disconnected');
+    });
 };
+
+exports.sendFeedEvents = sendFeedEvents;

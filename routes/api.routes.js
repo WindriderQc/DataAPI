@@ -2,6 +2,8 @@ let router = require('express').Router()
 const { body } = require('express-validator');
 const genericController = require('../controllers/genericController');
 const databasesController = require('../controllers/databasesController');
+const feedController = require('../controllers/feedController');
+const { requireAuth } = require('../utils/auth');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -54,7 +56,8 @@ router.route('/quakes').get(liveDatasController.quakes)
 router.route('/iss/all').delete(liveDatasController.deleteAllIss)
 router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
 
-
+// Route for Server-Sent Events (SSE) for the real-time feed
+router.get('/feed/events', requireAuth, feedController.sendFeedEvents);
 
 // Database management routes
 router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
