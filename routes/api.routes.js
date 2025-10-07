@@ -34,7 +34,7 @@ router.route('/users/:id')
     .delete(userController.delete);
 
 // Generic routes for collections
-const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms'];
+const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms', 'checkins', 'meows'];
 collections.forEach(collectionName => {
     const controller = genericController(collectionName);
     router.route(`/${collectionName}`)
@@ -112,9 +112,9 @@ router.get('/v2/logs/countries', logController.getCountryCounts);
 
 const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 
-router.get('/proxy-location', async (req, res) => {
+router.get('/geolocation', async (req, res) => {
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    console.log("Client IP for proxy-location:", clientIp); // Added more specific log
+    console.log("Client IP for /geolocation:", clientIp);
     try {
         // First get public IP of the server, as ip-api.com might block local IPs or server's own IP if called directly.
         const ipifyResponse = await fetchWithTimeoutAndRetry('https://api64.ipify.org?format=json', { timeout: 4000, retries: 1, name: 'ipify' });
@@ -125,19 +125,29 @@ router.get('/proxy-location', async (req, res) => {
         if (!geoResponse.ok) throw new Error(`ip-api.com error! Status: ${geoResponse.status}`);
         res.json(await geoResponse.json());
     } catch (error) {
-        console.error('Error in /proxy-location route:', error);
+        console.error('Error in /geolocation route:', error);
         res.status(500).json({ error: 'Error fetching geolocation', details: error.message });
     }
 });
 
-// User/System logs manipulation routes
+const externalApiController = require('../controllers/externalApiController');
 
-router.get('/v2/logs', logController.getUserLogs);
-router.post('/v2/logs', [
-    // Sanitize all fields in the body to prevent XSS.
-    // The escape() sanitizer will only apply to string fields, leaving others untouched.
+router.get('/weather', externalApiController.getWeather);
+router.get('/tides', externalApiController.getTides);
+router.get('/tle', externalApiController.getTle);
+router.get('/pressure', externalApiController.getPressure);
+router.get('/ec-weather', externalApiController.getEcWeather);
+
+// User/System logs manipulation routes
+router.get('/logs/user', logController.getUserLogs);
+router.post('/logs/user', [
     body('*').escape()
 ], logController.createUserLog);
+
+router.get('/logs/server', logController.getServerLogs);
+router.post('/logs/server', [
+    body('*').escape()
+], logController.createServerLog);
 
 // Export API routes
 module.exports = router
