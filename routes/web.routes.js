@@ -12,7 +12,7 @@ const loadDashboardData = async (req, res, next) => {
     // Access collections from their respective databases
     res.locals.users = await dbs.mainDb.collection('users').find().toArray();
     res.locals.devices = await dbs.mainDb.collection('devices').find().toArray();
-    res.locals.feedData = await feedController.getFeedData(dbs);
+    res.locals.feedData = await feedController.getFeedData();
         next();
     } catch (err) {
         next(err); // Pass errors to the global error handler
