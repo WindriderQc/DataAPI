@@ -80,50 +80,7 @@
         
     </div>
     <div class="row">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Feeds</h5>
-                <table class="table table-striped bg-white">
-                    <tbody>
-                        <tr>
-                            <td><i class="fa fa-user text-primary fa-lg"></i></td>
-                            <td>New record, over 90 views.</td>
-                            <td><i>10 mins</i></td>
-                        </tr>
-                        <tr>
-                            <td><i class="fa fa-bell text-danger fa-lg"></i></td>
-                            <td>Database error.</td>
-                            <td><i>15 mins</i></td>
-                        </tr>
-                        <tr>
-                            <td><i class="fa fa-users text-warning fa-lg"></i></td>
-                            <td>New record, over 40 users.</td>
-                            <td><i>17 mins</i></td>
-                        </tr>
-                        <tr>
-                            <td><i class="fa fa-comment text-danger fa-lg"></i></td>
-                            <td>New comments.</td>
-                            <td><i>25 mins</i></td>
-                        </tr>
-                        <tr>
-                            <td><i class="fa fa-bookmark text-primary fa-lg"></i></td>
-                            <td>Check transactions.</td>
-                            <td><i>28 mins</i></td>
-                        </tr>
-                        <tr>
-                            <td><i class="fa fa-laptop text-danger fa-lg"></i></td>
-                            <td>CPU overload.</td>
-                            <td><i>35 mins</i></td>
-                        </tr>
-                        <tr>
-                            <td><i class="fa fa-share-alt text-success fa-lg"></i></td>
-                            <td>New shares.</td>
-                            <td><i>39 mins</i></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <%- include('partials/feed', { feedData: feedData }) %>
     </div>
     </div>
 
