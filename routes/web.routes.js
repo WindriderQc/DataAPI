@@ -3,6 +3,7 @@ const { requireAuth } = require('../utils/auth');
 const { log } = require('../utils/logger');
 const config = require('../config/config');
 const databasesController = require('../controllers/databasesController');
+const feedController = require('../controllers/feedController');
 
 // Middleware to load common data for dashboard-like pages
 const loadDashboardData = async (req, res, next) => {
@@ -11,6 +12,7 @@ const loadDashboardData = async (req, res, next) => {
     // Access collections from their respective databases
     res.locals.users = await dbs.mainDb.collection('users').find().toArray();
     res.locals.devices = await dbs.mainDb.collection('devices').find().toArray();
+    res.locals.feedData = await feedController.getFeedData(dbs);
         next();
     } catch (err) {
         next(err); // Pass errors to the global error handler
@@ -25,7 +27,8 @@ router.get('/', loadDashboardData, (req, res) => {
         title: "Dashboard",
         menuId: 'home',
         collectionInfo: req.app.locals.collectionInfo,
-        regDevices: res.locals.devices
+        regDevices: res.locals.devices,
+        feedData: res.locals.feedData
     });
 });
 

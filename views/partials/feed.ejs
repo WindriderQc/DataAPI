@@ -1,0 +1,22 @@
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">Feeds</h5>
+        <table class="table table-striped bg-white">
+            <tbody>
+                <% if (feedData && feedData.length > 0) { %>
+                    <% feedData.forEach(item => { %>
+                        <tr>
+                            <td><i class="fa <%= item.icon %> text-<%= item.color %> fa-lg"></i></td>
+                            <td><%= item.message %></td>
+                            <td><i><%= item.timeAgo %></i></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="3" class="text-center">No feed items available.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>
