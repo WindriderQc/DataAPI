@@ -157,3 +157,16 @@
 .mqtt-status.disconnected { background: #6c757d; color: white; }
 .mqtt-status.connecting { background: #ffc107; color: black; }
 .mqtt-status.error { background: #dc3545; color: white; }
+
+/* Feed Container Styles */
+.feed-scroll-container {
+    max-height: 250px;
+    overflow-y: auto;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+.feed-scroll-container::-webkit-scrollbar {
+    display: none;
+}
