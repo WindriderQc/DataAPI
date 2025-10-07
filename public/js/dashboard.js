@@ -1,9 +1,40 @@
 import { API } from '/js/utils/index.js';
+import { initFeed } from '/js/utils/sse.js';
 
 // Dashboard UI and Charting Logic
 let worldMap;
 
+/**
+ * Creates a table row element for a new feed item.
+ * @param {object} item - The feed item data (message, icon, color, timeAgo).
+ * @returns {HTMLTableRowElement} The created <tr> element.
+ */
+const createFeedItemRow = (item) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td style="width: 40px;"><i class="fa ${item.icon} text-${item.color} fa-lg"></i></td>
+        <td>${item.message}</td>
+        <td style="width: 100px;"><i>${item.timeAgo}</i></td>
+    `;
+    return row;
+};
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize the real-time feed
+    initFeed((newItem) => {
+        const feedTableBody = document.querySelector('.feed-scroll-container tbody');
+        if (!feedTableBody) return;
+
+        const newRow = createFeedItemRow(newItem);
+        feedTableBody.prepend(newRow); // Add the new item to the top
+
+        // Remove the "No items" message if it exists
+        const noItemsRow = feedTableBody.querySelector('.no-items-row');
+        if (noItemsRow) {
+            noItemsRow.remove();
+        }
+    });
+
     let source = 'userLogs'; // Default source
     let selectedCollection = null;
     const summaryCards = document.querySelectorAll('.summary-card');

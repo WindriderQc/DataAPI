@@ -3,12 +3,12 @@ const bcrypt = require('bcrypt');
 const { BadRequest } = require('../utils/errors');
 const { log } = require('../utils/logger');
 const config = require('../config/config');
+const { logEvent } = require('../utils/eventLogger');
 
 exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
-    // Use the main application database connection directly
-    const db = req.app.locals.dbs.mainDb;
-    const usersCollection = db.collection('users');
+    const { dbs } = req.app.locals;
+    const usersCollection = dbs.mainDb.collection('users');
 
     try {
         const existingUser = await usersCollection.findOne({ email });
@@ -20,7 +20,10 @@ exports.register = async (req, res, next) => {
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         const result = await usersCollection.insertOne({ name, email, password: hashedPassword });
-        const user = { _id: result.insertedId };
+        const user = { _id: result.insertedId, name };
+
+        // Log the registration event
+        logEvent(`New user registered: ${user.name}`, 'user');
 
         req.session.userId = user._id.toString();
         req.session.save(err => {

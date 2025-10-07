@@ -15,6 +15,7 @@ const pjson = require('./package.json');
 const { log } = require('./utils/logger');
 const { attachUser } = require('./utils/auth');
 const { GeneralError } = require('./utils/errors');
+const { logEvent } = require('./utils/eventLogger');
 const config = require('./config/config');
 const createUserModel = require('./models/userModel');
 
@@ -194,6 +195,8 @@ async function createApp() {
             }
             return res.status(err.getCode()).json(responseJson);
         }
+        // For unhandled errors, log them as critical events for the feed
+        logEvent('An internal server error occurred.', 'error');
         log(err.stack, 'error');
         return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
     });
