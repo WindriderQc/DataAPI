@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Device = require('../models/deviceModel');
 const { NotFoundError, BadRequest } = require('../utils/errors');
+const { logEvent } = require('../utils/eventLogger');
 
 const APIFeatures = require('../utils/apiFeatures');
 
@@ -40,8 +41,18 @@ exports.update = async (req, res, next) => {
 
     try {
         const query = { id: req.body.id };
+
+        // Check if the device exists to determine if this is a new registration
+        const existingDevice = await Device.findOne(query);
+
         const update = { type: req.body.type, lastBoot: req.body.lastBoot, connected: req.body.connected, config: req.body.config, payload: req.body.payload };
         const doc = await Device.findOneAndUpdate(query, update, { upsert: true, new: true, setDefaultsOnInsert: true });
+
+        // If the device did not exist before, log it as a new registration event
+        if (!existingDevice) {
+            logEvent(`New device registered: ${doc.id}`, 'device');
+        }
+
         res.status(200).json({ status: "success", message: 'Device registration Info updated/created', data: doc });
     } catch (err) {
         next(err);
