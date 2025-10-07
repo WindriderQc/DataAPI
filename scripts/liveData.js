@@ -27,10 +27,13 @@ async function getISS() {
         //console.log(data);
         if (data.message !== 'success') { return; }
 
-        // Keep the simple shape but normalize types:
-        // latitude/longitude -> Number, timeStamp -> Date
-        const latitude = Number(data.iss_position && data.iss_position.latitude);
-        const longitude = Number(data.iss_position && data.iss_position.longitude);
+    // Keep the simple shape but normalize types and reject null/empty values:
+    // latitude/longitude -> Number, timeStamp -> Date
+    const latRaw = data.iss_position && (data.iss_position.latitude ?? data.iss_position.lat);
+    const lonRaw = data.iss_position && (data.iss_position.longitude ?? data.iss_position.lon);
+
+    const latitude = (latRaw === null || latRaw === undefined || String(latRaw).trim() === '') ? null : Number(latRaw);
+    const longitude = (lonRaw === null || lonRaw === undefined || String(lonRaw).trim() === '') ? null : Number(lonRaw);
 
         // Convert timestamp (likely seconds) to Date. If timestamp looks like ms already, use it.
         let timeStamp;
@@ -41,8 +44,9 @@ async function getISS() {
             timeStamp = new Date();
         }
 
-        if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-            log('[liveData] Invalid ISS coordinates received; skipping write/publish.', 'warn');
+        // Reject null/NaN/Infinite coordinates
+        if (latitude === null || longitude === null || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            log('[liveData] Invalid ISS coordinates received; skipping write/publish. rawPayload=' + JSON.stringify(data), 'warn');
             return;
         }
 
