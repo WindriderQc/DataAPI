@@ -51,6 +51,7 @@ collections.forEach(collectionName => {
 });
 
 const liveDatasController = require('../controllers/liveDataController')
+
 router.route('/iss').get(liveDatasController.iss)
 router.route('/quakes').get(liveDatasController.quakes)
 router.route('/iss/all').delete(liveDatasController.deleteAllIss)
@@ -107,11 +108,7 @@ router.get('/databases/copy-progress/:jobId', (req, res) => {
 
 
 const logController = require('../controllers/logController');
-router.get('/v2/logs/countries', logController.getCountryCounts);
-
-
-
-
+router.get('/logs/countries', logController.getCountryCounts);
 
 const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 
@@ -153,4 +150,4 @@ router.post('/logs/server', [
 ], logController.createServerLog);
 
 // Export API routes
-module.exports = router
+module.exports = router;
