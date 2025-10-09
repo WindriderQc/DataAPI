@@ -1,28 +1,10 @@
 const request = require('supertest');
-const { setup, fullTeardown } = require('./test-setup');
 
 describe('New API Endpoints', () => {
-    let app;
-    let db;
-    let dbConnection;
-    let mongoStore;
-    let close;
-
-    beforeAll(async () => {
-        const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
-        app = expressApp;
-        db = initializedDb;
-        dbConnection = conn;
-        mongoStore = store;
-        close = closeFunc;
-    }, 30000);
-
-    afterAll(async () => {
-        await fullTeardown({ dbConnection, mongoStore, close });
-    });
+    // No beforeAll/afterAll needed, handled by global setup
 
     beforeEach(async () => {
-        // Clean up collections before each test
+        // Clean up collections before each test using the global 'db' handle
         await Promise.all([
             db.mainDb.collection('checkins').deleteMany({}),
             db.mainDb.collection('meows').deleteMany({}),
@@ -33,6 +15,7 @@ describe('New API Endpoints', () => {
 
     describe('GET /geolocation', () => {
         it('should return geolocation data', async () => {
+            // 'app' is global
             const res = await request(app).get('/api/v1/geolocation');
             expect(res.statusCode).toBe(200);
             expect(res.body).toHaveProperty('country');

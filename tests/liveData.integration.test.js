@@ -1,6 +1,5 @@
 jest.setTimeout(30000);
 
-const { setup, fullTeardown } = require('./test-setup');
 const liveDatas = require('../scripts/liveData');
 const mqttClient = require('../scripts/mqttClient');
 const fetchUtils = require('../utils/fetch-utils');
@@ -17,15 +16,11 @@ const waitFor = async (predicate, timeout = 3000, interval = 50) => {
 };
 
 describe('LiveData integration (DB write + MQTT publish)', () => {
-  let app, db, dbConnection, mongoStore, close;
+  // No app/db/close variables needed, they are global now.
 
   beforeAll(async () => {
-    const res = await setup();
-    app = res.app;
-    db = res.db;
-    dbConnection = res.dbConnection;
-    mongoStore = res.mongoStore;
-    close = res.close;
+    // The global setup has already initialized app and db.
+    // We just need to set up mocks specific to this test suite.
 
     // stub mqtt publish
     mqttClient.publish = jest.fn();
@@ -49,15 +44,15 @@ describe('LiveData integration (DB write + MQTT publish)', () => {
       };
     });
 
-    // Initialize liveDatas with the test DB handle
+    // Initialize liveDatas with the global test DB handle
     await liveDatas.init(db.mainDb);
   });
 
   afterAll(async () => {
-    // cleanup intervals and mqtt
+    // Cleanup intervals, mqtt, and restore mocks.
+    // The global afterAll will handle closing the db connection.
     try { await liveDatas.close(); } catch (e) {}
     jest.restoreAllMocks();
-    await fullTeardown({ dbConnection, mongoStore, close });
   });
 
   test('writes ISS and Quake data to DB and publishes ISS over MQTT', async () => {

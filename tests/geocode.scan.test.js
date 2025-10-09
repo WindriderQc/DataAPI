@@ -1,18 +1,9 @@
-const { setup, fullTeardown } = require('./test-setup');
 const { scanAndEnqueue } = require('../scripts/geocodeWorker');
 
-let resources;
-
-beforeAll(async () => {
-  resources = await setup();
-});
-
-afterAll(async () => {
-  await fullTeardown(resources);
-});
+// No beforeAll/afterAll needed, handled by global setup
 
 test('scanAndEnqueue dry-run finds a document and does not write jobs', async () => {
-  const { db } = resources;
+  // 'db' is global
   const devices = db.mainDb.collection('devices');
   // insert a document with lat/lon
   const res = await devices.insertOne({ name: 'dryrun-test-device', lat: 45.12345, lon: -73.54321, geocoded: false });
