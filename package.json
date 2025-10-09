@@ -21,6 +21,12 @@
     "url": "https://github.com/WindriderQc/DataAPI/issues"
   },
   "homepage": "https://github.com/WindriderQc/DataAPI#readme",
+  "jest": {
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/test-setup.js"
+    ],
+    "testEnvironment": "node"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "connect-mongodb-session": "^5.0.0",

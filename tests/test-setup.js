@@ -1,25 +1,24 @@
 process.env.NODE_ENV = 'test';
 const createApp = require('../data_serv');
-const config = require('../config/config');
 const { logger } = require('../utils/logger');
 
-const setup = async () => {
-    const { app, dbConnection, mongoStore, close } = await createApp();
+// Increase the timeout for the initial setup
+jest.setTimeout(30000);
 
-    // The dbConnection object now provides direct access to the configured database.
-    // Expose `mainDb` which tests and application code will use.
-    const db = {
-        mainDb: dbConnection.dbs.mainDb,
-    };
+beforeAll(async () => {
+  const { app, dbConnection, mongoStore, close } = await createApp();
+  global.app = app;
+  // Expose mainDb directly for convenience in tests
+  global.db = { mainDb: dbConnection.dbs.mainDb };
+  global.dbConnection = dbConnection;
+  global.mongoStore = mongoStore;
+  global.close = close;
+});
 
-    return { app, db, dbConnection, mongoStore, close };
-};
-
-const fullTeardown = async ({ close }) => {
-    if (typeof close === 'function') {
-        await close();
-    }
-    logger.close();
-};
-
-module.exports = { setup, fullTeardown };
+afterAll(async () => {
+  if (typeof global.close === 'function') {
+    await global.close();
+  }
+  // Close the logger stream
+  logger.close();
+});
