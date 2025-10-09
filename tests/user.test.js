@@ -1,33 +1,26 @@
 const request = require('supertest');
-const { setup, fullTeardown } = require('./test-setup');
 const createUserModel = require('../models/userModel');
 
 describe('User API', () => {
-  let app;
-  let dbConnection;
-  let mongoStore;
-  let User;
-  let close;
+  let User; // This will hold the test-specific User model
 
   beforeAll(async () => {
-    const { app: expressApp, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
-    app = expressApp;
-    dbConnection = conn;
-    mongoStore = store;
-    close = closeFunc;
+    // The global setup has already created 'app' and 'dbConnection'.
+    // We create a User model scoped to the test DB connection.
+    User = createUserModel(global.dbConnection.mongooseConnection);
 
-    // Create the User model using the Mongoose connection from the test setup
-    User = createUserModel(dbConnection.mongooseConnection);
+    // Inject the test-specific model into the app instance so controllers use it.
+    // This is crucial for ensuring our tests don't interact with the real User model.
+    global.app.locals.models = { User };
+  });
 
-    // Inject the test-specific model into the app instance so controllers use it
-    app.locals.models = { User };
-  }, 30000);
-
-  afterAll(async () => {
-    await fullTeardown({ dbConnection, mongoStore, close });
+  afterAll(() => {
+    // Clean up the injected model to avoid side effects between test files.
+    delete global.app.locals.models;
   });
 
   afterEach(async () => {
+    // Clean the User collection after each test.
     await User.deleteMany({});
   });
 
@@ -39,7 +32,7 @@ describe('User API', () => {
         password: 'password123'
       };
 
-      const res = await request(app)
+      const res = await request(global.app) // Use global app
         .post('/api/v1/users')
         .send(userData);
 
@@ -61,7 +54,7 @@ describe('User API', () => {
         { name: 'Test User 2', email: 'test2@example.com', password: 'password' }
       ]);
 
-      const res = await request(app).get('/api/v1/users');
+      const res = await request(global.app).get('/api/v1/users');
 
       expect(res.statusCode).toEqual(200);
       expect(res.body.data.length).toBe(2);
@@ -73,7 +66,7 @@ describe('User API', () => {
       const user = await User.create({ name: 'Test User', email: 'test@example.com', password: 'password' });
       const userId = user._id;
 
-      const res = await request(app).get(`/api/v1/users/${userId}`);
+      const res = await request(global.app).get(`/api/v1/users/${userId}`);
 
       expect(res.statusCode).toEqual(200);
       expect(res.body.data).toHaveProperty('_id', userId.toString());
@@ -87,7 +80,7 @@ describe('User API', () => {
       const userId = user._id;
       const updatedData = { name: 'Updated User Name' };
 
-      const res = await request(app)
+      const res = await request(global.app)
         .put(`/api/v1/users/${userId}`)
         .send(updatedData);
 
@@ -104,7 +97,7 @@ describe('User API', () => {
       const user = await User.create({ name: 'Test User', email: 'test@example.com', password: 'password' });
       const userId = user._id;
 
-      const res = await request(app).delete(`/api/v1/users/${userId}`);
+      const res = await request(global.app).delete(`/api/v1/users/${userId}`);
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toHaveProperty('message', 'User deleted');
@@ -117,7 +110,7 @@ describe('User API', () => {
 
   describe('User Page', () => {
     it('should redirect to login when accessing the user management page without being authenticated', async () => {
-        const res = await request(app).get('/users');
+        const res = await request(global.app).get('/users');
         expect(res.statusCode).toEqual(302);
         expect(res.headers.location).toBe('/login');
     });
@@ -127,31 +120,31 @@ describe('User API', () => {
   describe('Failure Scenarios', () => {
     it('should return 409 when creating a user with a duplicate email', async () => {
       await User.create({ name: 'Test User', email: 'test@example.com', password: 'password' });
-      const res = await request(app)
+      const res = await request(global.app)
         .post('/api/v1/users')
         .send({ name: 'Another User', email: 'test@example.com', password: 'password' });
       expect(res.statusCode).toEqual(409);
     });
 
     it('should return 404 when getting a non-existent user', async () => {
-      const res = await request(app).get('/api/v1/users/60c72b9a9b1d8e001f8e8b8b');
+      const res = await request(global.app).get('/api/v1/users/60c72b9a9b1d8e001f8e8b8b');
       expect(res.statusCode).toEqual(404);
     });
 
     it('should return 404 when updating a non-existent user', async () => {
-      const res = await request(app)
+      const res = await request(global.app)
         .put('/api/v1/users/60c72b9a9b1d8e001f8e8b8b')
         .send({ name: 'New Name' });
       expect(res.statusCode).toEqual(404);
     });
 
     it('should return 404 when deleting a non-existent user', async () => {
-      const res = await request(app).delete('/api/v1/users/60c72b9a9b1d8e001f8e8b8b');
+      const res = await request(global.app).delete('/api/v1/users/60c72b9a9b1d8e001f8e8b8b');
       expect(res.statusCode).toEqual(404);
     });
 
     it('should return 400 when creating a user with missing required fields', async () => {
-        const res = await request(app)
+        const res = await request(global.app)
             .post('/api/v1/users')
             .send({ name: 'Incomplete User' }); // Missing email and password
         expect(res.statusCode).toEqual(400);
@@ -159,12 +152,12 @@ describe('User API', () => {
     });
 
     it('should return 400 for a malformed user ID in GET', async () => {
-        const res = await request(app).get('/api/v1/users/123');
+        const res = await request(global.app).get('/api/v1/users/123');
         expect(res.statusCode).toEqual(400);
     });
 
     it('should return 400 for a malformed user ID in PUT', async () => {
-        const res = await request(app).put('/api/v1/users/123').send({ name: 'New Name' });
+        const res = await request(global.app).put('/api/v1/users/123').send({ name: 'New Name' });
         expect(res.statusCode).toEqual(400);
     });
   });
