@@ -7,6 +7,11 @@ const ProfileSchema = mongoose.Schema({
         default: "default_ESP32",
         required: true
     },
+    // Mark this profile as admin-capable (users with this profile are admins)
+    isAdmin: {
+        type: Boolean,
+        default: false
+    },
     config: {
         type: Array,
         default: [  

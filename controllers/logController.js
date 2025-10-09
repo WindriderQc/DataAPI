@@ -93,3 +93,10 @@ module.exports = {
     createServerLog: createLog('serverLogs'),
     getCountryCounts,
 };
+
+// Dynamic handler for v2-style endpoint used by the dashboard client.
+// It delegates to the existing getLogs factory using the `source` query parameter.
+module.exports.getLogsForSource = (req, res, next) => {
+    const source = (req.query && req.query.source) ? req.query.source : 'userLogs';
+    return getLogs(source)(req, res, next);
+};

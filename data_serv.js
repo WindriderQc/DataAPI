@@ -10,14 +10,16 @@ const mdb = require('./mongoDB.js');
 const liveDatas = require('./scripts/liveData.js');
 const session = require('express-session');
 const MongoDBStore = require('connect-mongodb-session')(session);
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const pjson = require('./package.json');
-const { log } = require('./utils/logger');
-const { attachUser } = require('./utils/auth');
-const { GeneralError } = require('./utils/errors');
-const { logEvent } = require('./utils/eventLogger');
 const config = require('./config/config');
+const pjson = require('./package.json');
+
+// add missing imports used in this file
+const { log } = require('./utils/logger');
+const { logEvent } = require('./utils/eventLogger');
+const { GeneralError } = require('./utils/errors');
 const createUserModel = require('./models/userModel');
+// auth middleware helpers
+const { attachUser, requireAuth } = require('./utils/auth');
 
 const IN_PROD = config.env === 'production';
 
@@ -74,6 +76,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 
 
+
+// create/store session BEFORE mounting API routes
+const store = new MongoDBStore({
+  uri: config.db.uri,
+  databaseName: config.db.mainDb,
+  collection: 'sessions'
+});
+
+app.use(session({
+  secret: config.session.secret || 'replace-me',
+  resave: false,
+  saveUninitialized: false,
+  store,
+  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 24 }
+}));
 
 async function createApp() {
     log(`Starting Data API Server - v${pjson.version} - Environment: ${config.env}`);
@@ -195,9 +212,23 @@ async function createApp() {
             }
             return res.status(err.getCode()).json(responseJson);
         }
-        // For unhandled errors, log them as critical events for the feed
-        logEvent('An internal server error occurred.', 'error');
-        log(err.stack, 'error');
+        // For unhandled errors, log them as critical events for the feed.
+        // Emit a concise message to the feed (so public subscribers see a short description),
+        // and keep the full stack in the server logs for debugging.
+        const shortMsg = err && err.message ? `Internal server error: ${String(err.message).split('\n')[0].slice(0,200)}` : 'An internal server error occurred.';
+        try {
+            const stack = err && err.stack ? String(err.stack) : undefined;
+            const meta = { path: req && req.originalUrl ? req.originalUrl : undefined };
+            // pass stack/meta so that the private/admin feed can display full details
+            logEvent(shortMsg, 'error', { stack, meta });
+        } catch (e) {
+            // If event logging fails, still continue to log locally.
+            log(`Failed to emit error event: ${e && e.message ? e.message : e}`, 'error');
+        }
+
+        // Log full stack to server logs for diagnostics (not emitted to public feed)
+        log(err && err.stack ? err.stack : String(err), 'error');
+
         return res.status(500).json({ status: 'error', message: 'An internal server error occurred.' });
     });
 

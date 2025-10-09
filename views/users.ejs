@@ -44,6 +44,30 @@
                 </div>
             </div>
 
+            <!-- Profiles Management -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="fa fa-id-badge"></i> Profiles (Admin)
+                </div>
+                <div class="card-body">
+                    <form id="createProfileForm" class="row g-2 align-items-end">
+                        <div class="col-md-6">
+                            <label for="profileName">Profile Name</label>
+                            <input type="text" class="form-control" id="profileName" name="profileName" placeholder="Profile name" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="isAdmin">Is Admin</label>
+                            <select id="isAdmin" class="form-control" name="isAdmin"><option value="false">false</option><option value="true">true</option></select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary">Create Profile</button>
+                        </div>
+                    </form>
+                    <hr>
+                    <div id="profilesList"></div>
+                </div>
+            </div>
+
             <div class="card mb-3">
                 <div class="card-header">
                     <i class="fa fa-users"></i> Existing Users
@@ -57,6 +81,7 @@
                                     <th>Email</th>
                                     <th>Lat</th>
                                     <th>Lon</th>
+                                    <th>Profile</th>
                                     <th>Created At</th>
                                     <th>Last Connect</th>
                                 </tr>
@@ -68,6 +93,12 @@
                                         <td><%= user.email %></td>
                                         <td><%= user.lat || '' %></td>
                                         <td><%= user.lon || '' %></td>
+                                        <td>
+                                                                    <select class="form-select assign-profile-select" data-user-id="<%= user._id %>">
+                                                                        <option value="">-- none --</option>
+                                                                    </select>
+                                            <button class="btn btn-sm btn-outline-secondary assign-profile-btn mt-1" data-user-id="<%= user._id %>">Assign</button>
+                                        </td>
                                         <td><%= user.creationDate ? user.creationDate.toLocaleString() : '' %></td>
                                         <td><%= user.lastConnectDate ? user.lastConnectDate.toLocaleString() : '' %></td>
                                     </tr>
@@ -114,6 +145,109 @@
             }
         });
     </script>
+
+        <script>
+            // Profiles management
+            async function fetchProfiles() {
+                const resp = await fetch('/api/v1/profiles');
+                if (!resp.ok) return [];
+                const json = await resp.json();
+                return json.data || [];
+            }
+
+            async function renderProfiles() {
+                const profiles = await fetchProfiles();
+                const container = document.getElementById('profilesList');
+                if (!container) return;
+                if (profiles.length === 0) {
+                    container.innerHTML = '<div class="alert alert-secondary">No profiles</div>';
+                    return;
+                }
+                let html = '<ul class="list-group">';
+                profiles.forEach(p => {
+                    html += `<li class="list-group-item d-flex justify-content-between align-items-center">${p.profileName} <span class="badge bg-${p.isAdmin ? 'danger' : 'secondary'}">${p.isAdmin}</span></li>`;
+                });
+                html += '</ul>';
+                container.innerHTML = html;
+
+                // populate select elements in the users table
+                const selects = document.querySelectorAll('.assign-profile-select');
+                selects.forEach(sel => {
+                    // clear existing options except default
+                    const defaultOpt = sel.querySelector('option[value=""]');
+                    sel.innerHTML = '';
+                    sel.appendChild(defaultOpt || document.createElement('option'));
+                    sel.querySelector('option').value = '';
+                    sel.querySelector('option').text = '-- none --';
+                    profiles.forEach(p => {
+                            const o = document.createElement('option');
+                            // ensure option value is a string for reliable comparison
+                            o.value = String(p._id);
+                            o.text = p.profileName + (p.isAdmin ? ' (admin)' : '');
+                            sel.appendChild(o);
+                    });
+                });
+            }
+
+            document.getElementById('createProfileForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('profileName').value;
+                const isAdmin = document.getElementById('isAdmin').value === 'true';
+                try {
+                    const resp = await fetch('/api/v1/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profileName: name, isAdmin }) });
+                    if (resp.ok) {
+                        await renderProfiles();
+                        document.getElementById('profileName').value = '';
+                    } else {
+                        const text = await resp.text();
+                        alert('Failed to create profile: ' + text);
+                    }
+                } catch (err) {
+                    alert('Error creating profile: ' + err.message);
+                }
+            });
+
+            // assign profile handlers
+            document.addEventListener('click', async (ev) => {
+                const btn = ev.target.closest('.assign-profile-btn');
+                if (!btn) return;
+                const userId = btn.getAttribute('data-user-id');
+                const sel = document.querySelector(`.assign-profile-select[data-user-id="${userId}"]`);
+                if (!sel) return;
+                const profileId = sel.value;
+                try {
+                    const resp = await fetch(`/api/v1/users/${userId}/assign-profile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profileId }) });
+                    if (resp.ok) {
+                        alert('Profile assigned');
+                    } else {
+                        const txt = await resp.text();
+                        alert('Assign failed: ' + txt);
+                    }
+                } catch (e) {
+                    alert('Assign error: ' + e.message);
+                }
+            });
+
+            // initial render
+            // expose users to client-side so we can mark the current profile selection
+            const usersClient = <%- JSON.stringify(users || []) %>;
+
+            (async () => {
+                await renderProfiles();
+                // after profiles are populated, set the select values to current user's profileId
+                try {
+                    usersClient.forEach(u => {
+                        const sel = document.querySelector(`.assign-profile-select[data-user-id="${u._id}"]`);
+                        if (sel && u.profileId) {
+                            // try to set the value, tolerant if option not present yet
+                            sel.value = u.profileId;
+                        }
+                    });
+                } catch (e) {
+                    console.warn('Could not set user profile selects:', e);
+                }
+            })();
+        </script>
 
 
 

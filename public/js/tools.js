@@ -73,4 +73,26 @@ document.addEventListener('DOMContentLoaded', () => {
         deviceSelectButton.addEventListener('click', selectDevice);
         deviceSelectButton.removeAttribute('onClick');
     }
+
+    // Admin-only trigger for test error
+    const triggerBtn = document.getElementById('triggerErrorBtn');
+    if (triggerBtn) {
+        triggerBtn.addEventListener('click', async () => {
+            triggerBtn.disabled = true;
+            const resEl = document.getElementById('triggerResult');
+            resEl.textContent = 'Triggering...';
+            try {
+                const resp = await fetch('/admin/trigger-error', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    resEl.textContent = `Error triggering test: ${resp.status} ${text}`;
+                } else {
+                    resEl.textContent = 'Triggered test error (check admin feed).';
+                }
+            } catch (e) {
+                resEl.textContent = `Trigger failed: ${e.message}`;
+            }
+            triggerBtn.disabled = false;
+        });
+    }
 });

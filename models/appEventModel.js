@@ -13,6 +13,16 @@ const appEventSchema = new mongoose.Schema({
         enum: ['info', 'warning', 'error', 'success', 'user', 'device', 'userLog'],
         default: 'info'
     },
+    // Optional stack trace for error events (admin-only visibility)
+    stack: {
+        type: String,
+        required: false
+    },
+    // Arbitrary extra metadata (object) useful for debugging
+    meta: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    },
     timestamp: {
         type: Date,
         default: Date.now
