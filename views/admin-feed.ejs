@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/sbqc.css">
+    <style>
+        body { font-family: monospace; }
+        #feed { white-space: pre-wrap; background:#0f1720; color:#cbd5e1; padding:12px; border-radius:6px; max-height:80vh; overflow:auto; }
+        .event { margin-bottom: 12px; padding:8px; border-bottom:1px solid rgba(255,255,255,0.03); }
+        .ts { color:#94a3b8; font-size:0.9em }
+        .type { font-weight:700; margin-right:8px; }
+        .stack { color:#f87171; font-size:0.9em; margin-top:6px; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Admin Feed</h1>
+        <p>Private feed (authenticated users only). Displays full AppEvent objects including stacks.</p>
+        <div id="feed"></div>
+    </main>
+
+    <script>
+        // Initial feed provided by server-side render
+        const initial = <%- rawFeed %> || [];
+        window.__INITIAL_ADMIN_FEED__ = initial;
+    </script>
+    <script src="/js/admin-feed.js"></script>
+</body>
+</html>

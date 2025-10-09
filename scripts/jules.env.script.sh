@@ -30,7 +30,7 @@ else
 fi
 echo "✅ Dependencies installed successfully."
 
-# --- 3. Run Linter ---
+#3. --- Run Linter ---
 if [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then
   echo "🔍 Running ESLint to check code quality..."
   npx eslint .
@@ -41,5 +41,27 @@ fi
 echo "🧪 Running test suite..."
 npm test
 echo "✅ All tests passed."
+
+
+# Create or overwrite the .env file
+ENV_FILE=".env"
+echo "# Generated from current environment" > "$ENV_FILE"
+
+# Loop through each environment variable and write to .env
+printenv | while IFS='=' read -r key value; do
+  # Check if value contains spaces or special characters
+  if [[ "$value" =~ [[:space:]] || "$value" =~ [^a-zA-Z0-9_/:.-] ]]; then
+    # Escape double quotes and wrap in quotes
+    escaped_value=$(printf '%s' "$value" | sed 's/"/\\"/g')
+    echo "${key}=\"${escaped_value}\"" >> "$ENV_FILE"
+  else
+    echo "${key}=${value}" >> "$ENV_FILE"
+  fi
+done
+
+# Print the contents of the .env file to console
+echo -e "\n✅ .env file created. Here's what's inside:\n"
+cat "$ENV_FILE"
+
 
 echo "🎉 Development environment is ready!"

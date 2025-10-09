@@ -2,8 +2,9 @@ let router = require('express').Router()
 const { body } = require('express-validator');
 const genericController = require('../controllers/genericController');
 const databasesController = require('../controllers/databasesController');
-const feedController = require('../controllers/feedController');
+const liveDatasController = require('../controllers/liveDataController')
 const { requireAuth } = require('../utils/auth');
+const feedController = require('../controllers/feedController');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -14,7 +15,10 @@ router.get('/', (req, res) => {
 });
 
 const userController = require('../controllers/userController');
+const profileController = require('../controllers/profileController');
 
+// User creation is allowed publicly (signup), but listing and per-user actions
+// require authentication.
 router.route('/users')
     .get(userController.index)
     .post([
@@ -50,15 +54,18 @@ collections.forEach(collectionName => {
         .delete(controller.delete);
 });
 
-const liveDatasController = require('../controllers/liveDataController')
-
 router.route('/iss').get(liveDatasController.iss)
 router.route('/quakes').get(liveDatasController.quakes)
 router.route('/iss/all').delete(liveDatasController.deleteAllIss)
 router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
 
-// Route for Server-Sent Events (SSE) for the real-time feed
-router.get('/feed/events', requireAuth, feedController.sendFeedEvents);
+// Route for Server-Sent Events (SSE) for the real-time feed (public)
+// This endpoint is intentionally public so browsers can subscribe to the live feed
+// without requiring a session cookie. Consumers should not send privileged data
+// over this channel.
+router.get('/feed/events', feedController.sendFeedEvents);
+// Protected private feed (requires authentication) for user/device logs
+router.get('/feed/events/private', requireAuth, feedController.sendPrivateFeedEvents);
 
 // Database management routes
 router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
@@ -109,6 +116,12 @@ router.get('/databases/copy-progress/:jobId', (req, res) => {
 
 const logController = require('../controllers/logController');
 router.get('/logs/countries', logController.getCountryCounts);
+// Backwards/alternate route used by the dashboard UI: /api/v1/v2/logs
+router.get('/v2/logs', logController.getLogsForSource);
+router.get('/v2/logs/countries', (req, res, next) => {
+    // delegate to existing getCountryCounts which reads req.query.source
+    return logController.getCountryCounts(req, res, next);
+});
 
 const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 
@@ -148,6 +161,13 @@ router.get('/logs/server', logController.getServerLogs);
 router.post('/logs/server', [
     body('*').escape()
 ], logController.createServerLog);
+
+// Profile management APIs (basic)
+router.get('/profiles', profileController.listProfiles);
+router.post('/profiles', profileController.createProfile);
+
+// Assign a profile to a user
+router.post('/users/:id/assign-profile', profileController.assignProfileToUser);
 
 // Export API routes
 module.exports = router;

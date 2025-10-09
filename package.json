@@ -7,7 +7,7 @@
     "dev": "nodemon data_serv.js",
     "geocode-worker": "node scripts/geocodeWorkerRunner.js",
     "start": "node data_serv.js",
-    "test": "NODE_ENV=test jest",
+    "test": "NODE_ENV=test jest --detectOpenHandles --forceExit",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

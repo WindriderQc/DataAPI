@@ -8,12 +8,22 @@ const AppEvent = require('../models/appEventModel');
  * @param {string} type - The type of event (e.g., 'info', 'error', 'user').
  * @returns {Promise<void>}
  */
-const logEvent = async (message, type = 'info') => {
+/**
+ * Log and emit an application event.
+ * @param {string} message
+ * @param {string} type
+ * @param {Object} [opts] - optional { stack, meta }
+ */
+const logEvent = async (message, type = 'info', opts = {}) => {
     try {
-        const newEvent = new AppEvent({ message, type });
+        const payload = { message, type };
+        if (opts.stack) payload.stack = opts.stack;
+        if (opts.meta) payload.meta = opts.meta;
+
+        const newEvent = new AppEvent(payload);
         await newEvent.save();
 
-        // Emit the event so other parts of the app (like SSE) can react
+        // Emit the full event object for SSE consumers
         appEmitter.emit('newEvent', newEvent.toObject());
         console.log(`Event logged and emitted: "${message}"`);
     } catch (error) {

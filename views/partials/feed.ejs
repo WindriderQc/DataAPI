@@ -1,10 +1,30 @@
 <div class="card shadow-sm">
     <div class="card-body">
         <h5 class="card-title">Feeds</h5>
+        <% if (typeof user !== 'undefined' && user) { %>
+            <div style="text-align:right; margin-bottom:6px;"><a href="/admin-feed" class="btn btn-sm btn-outline-secondary">View full admin feed</a></div>
+        <% } %>
         <div class="feed-scroll-container">
             <table class="table table-striped bg-white">
                 <tbody>
-                    <% if (feedData && feedData.length > 0) { %>
+                    <% if (typeof rawFeed !== 'undefined' && rawFeed && rawFeed.length > 0) { %>
+                        <% // Authenticated admin view: show raw events with stack/meta for debugging %>
+                        <% rawFeed.forEach(evt => { %>
+                            <tr>
+                                <td style="width: 40px;"><i class="fa <%= evt.type === 'error' ? 'fa-bell' : 'fa-info-circle' %> text-<%= evt.type === 'error' ? 'danger' : 'info' %> fa-lg"></i></td>
+                                <td>
+                                    <div><strong><%= evt.message %></strong></div>
+                                    <% if (evt.stack) { %>
+                                        <pre style="color:#c0392b; white-space: pre-wrap;"><%= evt.stack %></pre>
+                                    <% } %>
+                                    <% if (evt.meta) { %>
+                                        <pre style="color:#6b7280; white-space: pre-wrap;"><%= JSON.stringify(evt.meta, null, 2) %></pre>
+                                    <% } %>
+                                </td>
+                                <td style="width: 100px;"><i><%= new Date(evt.timestamp).toLocaleString() %></i></td>
+                            </tr>
+                        <% }); %>
+                    <% } else if (feedData && feedData.length > 0) { %>
                         <% feedData.forEach(item => { %>
                             <tr>
                                 <td style="width: 40px;"><i class="fa <%= item.icon %> text-<%= item.color %> fa-lg"></i></td>

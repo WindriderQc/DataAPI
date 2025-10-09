@@ -11,6 +11,9 @@ const userSchema = mongoose.Schema({
     lon: { type: Number, required: false },
     creationDate: { type: Date, default: Date.now },
     lastConnectDate: { type: Date, default: Date.now }
+    ,
+    // Reference to a Profile document which may include role flags like isAdmin
+    profileId: { type: String, required: false }
 });
 
 // Pre-save hook: hash password if changed

@@ -130,6 +130,21 @@
                 </div>
             </div>
         </div>
+        <!-- Admin Debug Card -->
+    <% if (typeof user !== 'undefined' && user && user.isAdmin) { %>
+        <div class="row mb-4">
+            <div class="col-sm-8 mx-auto">
+                <div class="card border-primary">
+                    <div class="card-header text-white bg-primary">Admin Debug</div>
+                    <div class="card-body text-center">
+                        <p>Trigger a test error (admin-only) to verify stack capture in the admin feed.</p>
+                        <button id="triggerErrorBtn" class="btn btn-outline-light btn-danger">Trigger Test Error</button>
+                        <div id="triggerResult" style="margin-top:12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
 
         <!-- Device Details Form Card -->
         <div class="row mb-4">
