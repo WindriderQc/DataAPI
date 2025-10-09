@@ -77,21 +77,6 @@ app.use(express.json({ limit: '10mb' }));
 
 
 
-// create/store session BEFORE mounting API routes
-const store = new MongoDBStore({
-  uri: config.db.uri,
-  databaseName: config.db.mainDb,
-  collection: 'sessions'
-});
-
-app.use(session({
-  secret: config.session.secret || 'replace-me',
-  resave: false,
-  saveUninitialized: false,
-  store,
-  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 24 }
-}));
-
 async function createApp() {
     log(`Starting Data API Server - v${pjson.version} - Environment: ${config.env}`);
     log("Initializing mongodb connections...");

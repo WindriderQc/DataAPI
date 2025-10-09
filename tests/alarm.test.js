@@ -1,31 +1,13 @@
 const request = require('supertest');
-const { setup, fullTeardown } = require('./test-setup');
 
 describe('Alarm API', () => {
-  let app;
-  let db;
-  let dbConnection;
-  let mongoStore;
-  let close;
-
-  beforeAll(async () => {
-    const { app: expressApp, db: initializedDb, dbConnection: conn, mongoStore: store, close: closeFunc } = await setup();
-    app = expressApp;
-    db = initializedDb;
-    dbConnection = conn;
-    mongoStore = store;
-    close = closeFunc;
-  }, 30000);
-
-  afterAll(async () => {
-    await fullTeardown({ dbConnection, mongoStore, close });
-  });
-
   beforeEach(async () => {
+    // The 'db' object is now available globally thanks to the setup file
     await db.mainDb.collection('alarms').deleteMany({});
   });
 
   it('should create a new alarm', async () => {
+    // The 'app' object is now available globally
     const res = await request(app)
       .post('/api/v1/alarms')
       .send({
@@ -40,8 +22,10 @@ describe('Alarm API', () => {
   });
 
   it('should get all alarms with a specific query', async () => {
-  await db.mainDb.collection('alarms').insertOne({ espID: 'esp123', io: '1', enabled: true });
+    // The 'db' object is now available globally
+    await db.mainDb.collection('alarms').insertOne({ espID: 'esp123', io: '1', enabled: true });
 
+    // The 'app' object is now available globally
     const res = await request(app)
       .get('/api/v1/alarms?espID=esp123&io=1');
 
@@ -52,6 +36,7 @@ describe('Alarm API', () => {
   });
 
   it('should return an empty array if alarm is not found', async () => {
+    // The 'app' object is now available globally
     const res = await request(app)
       .get('/api/v1/alarms?espID=nonexistent&io=999');
 
