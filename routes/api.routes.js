@@ -16,6 +16,7 @@ router.get('/', (req, res) => {
 
 const userController = require('../controllers/userController');
 const profileController = require('../controllers/profileController');
+const mewController = require('../controllers/mewController');
 
 // User creation is allowed publicly (signup), but listing and per-user actions
 // require authentication.
@@ -53,6 +54,27 @@ collections.forEach(collectionName => {
         .put(controller.update)
         .delete(controller.delete);
 });
+
+// Mew routes - custom endpoints with specific business logic
+router.get('/mew', mewController.index);
+
+// Legacy mew endpoint - returns just the array
+router.get('/mews', mewController.getAllMews);
+
+// V2 mew endpoint with pagination
+router.get('/v2/mews', mewController.getMewsV2);
+
+// Create mew (both legacy and v2 use same controller)
+// Apply validation middleware to sanitize inputs
+router.post('/mews', [
+    body('name').trim().escape(),
+    body('content').trim().escape()
+], mewController.createMew);
+
+router.post('/v2/mews', [
+    body('name').trim().escape(),
+    body('content').trim().escape()
+], mewController.createMew);
 
 router.route('/iss').get(liveDatasController.iss)
 router.route('/quakes').get(liveDatasController.quakes)
