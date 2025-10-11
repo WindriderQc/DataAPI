@@ -20,7 +20,7 @@ function isValidMew(mew) {
 exports.getAllMews = async (req, res, next) => {
     try {
         const db = req.app.locals.dbs.mainDb;
-        const mewsCollection = db.collection('meows');
+        const mewsCollection = db.collection('mews');
         const mews = await mewsCollection.find({}).toArray();
         
         // Legacy endpoint expects just the array
@@ -52,7 +52,7 @@ exports.getMewsV2 = async (req, res, next) => {
         }
 
         const db = req.app.locals.dbs.mainDb;
-        const mewsCollection = db.collection('meows');
+        const mewsCollection = db.collection('mews');
 
         // Build sort order (default to newest first)
         const sortOrder = sort === 'asc' ? 1 : -1;
@@ -99,7 +99,7 @@ exports.createMew = async (req, res, next) => {
         };
 
         const db = req.app.locals.dbs.mainDb;
-        const mewsCollection = db.collection('meows');
+        const mewsCollection = db.collection('mews');
         const result = await mewsCollection.insertOne(mewData);
 
         const createdMew = { ...mewData, _id: result.insertedId };

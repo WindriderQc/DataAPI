@@ -41,7 +41,7 @@ router.route('/users/:id')
     .delete(userController.delete);
 
 // Generic routes for collections
-const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms', 'checkins', 'meows'];
+const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms', 'checkins', 'mews'];
 collections.forEach(collectionName => {
     const controller = genericController(collectionName);
     router.route(`/${collectionName}`)
