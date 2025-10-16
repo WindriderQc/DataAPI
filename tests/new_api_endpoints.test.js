@@ -41,22 +41,23 @@ describe('New API Endpoints', () => {
         });
     });
 
-    describe('/meows endpoint', () => {
-        it('should create a new meow', async () => {
+    describe('/mews endpoint', () => {
+        it('should create a new mew', async () => {
             const res = await request(app)
-                .post('/api/v1/meows')
-                .send({ message: 'Meow!' });
+                .post('/api/v1/mews')
+                .send({ name: 'test', content: 'Meow!' });
             expect(res.statusCode).toBe(201);
             expect(res.body.data).toHaveProperty('_id');
-            expect(res.body.data.message).toBe('Meow!');
+            expect(res.body.data.content).toBe('Meow!');
         });
 
-        it('should retrieve all meows', async () => {
-            await db.mainDb.collection('meows').insertOne({ message: 'Meow!' });
-            const res = await request(app).get('/api/v1/meows');
+        it('should retrieve all mews', async () => {
+            await db.mainDb.collection('mews').deleteMany({});
+            await db.mainDb.collection('mews').insertOne({ name: 'test', content: 'Meow!' });
+            const res = await request(app).get('/api/v1/mews');
             expect(res.statusCode).toBe(200);
-            expect(res.body.data.length).toBe(1);
-            expect(res.body.data[0].message).toBe('Meow!');
+            expect(res.body.length).toBe(1);
+            expect(res.body[0].content).toBe('Meow!');
         });
     });
 
