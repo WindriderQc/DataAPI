@@ -66,7 +66,7 @@ export const initFeed = (onNewEvent) => {
 
     let connectedSource = null;
 
-    const connect = (url, fallback) => {
+    const connect = (url, fallback = false) => {
         const es = new EventSource(url);
 
         es.onopen = () => {
