@@ -9,6 +9,7 @@ const userSchema = mongoose.Schema({
     password: { type: String, required: true, max: 1024, min: 6 },
     lat: { type: Number, required: false },
     lon: { type: Number, required: false },
+    isWeatherSubscribed: { type: Boolean, default: false },
     creationDate: { type: Date, default: Date.now },
     lastConnectDate: { type: Date, default: Date.now }
     ,

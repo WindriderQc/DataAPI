@@ -111,20 +111,16 @@ describe('Mew API Endpoints', () => {
     });
 
     describe('GET /api/v1/mews', () => {
-        beforeEach(async () => {
-            // Create a test mew
-            await request(app)
+        it('should return all mews as an array', async () => {
+             await request(app)
                 .post('/api/v1/mews')
                 .send({ name: 'Legacy Test', content: 'Legacy content' });
-        });
-
-        it('should return all mews as an array', async () => {
             const response = await request(app)
                 .get('/api/v1/mews')
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
-            expect(response.body.length).toBeGreaterThan(0);
+            expect(response.body.length).toBe(1);
         });
     });
 

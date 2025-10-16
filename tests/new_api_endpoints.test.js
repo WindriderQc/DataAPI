@@ -7,7 +7,7 @@ describe('New API Endpoints', () => {
         // Clean up collections before each test using the global 'db' handle
         await Promise.all([
             db.mainDb.collection('checkins').deleteMany({}),
-            db.mainDb.collection('meows').deleteMany({}),
+            db.mainDb.collection('mews').deleteMany({}),
             db.mainDb.collection('userLogs').deleteMany({}),
             db.mainDb.collection('serverLogs').deleteMany({})
         ]);
@@ -52,7 +52,6 @@ describe('New API Endpoints', () => {
         });
 
         it('should retrieve all mews', async () => {
-            await db.mainDb.collection('mews').deleteMany({});
             await db.mainDb.collection('mews').insertOne({ name: 'test', content: 'Meow!' });
             const res = await request(app).get('/api/v1/mews');
             expect(res.statusCode).toBe(200);

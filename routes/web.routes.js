@@ -121,7 +121,7 @@ router.get('/live-data',  (req, res) => {
     });
 });
 
-router.get('/pressure',  (req, res) => {
+router.get('/pressure', requireAuth, (req, res) => {
     // Normalize broker URL so frontend receives a ws:// or wss:// URL regardless of env var scheme
     let brokerUrl = config.mqtt.brokerUrl || '';
     brokerUrl = brokerUrl.trim();
@@ -133,7 +133,7 @@ router.get('/pressure',  (req, res) => {
 
     const mqttConfig = {
         brokerUrl,
-        pressureTopic: config.mqtt.pressureTopic,
+        pressureTopic: `${config.mqtt.pressureTopic}/${res.locals.user._id}`,
         username: config.mqtt.username,
         password: config.mqtt.password
     };
