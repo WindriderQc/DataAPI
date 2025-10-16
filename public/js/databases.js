@@ -37,9 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
             evtSource.addEventListener('progress', (e) => {
                 const data = JSON.parse(e.data);
                 const { processedCollections, totalCollections, currentCollection, currentCollectionTotal, copiedInCollection, processedDocs, totalDocs, overallPercent, status } = data;
-                const percent = overallPercent || 0;
+                const percent = Math.round(overallPercent || 0);
                 progressBar.style.width = `${percent}%`;
                 progressBar.setAttribute('aria-valuenow', percent);
+                
+                // Update percentage text inside progress bar
+                const percentText = progressBar.querySelector('span');
+                if (percentText) {
+                    percentText.textContent = `${percent}%`;
+                }
 
                 const progressText = document.getElementById('copy-progress-text');
                 progressText.style.display = 'block';
@@ -56,11 +62,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 progressBar.setAttribute('aria-valuenow', 100);
                 progressBar.classList.remove('progress-bar-animated');
                 progressBar.classList.add('bg-success');
+                
+                // Update percentage text
+                const percentText = progressBar.querySelector('span');
+                if (percentText) {
+                    percentText.textContent = '100%';
+                }
+                
                 const progressText = document.getElementById('copy-progress-text');
                 if (data && data.processedDocs !== undefined && data.totalDocs !== undefined) {
-                    progressText.textContent = `Completed: ${data.processedDocs}/${data.totalDocs} documents copied.`;
+                    progressText.textContent = `✓ Completed: ${data.processedDocs}/${data.totalDocs} documents copied.`;
                 } else {
-                    progressText.textContent = 'Completed.';
+                    progressText.textContent = '✓ Completed.';
                 }
                 setTimeout(() => window.location.reload(), 800);
                 evtSource.close();

@@ -55,6 +55,18 @@ collections.forEach(collectionName => {
         .delete(controller.delete);
 });
 
+// Protected session collection - requires authentication
+const sessionsController = genericController('mySessions');
+router.route('/mySessions')
+    .get(requireAuth, sessionsController.getAll)
+    .post(requireAuth, sessionsController.create);
+
+router.route('/mySessions/:id')
+    .get(requireAuth, sessionsController.getById)
+    .patch(requireAuth, sessionsController.update)
+    .put(requireAuth, sessionsController.update)
+    .delete(requireAuth, sessionsController.delete);
+
 // Mew routes - custom endpoints with specific business logic
 router.get('/mew', mewController.index);
 

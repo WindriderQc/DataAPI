@@ -149,15 +149,12 @@ async function createApp() {
     mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
 
     const sessionOptions = {
-        name: config.session.name,
-        resave: false,
-        saveUninitialized: false,
         secret: config.session.secret,
         store: mongoStore,
         cookie: {
             secure: IN_PROD,
             httpOnly: true,
-            sameSite: 'lax',
+            sameSite: IN_PROD ? 'none' : 'lax',  // 'none' allows cookies on SSE/CORS requests
             maxAge: config.session.maxAge,
         }
     };
@@ -172,16 +169,18 @@ async function createApp() {
         }
     }
 
+    // Apply session middleware globally so both API and web routes can use sessions
+    app.use(session(sessionOptions));
+    // Attach user to res.locals for all routes (web pages need this for templates)
+    app.use(attachUser);
+
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
     app.use('/api/', apiLimiter);
     app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
 
-    const webRouter = express.Router();
-    webRouter.use(session(sessionOptions));
-    webRouter.use(attachUser);
-    webRouter.use('/', require("./routes/auth.routes"));
-    webRouter.use('/', require("./routes/web.routes"));
-    app.use('/', webRouter);
+    // Auth and web routes
+    app.use('/', require("./routes/auth.routes"));
+    app.use('/', require("./routes/web.routes"));
 
     app.use((err, req, res, next) => {
         if (res.headersSent) {

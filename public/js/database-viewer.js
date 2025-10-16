@@ -19,22 +19,37 @@ class DBSelecter {
         this.changeCallback = onChangeCallback ? onChangeCallback : null;
 
         if (this.collectionList.length != 0) {
+            // Clear any existing options except the placeholder
+            while (this.selectElm.options.length > 1) {
+                this.selectElm.remove(1);
+            }
+            
+            // Add collection options
             for (let col in this.collectionList) {
-                this.selectElm.options[this.selectElm.options.length] = new Option(this.collectionList[col], col);
+                const option = new Option(this.collectionList[col], this.collectionList[col]);
+                this.selectElm.add(option);
             }
 
+            // Set initial selection
             let index = this.collectionList.indexOf(collectionSelected);
-            this.selectElm.options[index].selected = "true";
-            this.selectedCollection = this.getSelectText();
+            if (index >= 0) {
+                // +1 because of placeholder option
+                this.selectElm.options[index + 1].selected = true;
+            }
+            this.selectedCollection = this.selectElm.value;
             console.log("Setting selected: " + this.selectedCollection);
+            
+            // Add change event listener
+            this.selectElm.addEventListener('change', () => {
+                this.updateSelected();
+            });
         } else {
             console.log('no Collection list');
         }
     }
 
     getSelectText() {
-        let txt = $("#" + this.selectDom + ">option:selected").text();
-        return txt;
+        return this.selectElm.value;
     }
 
     updateSelected() {
@@ -56,7 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
         listAll(dbSelect.selectedCollection, true);
     }
 
-    listAll(selectedCollection, true);
+    // Only auto-load if a collection is actually selected (not the placeholder)
+    if (selectedCollection) {
+        listAll(selectedCollection, true);
+    }
 
     errorElement.style.display = 'none';
 
@@ -73,7 +91,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function listAll(selectedCollection, reset = true) {
+        // Validate collection selection
+        if (!selectedCollection || selectedCollection === '') {
+            errorElement.textContent = 'Please select a collection first.';
+            errorElement.style.display = 'block';
+            return;
+        }
+        
+        errorElement.style.display = 'none';
         loading = true;
+        
         if (reset) {
             console.log('reset - dropping new list');
             bootsElement.innerHTML = '';
@@ -102,15 +129,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 let table = bootsElement.querySelector('table');
                 if (!table) {
+                    // Create table with better styling
+                    const tableContainer = document.createElement('div');
+                    tableContainer.className = 'table-responsive';
+                    
                     table = document.createElement('table');
-                    table.className = 'table table-striped table-bordered';
+                    table.className = 'table table-striped table-hover table-bordered';
+                    
                     const thead = document.createElement('thead');
+                    thead.className = 'table-dark';
                     const headerRow = document.createElement('tr');
                     thead.appendChild(headerRow);
                     table.appendChild(thead);
+                    
                     const tbody = document.createElement('tbody');
                     table.appendChild(tbody);
-                    bootsElement.appendChild(table);
+                    
+                    tableContainer.appendChild(table);
+                    bootsElement.appendChild(tableContainer);
                 }
 
                 const thead = table.querySelector('thead');
@@ -132,11 +168,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         const row = document.createElement('tr');
                         Object.values(log).forEach(value => {
                             const td = document.createElement('td');
-                            td.textContent = typeof value === 'object' ? JSON.stringify(value) : value;
+                            // Limit cell content length for better display
+                            let displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                            if (displayValue.length > 100) {
+                                displayValue = displayValue.substring(0, 100) + '...';
+                            }
+                            td.textContent = displayValue;
+                            td.title = typeof value === 'object' ? JSON.stringify(value) : String(value); // Full value in tooltip
                             row.appendChild(td);
                         });
                         tbody.appendChild(row);
                     });
+                } else if (reset) {
+                    // Show empty state message
+                    bootsElement.innerHTML = '<div class="alert alert-info"><i class="fa fa-info-circle me-2"></i>No data found in this collection.</div>';
                 }
 
                 loadingElement.style.display = 'none';

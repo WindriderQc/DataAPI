@@ -16,16 +16,45 @@ const genericController = (collectionName) => {
           return next(new NotFoundError(`Database connection '${dbKey}' not found for collection '${collectionName}'.`));
         }
         const collection = db.collection(collectionName);
+        
+        // Parse pagination parameters
+        let { skip = 0, limit = 10, sort = 'desc' } = req.query;
+        skip = parseInt(skip) || 0;
+        limit = parseInt(limit) || 10;
+        skip = skip < 0 ? 0 : skip;
+        limit = Math.min(100, Math.max(1, limit)); // Clamp limit between 1 and 100
+        
+        const sortBy = sort === 'desc' ? -1 : 1;
+        
+        // Build query (remove pagination params from query filter)
         const query = { ...req.query };
-        // The 'db' query param is no longer used for selection, but might be passed by old clients. Remove it.
+        delete query.skip;
+        delete query.limit;
+        delete query.sort;
         delete query.db;
-  const documents = await collection.find(query).toArray();
-  // Provide DB and collection/document identifiers so normalization can use cache/queue
-  const enrichedDocuments = await Promise.all(documents.map(d => normalizeCountryData(d, db, collectionName, d._id)));
+        
+        // Execute query with pagination
+        const [total, documents] = await Promise.all([
+          collection.countDocuments(query),
+          collection.find(query).skip(skip).limit(limit).sort({ _id: sortBy }).toArray()
+        ]);
+        
+        // Provide DB and collection/document identifiers so normalization can use cache/queue
+        const enrichedDocuments = await Promise.all(
+          documents.map(d => normalizeCountryData(d, db, collectionName, d._id))
+        );
+        
         res.json({
           status: 'success',
           message: 'Documents retrieved successfully',
           data: enrichedDocuments,
+          meta: {
+            total,
+            skip,
+            limit,
+            sort,
+            has_more: total - (skip + limit) > 0,
+          },
         });
       } catch (error) {
         next(error);
