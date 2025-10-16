@@ -129,16 +129,46 @@ async function setAutoUpdate(updateNow = false) {
     const intervals = {
         quakes: config.api.quakes.interval,
         iss: config.api.iss.interval,
+        pressure: config.weather.api.interval,
     };
 
     if (updateNow) {
-        await Promise.all([getQuakes(), getISS()]);
+        await Promise.all([getQuakes(), getISS(), getPressure()]);
     }
 
     intervalIds.push(setInterval(getQuakes, intervals.quakes));  //  quakes is actualized rarely, saving to mongodb
     intervalIds.push(setInterval(getISS, intervals.iss));   //  iss is actualized frequently, broadcasting to mqtt
+    intervalIds.push(setInterval(getPressure, intervals.pressure));
 
     log(`LiveData configured - Intervals: ${JSON.stringify(intervals)}`);
+}
+
+async function getPressure() {
+    if (!mainDb) {
+        log('[liveData] getPressure: Database not initialized.', 'error');
+        return;
+    }
+    const pressureCollection = mainDb.collection('pressures');
+    const userCollection = mainDb.collection('users');
+    const user = await userCollection.findOne({ email: 'yb@yb.com' });
+
+    if (!user || !user.lat || !user.lon) {
+        log('[liveData] getPressure: User not found or location not set.', 'error');
+        return;
+    }
+
+    try {
+        const url = `${config.weather.api.url}?lat=${user.lat}&lon=${user.lon}&key=${config.weather.apiKey}`;
+        const response = await fetchWithTimeoutAndRetry(url, { timeout: config.weather.api.timeout, retries: config.weather.api.retries, name: 'Weather API' });
+        const data = await response.json();
+        const pressure = data.data[0].pres;
+        const newPressureData = { pressure, timeStamp: new Date(), userId: user._id };
+        dataStore.pressure = newPressureData;
+        mqttClient.publish(config.mqtt.pressureTopic, JSON.stringify(newPressureData));
+        await pressureCollection.insertOne(newPressureData);
+    } catch (error) {
+        log(`Error getting pressure: ${error.message}`, 'error');
+    }
 }
 
 async function close() {
@@ -156,6 +186,7 @@ module.exports = {
         return {
             quakes: config.api.quakes.interval,
             iss: config.api.iss.interval,
+            pressure: config.weather.api.interval,
         };
     },
     close,

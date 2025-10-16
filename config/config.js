@@ -78,6 +78,16 @@ const config = {
         username: process.env.MQTT_USERNAME,
         password: process.env.MQTT_PASSWORD,
         issTopic: process.env.MQTT_ISS_TOPIC || 'liveData/iss',
+        pressureTopic: process.env.MQTT_PRESSURE_TOPIC || 'liveData/pressure',
+    },
+    weather: {
+        apiKey: process.env.WEATHER_API_KEY,
+        api: {
+            url: 'https://api.weatherbit.io/v2.0/current',
+            interval: 60000,
+            timeout: 10000,
+            retries: 2,
+        }
     }
 };
 

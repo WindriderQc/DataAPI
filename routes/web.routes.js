@@ -121,6 +121,30 @@ router.get('/live-data',  (req, res) => {
     });
 });
 
+router.get('/pressure',  (req, res) => {
+    // Normalize broker URL so frontend receives a ws:// or wss:// URL regardless of env var scheme
+    let brokerUrl = config.mqtt.brokerUrl || '';
+    brokerUrl = brokerUrl.trim();
+    // Convert mqtt:// -> ws://, mqtts:// -> wss://, http:// -> ws://, https:// -> wss://
+    brokerUrl = brokerUrl.replace(/^mqtt:\/\//i, 'ws://')
+                       .replace(/^mqtts:\/\//i, 'wss://')
+                       .replace(/^http:\/\//i, 'ws://')
+                       .replace(/^https:\/\//i, 'wss://');
+
+    const mqttConfig = {
+        brokerUrl,
+        pressureTopic: config.mqtt.pressureTopic,
+        username: config.mqtt.username,
+        password: config.mqtt.password
+    };
+    res.render('pressure', {
+        title: 'Pressure Data',
+        user: res.locals.user,
+        appVersion: req.app.locals.appVersion,
+        mqttConfig: JSON.stringify(mqttConfig)
+    });
+});
+
 // Admin-only full feed view (shows raw AppEvent objects including stacks).
 // For now, any authenticated user is considered admin. This will be refined
 // when profiles/roles are implemented.
