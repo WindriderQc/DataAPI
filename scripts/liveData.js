@@ -150,24 +150,28 @@ async function getPressure() {
     }
     const pressureCollection = mainDb.collection('pressures');
     const userCollection = mainDb.collection('users');
-    const user = await userCollection.findOne({ email: 'yb@yb.com' });
+    const subscribedUsers = await userCollection.find({ isWeatherSubscribed: true }).toArray();
 
-    if (!user || !user.lat || !user.lon) {
-        log('[liveData] getPressure: User not found or location not set.', 'error');
-        return;
-    }
+    for (const user of subscribedUsers) {
+        if (!user.lat || !user.lon) {
+            log(`[liveData] getPressure: User ${user.email} has no location set.`, 'warn');
+            continue;
+        }
 
-    try {
-        const url = `${config.weather.api.url}?lat=${user.lat}&lon=${user.lon}&key=${config.weather.apiKey}`;
-        const response = await fetchWithTimeoutAndRetry(url, { timeout: config.weather.api.timeout, retries: config.weather.api.retries, name: 'Weather API' });
-        const data = await response.json();
-        const pressure = data.data[0].pres;
-        const newPressureData = { pressure, timeStamp: new Date(), userId: user._id };
-        dataStore.pressure = newPressureData;
-        mqttClient.publish(config.mqtt.pressureTopic, JSON.stringify(newPressureData));
-        await pressureCollection.insertOne(newPressureData);
-    } catch (error) {
-        log(`Error getting pressure: ${error.message}`, 'error');
+        try {
+            const url = `${config.weather.api.url}?lat=${user.lat}&lon=${user.lon}&key=${config.weather.apiKey}`;
+            const response = await fetchWithTimeoutAndRetry(url, { timeout: config.weather.api.timeout, retries: config.weather.api.retries, name: 'Weather API' });
+            const data = await response.json();
+            const pressure = data.data[0].pres;
+            const newPressureData = { pressure, timeStamp: new Date(), userId: user._id };
+
+            const topic = `${config.mqtt.pressureTopic}/${user._id}`;
+            mqttClient.publish(topic, JSON.stringify(newPressureData));
+            await pressureCollection.insertOne(newPressureData);
+            log(`[liveData] Fetched and stored pressure for user ${user.email}`);
+        } catch (error) {
+            log(`Error getting pressure for user ${user.email}: ${error.message}`, 'error');
+        }
     }
 }
 

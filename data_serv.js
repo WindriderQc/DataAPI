@@ -130,6 +130,19 @@ async function createApp() {
         };
         log("Models initialized and attached to app.locals.");
 
+        // Ensure default user is configured for weather tracking
+        const User = app.locals.models.User;
+        let defaultUser = await User.findOne({ email: 'yb@yb.com' });
+        if (defaultUser) {
+            if (!defaultUser.isWeatherSubscribed || !defaultUser.lat || !defaultUser.lon) {
+                defaultUser.isWeatherSubscribed = true;
+                defaultUser.lat = defaultUser.lat || 46.8138;
+                defaultUser.lon = defaultUser.lon || -71.2080;
+                await defaultUser.save();
+                log('Updated default user yb@yb.com to ensure weather tracking is enabled.');
+            }
+        }
+
     } catch (e) {
         log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
     }
