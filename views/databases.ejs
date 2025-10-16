@@ -99,11 +99,43 @@
                 <div id="copy-progress-text" class="mt-2 small text-muted" style="display: none;"></div>
             </div>
         </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3>Item Viewer</h3>
+            </div>
+            <div class="card-body">
+                <select class="mx-2 form-control" id="collection_select"></select>
+                <form>
+                    <input type='number' id='skip_id' name="skip" value=0>
+                    <input type='number' id='limit_id' name="limit" value=10>
+                    <input type='text' id='sort_id' name="sort" value="desc">
+                    <input type="hidden" id="collection_id" name="collection" value="">
+                    <input type='button' class="btn btn-primary" value="Send Request" id="send_request_btn">
+                </form>
+
+                <main>
+                    <div class="error-message"></div>
+                    <div class="boots"></div>
+                    <div class="button-container">
+                        <p id="loadMore">Loading...</p>
+                    </div>
+                    <div class="loading">
+                        <img src="/img/loading.gif" alt="">
+                    </div>
+                </main>
+            </div>
+        </div>
     </div>
 </div>
 
 <%- include('partials/footer') %>
 <script src="/js/databases.js"></script>
+<script>
+    window.apiUrl = '/api/v1';
+    window.collectionList = <%- JSON.stringify(prodDbInfo.collections.map(c => c.name)) %>;
+</script>
+<script src="/js/database-viewer.js"></script>
 
 </body>
 </html>
