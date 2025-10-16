@@ -5,16 +5,8 @@
    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/css/sbqc.css" />
-   <!-- DataTables (used by dashboard.ejs)  needs jquery  -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js" type="text/javascript" charset="utf8" ></script>
+    <!-- DataTables CSS -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/moment@latest/moment.min.js"></script>
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script>
 
 </head>
 <body class="bg-light">
@@ -125,11 +117,21 @@
 <%- include('partials/footer') %>
 </div>
 
+<!-- Load jQuery and DataTables before the dashboard script -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@latest/moment.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script>
+
+<!-- Load utility modules before dashboard -->
+<script src="/js/utils/api-utils.js" type="module"></script>
+<script src="/js/utils/sse.js" type="module"></script>
+
 <!-- Custom dashboard script -->
-<script src="/js/dashboard.js" type="module"></script>
-
-
-
+<script src="/js/dashboard.js"></script>
 
 </body>
 </html>

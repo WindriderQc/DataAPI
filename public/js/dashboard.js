@@ -1,8 +1,107 @@
-import { API } from '/js/utils/index.js';
-import { initFeed } from '/js/utils/sse.js';
-
 // Dashboard UI and Charting Logic
+// Note: Expects jQuery, DataTables, Chart.js, and utility modules to be loaded first
+
 let worldMap;
+
+// Helper function to get IP lookup (from api-utils.js module)
+async function getUserLocation() {
+    try {
+        const response = await fetch('/api/v1/geolocation');
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log('User\'s Location Data is ', data);
+        console.log('User\'s Country', data.country);
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch user location:', error);
+        throw error;
+    }
+}
+
+// Helper function to initialize SSE feed
+function initializeFeed(onNewEvent) {
+    const privateUrl = '/api/v1/feed/events/private';
+    const publicUrl = '/api/v1/feed/events';
+
+    const iconMap = {
+        info: 'fa-info-circle',
+        warning: 'fa-exclamation-triangle',
+        error: 'fa-bell',
+        success: 'fa-check-circle',
+        user: 'fa-user',
+        device: 'fa-share-alt',
+        userLog: 'fa-eye'
+    };
+
+    const colorMap = {
+        info: 'info',
+        warning: 'warning',
+        error: 'danger',
+        success: 'success',
+        user: 'primary',
+        device: 'success',
+        userLog: 'primary'
+    };
+
+    const timeAgo = (ts) => {
+        const then = ts ? new Date(ts).getTime() : Date.now();
+        const diff = Math.floor((Date.now() - then) / 1000);
+        if (diff < 10) return 'just now';
+        if (diff < 60) return `${diff}s ago`;
+        const mins = Math.floor(diff / 60);
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    };
+
+    const normalize = (data) => {
+        return {
+            message: data.message || 'Event occurred',
+            icon: iconMap[data.type] || iconMap.info,
+            color: colorMap[data.type] || colorMap.info,
+            timeAgo: timeAgo(data.timestamp),
+        };
+    };
+
+    let connectedSource = null;
+
+    const connect = (url, fallback = false) => {
+        const es = new EventSource(url);
+
+        es.onopen = () => {
+            console.log(`SSE connected to ${url}`);
+            connectedSource = es;
+        };
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const normalized = normalize(data);
+                if (typeof onNewEvent === 'function') onNewEvent(normalized);
+            } catch (error) {
+                console.error('Error parsing SSE data:', error);
+            }
+        };
+
+        es.onerror = (err) => {
+            console.error(`EventSource error for ${url}:`, err);
+            if (url === privateUrl && fallback) {
+                try {
+                    es.close();
+                } catch (e) {}
+                connect(publicUrl, false);
+            }
+        };
+
+        return es;
+    };
+
+    connect(privateUrl, true);
+}
 
 /**
  * Creates a table row element for a new feed item.
@@ -21,7 +120,7 @@ const createFeedItemRow = (item) => {
 
 document.addEventListener('DOMContentLoaded', async function() {
     // Initialize the real-time feed
-    initFeed((newItem) => {
+    initializeFeed((newItem) => {
         const feedTableBody = document.querySelector('.feed-scroll-container tbody');
         if (!feedTableBody) return;
 
@@ -96,7 +195,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function getUserInfo() {
-    const info = await API.ipLookUp();
+    const info = await getUserLocation();
     document.getElementById('ip_id').innerHTML = "<pre>" + JSON.stringify(info.TimeZone, null, '\t') + "</pre>";
 }
 
@@ -331,17 +430,38 @@ function listAllLogs(source) {
 }
 
 function loadDataTable(dataset) {
-    const table = $('#logsTable');
-    if ($.fn.DataTable.isDataTable(table)) {
-        table.DataTable().clear().destroy();
+    // Ensure jQuery is loaded
+    if (typeof $ === 'undefined') {
+        console.error('jQuery is not loaded');
+        return;
     }
-    table.empty();
-    table.DataTable({
-        data: dataset.data,
-        columns: dataset.columns,
-        destroy: true,
-        scrollX: true
-    });
+    
+    const table = $('#logsTable');
+    
+    // Ensure table element exists
+    if (!table.length) {
+        console.error('Table element #logsTable not found');
+        return;
+    }
+    
+    // Check if DataTables is loaded and if table is already initialized
+    if (typeof $.fn.DataTable !== 'undefined') {
+        if ($.fn.DataTable.isDataTable(table)) {
+            table.DataTable().clear().destroy();
+        }
+        
+        table.empty();
+        
+        // Initialize DataTable
+        table.DataTable({
+            data: dataset.data,
+            columns: dataset.columns,
+            destroy: true,
+            scrollX: true
+        });
+    } else {
+        console.error('DataTables library not loaded');
+    }
 }
 
 // Sidebar toggle functionality
