@@ -174,9 +174,15 @@ function initFrontendMQTT(mqttConfig) {
       console.log('[live-data] Connected to MQTT broker');
       const status = document.getElementById('mqtt-status');
       if (status) { status.textContent = 'Connected'; status.className = 'mqtt-status connected'; }
+
       if (mqttConfig.issTopic) {
         _mqttClient.subscribe(mqttConfig.issTopic, (err) => {
-          if (err) console.error('[live-data] MQTT subscribe error', err);
+          if (err) console.error('[live-data] MQTT subscribe error for ISS', err);
+        });
+      }
+      if (mqttConfig.pressureTopic) {
+        _mqttClient.subscribe(mqttConfig.pressureTopic, (err) => {
+            if (err) console.error('[live-data] MQTT subscribe error for pressure', err);
         });
       }
     });
@@ -184,23 +190,31 @@ function initFrontendMQTT(mqttConfig) {
   _mqttClient.on('message', (topic, message) => {
       try {
         const payload = JSON.parse(message.toString());
-        // Accept { latitude, longitude, timeStamp } or nested iss_position
-        if (payload.iss_position) {
-          Iss = {
-            latitude: Number(payload.iss_position.latitude),
-            longitude: Number(payload.iss_position.longitude),
-            timeStamp: payload.timestamp ? new Date(Number(payload.timestamp) * 1000) : new Date()
-          };
-        } else if (payload.latitude !== undefined && payload.longitude !== undefined) {
-          Iss = {
-            latitude: Number(payload.latitude),
-            longitude: Number(payload.longitude),
-            timeStamp: payload.timeStamp ? new Date(payload.timeStamp) : new Date()
-          };
+        if (topic === mqttConfig.issTopic) {
+            // Accept { latitude, longitude, timeStamp } or nested iss_position
+            if (payload.iss_position) {
+              Iss = {
+                latitude: Number(payload.iss_position.latitude),
+                longitude: Number(payload.iss_position.longitude),
+                timeStamp: payload.timestamp ? new Date(Number(payload.timestamp) * 1000) : new Date()
+              };
+            } else if (payload.latitude !== undefined && payload.longitude !== undefined) {
+              Iss = {
+                latitude: Number(payload.latitude),
+                longitude: Number(payload.longitude),
+                timeStamp: payload.timeStamp ? new Date(payload.timeStamp) : new Date()
+              };
+            }
+            // Trigger a redraw/update: redraw base then draw the ISS overlay
+            drawBase();
+            try { getISS_location(); } catch (e) { /* ignore if not available */ }
+        } else if (topic === mqttConfig.pressureTopic) {
+            const pressureElement = document.getElementById('pressure');
+            const pressure = payload.pressure.toFixed(2);
+            const time = new Date(payload.timeStamp).toLocaleTimeString();
+            pressureElement.textContent = `${pressure} hPa`;
+            updatePressureChart(time, pressure);
         }
-  // Trigger a redraw/update: redraw base then draw the ISS overlay
-  drawBase();
-  try { getISS_location(); } catch (e) { /* ignore if not available */ }
       } catch (e) {
         console.error('[live-data] Error parsing MQTT message', e);
       }
@@ -219,6 +233,36 @@ function initFrontendMQTT(mqttConfig) {
   }
 }
 
+const pressureChartCtx = document.getElementById('pressureChart').getContext('2d');
+const pressureChart = new Chart(pressureChartCtx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'Barometric Pressure',
+            data: [],
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        }
+    }
+});
+
+function updatePressureChart(time, pressure) {
+    pressureChart.data.labels.push(time);
+    pressureChart.data.datasets[0].data.push(pressure);
+    if (pressureChart.data.labels.length > 20) {
+        pressureChart.data.labels.shift();
+        pressureChart.data.datasets[0].data.shift();
+    }
+    pressureChart.update();
+}
 
 function drawBase(withGrid = false) 
 {  
@@ -261,62 +305,13 @@ function setup() {
   // Initialize MQTT if mqttConfig is provided on the page
   try {
     if (typeof mqttConfig !== 'undefined') {
-      initFrontendMQTT(mqttConfig);
+      initFrontendMQTT(JSON.parse(mqttConfig));
     }
   } catch (e) {
     // mqttConfig is already an object in some render paths
     try { initFrontendMQTT(mqttConfig); } catch (err) { console.warn('No mqttConfig available'); }
   }
   
-    const pressureElement = document.getElementById('pressure');
-    const pressureChartCtx = document.getElementById('pressureChart').getContext('2d');
-    const pressureChart = new Chart(pressureChartCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Barometric Pressure',
-                data: [],
-                borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1
-            }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: false
-                }
-            }
-        }
-    });
-
-    function updatePressureChart(time, pressure) {
-        pressureChart.data.labels.push(time);
-        pressureChart.data.datasets[0].data.push(pressure);
-        if (pressureChart.data.labels.length > 20) {
-            pressureChart.data.labels.shift();
-            pressureChart.data.datasets[0].data.shift();
-        }
-        pressureChart.update();
-    }
-
-    if (_mqttClient) {
-        _mqttClient.on('message', (topic, message) => {
-            const data = JSON.parse(message.toString());
-            if (topic === mqttConfig.pressureTopic) {
-                const pressure = data.pressure.toFixed(2);
-                const time = new Date(data.timeStamp).toLocaleTimeString();
-                pressureElement.textContent = `${pressure} hPa`;
-                updatePressureChart(time, pressure);
-            }
-        });
-
-        if (mqttConfig.pressureTopic) {
-            _mqttClient.subscribe(mqttConfig.pressureTopic, (err) => {
-                if (err) console.error('[live-data] MQTT subscribe error for pressure', err);
-            });
-        }
-    }
 
 
 }
@@ -328,10 +323,3 @@ function draw()
 
  
 }
-
-
-
-
-
-
-

@@ -166,6 +166,14 @@ async function getPressure() {
             log(`[liveData] Fetched and stored pressure for location ${location.lat}, ${location.lon}`);
         } catch (error) {
             log(`Error getting pressure for location ${location.lat}, ${location.lon}: ${error.message}`, 'error');
+            if (config.env !== 'production') {
+                log(`[liveData] Simulating pressure data for location ${location.lat}, ${location.lon}`);
+                const pressure = 1000 + Math.random() * 20;
+                const newPressureData = { pressure, timeStamp: new Date(), lat: location.lat, lon: location.lon };
+                const topic = `${config.mqtt.pressureTopic}/${location.lat},${location.lon}`;
+                mqttClient.publish(topic, JSON.stringify(newPressureData));
+                await pressureCollection.insertOne(newPressureData);
+            }
         }
     }
 }
