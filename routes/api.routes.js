@@ -41,7 +41,7 @@ router.route('/users/:id')
     .delete(userController.delete);
 
 // Generic routes for collections
-const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms', 'checkins', 'pressures'];
+const collections = ['contacts', 'devices', 'profiles', 'heartbeats', 'alarms', 'checkins', 'weatherLocations'];
 collections.forEach(collectionName => {
     const controller = genericController(collectionName);
     router.route(`/${collectionName}`)
@@ -166,6 +166,9 @@ router.get('/geolocation', async (req, res) => {
 });
 
 const externalApiController = require('../controllers/externalApiController');
+const weatherController = require('../controllers/weatherController');
+
+router.post('/weather/register-location', requireAuth, weatherController.registerLocation);
 
 router.get('/weather', externalApiController.getWeather);
 router.get('/tides', externalApiController.getTides);

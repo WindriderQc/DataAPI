@@ -130,17 +130,13 @@ async function createApp() {
         };
         log("Models initialized and attached to app.locals.");
 
-        // Ensure default user is configured for weather tracking
-        const User = app.locals.models.User;
-        let defaultUser = await User.findOne({ email: 'yb@yb.com' });
-        if (defaultUser) {
-            if (!defaultUser.isWeatherSubscribed || !defaultUser.lat || !defaultUser.lon) {
-                defaultUser.isWeatherSubscribed = true;
-                defaultUser.lat = defaultUser.lat || 46.8138;
-                defaultUser.lon = defaultUser.lon || -71.2080;
-                await defaultUser.save();
-                log('Updated default user yb@yb.com to ensure weather tracking is enabled.');
-            }
+        // Ensure default location is configured for weather tracking
+        const weatherLocationsCollection = app.locals.dbs.mainDb.collection('weatherLocations');
+        const defaultLocation = { lat: 46.8138, lon: -71.2080 };
+        const existingLocation = await weatherLocationsCollection.findOne(defaultLocation);
+        if (!existingLocation) {
+            await weatherLocationsCollection.insertOne(defaultLocation);
+            log('Created default weather location for Quebec City.');
         }
 
     } catch (e) {
