@@ -261,13 +261,62 @@ function setup() {
   // Initialize MQTT if mqttConfig is provided on the page
   try {
     if (typeof mqttConfig !== 'undefined') {
-      initFrontendMQTT(JSON.parse(mqttConfig));
+      initFrontendMQTT(mqttConfig);
     }
   } catch (e) {
     // mqttConfig is already an object in some render paths
     try { initFrontendMQTT(mqttConfig); } catch (err) { console.warn('No mqttConfig available'); }
   }
   
+    const pressureElement = document.getElementById('pressure');
+    const pressureChartCtx = document.getElementById('pressureChart').getContext('2d');
+    const pressureChart = new Chart(pressureChartCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Barometric Pressure',
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+
+    function updatePressureChart(time, pressure) {
+        pressureChart.data.labels.push(time);
+        pressureChart.data.datasets[0].data.push(pressure);
+        if (pressureChart.data.labels.length > 20) {
+            pressureChart.data.labels.shift();
+            pressureChart.data.datasets[0].data.shift();
+        }
+        pressureChart.update();
+    }
+
+    if (_mqttClient) {
+        _mqttClient.on('message', (topic, message) => {
+            const data = JSON.parse(message.toString());
+            if (topic === mqttConfig.pressureTopic) {
+                const pressure = data.pressure.toFixed(2);
+                const time = new Date(data.timeStamp).toLocaleTimeString();
+                pressureElement.textContent = `${pressure} hPa`;
+                updatePressureChart(time, pressure);
+            }
+        });
+
+        if (mqttConfig.pressureTopic) {
+            _mqttClient.subscribe(mqttConfig.pressureTopic, (err) => {
+                if (err) console.error('[live-data] MQTT subscribe error for pressure', err);
+            });
+        }
+    }
 
 
 }
