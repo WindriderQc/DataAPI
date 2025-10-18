@@ -130,6 +130,15 @@ async function createApp() {
         };
         log("Models initialized and attached to app.locals.");
 
+        // Ensure default location is configured for weather tracking
+        const weatherLocationsCollection = app.locals.dbs.mainDb.collection('weatherLocations');
+        const defaultLocation = { lat: 46.8138, lon: -71.2080 };
+        const existingLocation = await weatherLocationsCollection.findOne(defaultLocation);
+        if (!existingLocation) {
+            await weatherLocationsCollection.insertOne(defaultLocation);
+            log('Created default weather location for Quebec City.');
+        }
+
     } catch (e) {
         log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
     }

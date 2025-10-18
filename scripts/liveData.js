@@ -149,25 +149,24 @@ async function getPressure() {
         return;
     }
     const pressureCollection = mainDb.collection('pressures');
-    const userCollection = mainDb.collection('users');
-    const user = await userCollection.findOne({ email: 'yb@yb.com' });
+    const weatherLocationsCollection = mainDb.collection('weatherLocations');
+    const locations = await weatherLocationsCollection.find({}).toArray();
 
-    if (!user || !user.lat || !user.lon) {
-        log('[liveData] getPressure: User not found or location not set.', 'error');
-        return;
-    }
+    for (const location of locations) {
+        try {
+            const url = `${config.weather.api.url}?lat=${location.lat}&lon=${location.lon}&key=${config.weather.apiKey}`;
+            const response = await fetchWithTimeoutAndRetry(url, { timeout: config.weather.api.timeout, retries: config.weather.api.retries, name: 'Weather API' });
+            const data = await response.json();
+            const pressure = data.data[0].pres;
+            const newPressureData = { pressure, timeStamp: new Date(), lat: location.lat, lon: location.lon };
 
-    try {
-        const url = `${config.weather.api.url}?lat=${user.lat}&lon=${user.lon}&key=${config.weather.apiKey}`;
-        const response = await fetchWithTimeoutAndRetry(url, { timeout: config.weather.api.timeout, retries: config.weather.api.retries, name: 'Weather API' });
-        const data = await response.json();
-        const pressure = data.data[0].pres;
-        const newPressureData = { pressure, timeStamp: new Date(), userId: user._id };
-        dataStore.pressure = newPressureData;
-        mqttClient.publish(config.mqtt.pressureTopic, JSON.stringify(newPressureData));
-        await pressureCollection.insertOne(newPressureData);
-    } catch (error) {
-        log(`Error getting pressure: ${error.message}`, 'error');
+            const topic = `${config.mqtt.pressureTopic}/${location.lat},${location.lon}`;
+            mqttClient.publish(topic, JSON.stringify(newPressureData));
+            await pressureCollection.insertOne(newPressureData);
+            log(`[liveData] Fetched and stored pressure for location ${location.lat}, ${location.lon}`);
+        } catch (error) {
+            log(`Error getting pressure for location ${location.lat}, ${location.lon}: ${error.message}`, 'error');
+        }
     }
 }
 
