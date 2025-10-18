@@ -21,7 +21,11 @@ async function fetchWithTimeoutAndRetry(url, { timeout = 8000, retries = 1, name
             const isAbort = err.name === 'AbortError' || (err.type === 'aborted');
             const isTimeout = isAbort || (err.code === 'UND_ERR_CONNECT_TIMEOUT');
             const willRetry = attempt < retries && (isTimeout || err.code === 'ECONNRESET' || err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN');
-            console.log(`[fetch-utils] ${name} attempt ${attempt + 1} failed (${err.code || err.name}): ${err.message}`);
+            
+            const errorCode = err.code || err.name || err.status || 'unknown';
+            const retryMsg = willRetry ? `(retrying in ${backoff(attempt)}ms)` : '(no more retries)';
+            console.log(`[fetch-utils] ${name} attempt ${attempt + 1}/${retries + 1} failed (${errorCode}): ${err.message} ${retryMsg}`);
+            
             if (!willRetry) {
                 throw err;
             }
