@@ -121,19 +121,20 @@ router.get('/live-data',  (req, res) => {
     });
 });
 
-router.get('/pressure',  (req, res) => {
+router.get('/pressure', requireAuth, (req, res) => {
     // Normalize broker URL so frontend receives a ws:// or wss:// URL regardless of env var scheme
     let brokerUrl = config.mqtt.brokerUrl || '';
     brokerUrl = brokerUrl.trim();
     // Convert mqtt:// -> ws://, mqtts:// -> wss://, http:// -> ws://, https:// -> wss://
     brokerUrl = brokerUrl.replace(/^mqtt:\/\//i, 'ws://')
-                       .replace(/^mqtts:\/\//i, 'wss://')
-                       .replace(/^http:\/\//i, 'ws://')
-                       .replace(/^https:\/\//i, 'wss://');
+                          .replace(/^mqtts:\/\//i, 'wss://')
+                          .replace(/^http:\/\//i, 'ws://')
+                          .replace(/^https:\/\//i, 'wss://');
 
+    const { lat, lon } = res.locals.user;
     const mqttConfig = {
         brokerUrl,
-        pressureTopic: config.mqtt.pressureTopic,
+        pressureTopic: `${config.mqtt.pressureTopic}/${lat},${lon}`,
         username: config.mqtt.username,
         password: config.mqtt.password
     };
