@@ -95,4 +95,25 @@ document.addEventListener('DOMContentLoaded', () => {
             triggerBtn.disabled = false;
         });
     }
+
+    const registerWeatherBtn = document.getElementById('registerWeatherBtn');
+    if (registerWeatherBtn) {
+        registerWeatherBtn.addEventListener('click', async () => {
+            registerWeatherBtn.disabled = true;
+            const resultEl = document.getElementById('weather-registration-result');
+            resultEl.textContent = 'Registering...';
+            try {
+                const resp = await fetch('/api/v1/weather/register-location', { method: 'POST' });
+                const data = await resp.json();
+                if (resp.ok) {
+                    resultEl.textContent = data.message;
+                } else {
+                    resultEl.textContent = `Error: ${data.message}`;
+                }
+            } catch (e) {
+                resultEl.textContent = `Request failed: ${e.message}`;
+            }
+            registerWeatherBtn.disabled = false;
+        });
+    }
 });
