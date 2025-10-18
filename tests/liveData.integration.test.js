@@ -77,7 +77,9 @@ describe('LiveData integration (DB write + MQTT publish)', () => {
 
     // MQTT publish should have been called at least once for ISS
     expect(mqttClient.publish).toHaveBeenCalled();
-    const [topic, payload] = mqttClient.publish.mock.calls[0];
+    const issCall = mqttClient.publish.mock.calls.find(call => call[0] === config.mqtt.issTopic);
+    expect(issCall).toBeDefined();
+    const [topic, payload] = issCall;
     expect(topic).toBe(config.mqtt.issTopic);
     // payload should be JSON-serializable or an object
     expect(payload).toHaveProperty('latitude');
