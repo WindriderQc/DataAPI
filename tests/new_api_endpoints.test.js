@@ -52,9 +52,12 @@ describe('New API Endpoints', () => {
         });
 
         it('should retrieve all mews', async () => {
-            await db.mainDb.collection('mews').insertOne({ name: 'test', content: 'Meow!' });
+            await request(app)
+                .post('/api/v1/mews')
+                .send({ name: 'test', content: 'Meow!' });
             const res = await request(app).get('/api/v1/mews');
             expect(res.statusCode).toBe(200);
+            expect(Array.isArray(res.body)).toBe(true);
             expect(res.body.length).toBe(1);
             expect(res.body[0].content).toBe('Meow!');
         });
