@@ -26,6 +26,10 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
     ```bash
     npm run dev
     ```
+    To run the server without automatic reloading via `node`: (Recommended for agent to avoir trouble with nodemon reloading)
+    ```bash
+    npm run agent
+    ```
     The server will be available at `http://localhost:3003`.
 
 -   **Production:**

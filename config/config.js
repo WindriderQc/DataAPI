@@ -83,7 +83,7 @@ const config = {
     weather: {
         apiKey: process.env.WEATHER_API_KEY,
         api: {
-            url: 'https://api.weatherbit.io/v2.0/current',
+            url: 'https://api.openweathermap.org/data/2.5/weather',
             interval: 60000,
             timeout: 10000,
             retries: 2,

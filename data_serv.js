@@ -132,7 +132,7 @@ async function createApp() {
 
         // Ensure default location is configured for weather tracking
         const weatherLocationsCollection = app.locals.dbs.mainDb.collection('weatherLocations');
-        const defaultLocation = { lat: 46.8138, lon: -71.2080 };
+        const defaultLocation = { lat: 46.8138, lon: -71.208 };
         const existingLocation = await weatherLocationsCollection.findOne(defaultLocation);
         if (!existingLocation) {
             await weatherLocationsCollection.insertOne(defaultLocation);

@@ -154,10 +154,10 @@ async function getPressure() {
 
     for (const location of locations) {
         try {
-            const url = `${config.weather.api.url}?lat=${location.lat}&lon=${location.lon}&key=${config.weather.apiKey}`;
+            const url = `${config.weather.api.url}?lat=${location.lat}&lon=${location.lon}&units=metric&appid=${config.weather.apiKey}`;
             const response = await fetchWithTimeoutAndRetry(url, { timeout: config.weather.api.timeout, retries: config.weather.api.retries, name: 'Weather API' });
             const data = await response.json();
-            const pressure = data.data[0].pres;
+            const pressure = data.main.pressure;
             const newPressureData = { pressure, timeStamp: new Date(), lat: location.lat, lon: location.lon };
 
             const topic = `${config.mqtt.pressureTopic}/${location.lat},${location.lon}`;
