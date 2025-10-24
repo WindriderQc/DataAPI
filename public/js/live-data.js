@@ -205,8 +205,7 @@ function initFrontendMQTT(mqttConfig) {
                 timeStamp: payload.timeStamp ? new Date(payload.timeStamp) : new Date()
               };
             }
-            // Trigger a redraw/update: redraw base then draw the ISS overlay
-            drawBase();
+            // Draw new ISS position (will accumulate as a trail)
             try { getISS_location(); } catch (e) { /* ignore if not available */ }
         } else if (topic === mqttConfig.pressureTopic) {
             const pressureElement = document.getElementById('pressure');

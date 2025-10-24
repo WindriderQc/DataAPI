@@ -119,7 +119,7 @@ router.get('/live-data',  (req, res) => {
         mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/${res.locals.user.lat},${res.locals.user.lon}`;
     } else {
         // Default to Quebec City for non-logged-in users
-        mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/46.8138,-71.2080`;
+        mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/46.8138,-71.208`;
     }
 
     res.render('live-data', {
