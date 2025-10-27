@@ -6,6 +6,33 @@ const config = require('../config/config');
 const databasesController = require('../controllers/databasesController');
 const feedController = require('../controllers/feedController');
 
+const normalizeBsonForView = (value) => {
+    if (value === null || value === undefined) {
+        return value;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(normalizeBsonForView);
+    }
+
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+
+    if (value && typeof value === 'object') {
+        if (value._bsontype === 'ObjectID' && typeof value.toString === 'function') {
+            return value.toString();
+        }
+
+        return Object.keys(value).reduce((acc, key) => {
+            acc[key] = normalizeBsonForView(value[key]);
+            return acc;
+        }, {});
+    }
+
+    return value;
+};
+
 // Middleware to load common data for dashboard-like pages
 const loadDashboardData = async (req, res, next) => {
     try {
@@ -14,6 +41,23 @@ const loadDashboardData = async (req, res, next) => {
     res.locals.users = await dbs.mainDb.collection('users').find().toArray();
     res.locals.devices = await dbs.mainDb.collection('devices').find().toArray();
     res.locals.feedData = await feedController.getFeedData();
+    res.locals.latestEmailStat = null;
+
+    const sbqcDb = dbs.sbqcDb || (req.app.locals.mongoClient ? req.app.locals.mongoClient.db('SBQC') : null);
+    if (res.locals.user && res.locals.user.isAdmin && sbqcDb) {
+        try {
+            const latestEmail = await sbqcDb
+                .collection('emailStats')
+                .find()
+                .sort({ createdAt: -1, updatedAt: -1, timestamp: -1, _id: -1 })
+                .limit(1)
+                .toArray();
+            res.locals.latestEmailStat = latestEmail[0] ? normalizeBsonForView(latestEmail[0]) : null;
+        } catch (emailErr) {
+            console.warn('Failed to load email stats for tools view:', emailErr && emailErr.message ? emailErr.message : emailErr);
+            res.locals.latestEmailStat = null;
+        }
+    }
     // If the user is authenticated, provide the raw feed (full AppEvent objects)
     // so the dashboard can show stacks/extra info for admin debugging.
     if (res.locals.user) {
@@ -53,7 +97,8 @@ router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
         menuId: 'home',
         user: res.locals.user,
         collectionInfo: req.app.locals.collectionInfo,
-        regDevices: res.locals.devices
+        regDevices: res.locals.devices,
+        latestEmailStat: res.locals.latestEmailStat
     });
 });
 
