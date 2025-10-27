@@ -158,6 +158,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Latest Email Stats Card -->
+        <div class="row mb-4">
+            <div class="col-sm-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">Latest Email Stats</div>
+                    <div class="card-body text-start">
+                        <% if (latestEmailStat) { %>
+                            <pre class="mb-0"><code><%= JSON.stringify(latestEmailStat, null, 2) %></code></pre>
+                        <% } else { %>
+                            <p class="mb-0">No email statistics are available yet.</p>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
         <% } %>
 
         <!-- Device Details Form Card -->
