@@ -86,13 +86,24 @@ async function createApp() {
         log("Assigning dbs to app.locals...");
         // The dbs object now contains main and data properties for direct access
         app.locals.dbs = dbConnection.dbs;
-    log("DB assigned: mainDb");
-    try {
-        const activeName = app.locals.dbs.mainDb && app.locals.dbs.mainDb.databaseName ? app.locals.dbs.mainDb.databaseName : config.db.mainDb;
-        log(`Active database name: ${activeName}`);
-    } catch (e) {
-        // ignore logging errors
-    }
+
+        // Expose the underlying Mongo client for accessing auxiliary databases.
+        app.locals.mongoClient = dbConnection.client;
+
+        // Provide a convenient handle to the SBQC database when available. The
+        // database will be lazily created by MongoDB if it doesn't already
+        // exist, so this is safe even in development environments.
+        if (app.locals.mongoClient) {
+            app.locals.dbs.sbqcDb = app.locals.mongoClient.db('SBQC');
+        }
+
+        log("DB assigned: mainDb");
+        try {
+            const activeName = app.locals.dbs.mainDb && app.locals.dbs.mainDb.databaseName ? app.locals.dbs.mainDb.databaseName : config.db.mainDb;
+            log(`Active database name: ${activeName}`);
+        } catch (e) {
+            // ignore logging errors
+        }
 
         // Insert boot log into the main application database
             if (config.env !== 'test') {
@@ -118,7 +129,8 @@ async function createApp() {
                 const collections = await db.listCollections().toArray();
                 for (const coll of collections) {
                     const count = await db.collection(coll.name).countDocuments();
-                    app.locals.collectionInfo.push({ db: dbName, collection: coll.name, count: count });
+                    const resolvedName = db.databaseName || dbName;
+                    app.locals.collectionInfo.push({ db: resolvedName, collection: coll.name, count: count });
                 }
             }
         }
