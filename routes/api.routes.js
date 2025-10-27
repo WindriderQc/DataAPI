@@ -5,6 +5,7 @@ const databasesController = require('../controllers/databasesController');
 const liveDatasController = require('../controllers/liveDataController')
 const { requireAuth } = require('../utils/auth');
 const feedController = require('../controllers/feedController');
+const chatkitController = require('../controllers/chatkitController');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -100,6 +101,9 @@ router.route('/quakes/all').delete(liveDatasController.deleteAllQuakes)
 router.get('/feed/events', feedController.sendFeedEvents);
 // Protected private feed (requires authentication) for user/device logs
 router.get('/feed/events/private', requireAuth, feedController.sendPrivateFeedEvents);
+
+// Secure token endpoint for ChatKit admin chat
+router.post('/chatkit/token', requireAuth, chatkitController.createSessionToken);
 
 // Database management routes
 router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
