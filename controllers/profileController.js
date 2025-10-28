@@ -3,21 +3,15 @@ const Profiles = require('../models/profileModel');
 const { NotFoundError, BadRequest } = require('../utils/errors');
 const { ObjectId } = require('mongodb');
 
-// Helper: try to create an ObjectId in a tolerant way. Some driver/runtime
-// shapes expose ObjectId as a class requiring `new`, others as a function.
-// Attempt `new ObjectId(value)` first, fall back to `ObjectId(value)` if needed.
-function toObjectId(value) {
-    if (!value) return null;
+function normalizeObjectId(value, fieldName) {
+    if (!value) {
+        throw new BadRequest([{ msg: `${fieldName} is required`, param: fieldName }]);
+    }
+
     try {
         return new ObjectId(value);
-    } catch (e) {
-        try {
-            // Some environments expose ObjectId as a factory function
-            return ObjectId(value);
-        } catch (e2) {
-            // rethrow original for clearer debug
-            throw e;
-        }
+    } catch (err) {
+        throw new BadRequest([{ msg: `${fieldName} must be a valid ObjectId`, param: fieldName }]);
     }
 }
 
@@ -107,13 +101,33 @@ exports.assignProfileToUser = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { profileId } = req.body;
-        if (!profileId) return next(new BadRequest('profileId required'));
-    const db = req.app.locals.dbs.mainDb;
-    const prof = await db.collection('profiles').findOne({ _id: toObjectId(profileId) });
+
+        const db = req.app.locals.dbs.mainDb;
+        const normalizedProfileId = normalizeObjectId(profileId, 'profileId');
+        const normalizedUserId = normalizeObjectId(id, 'id');
+
+        const prof = await db.collection('profiles').findOne({ _id: normalizedProfileId });
         if (!prof) return next(new NotFoundError('Profile not found'));
-    const resu = await db.collection('users').findOneAndUpdate({ _id: toObjectId(id) }, { $set: { profileId: profileId } }, { returnDocument: 'after' });
-        if (!resu.value) return next(new NotFoundError('User not found'));
-        res.json({ status: 'success', message: 'Profile assigned', data: resu.value });
+
+        const updateResult = await db.collection('users').updateOne(
+            { _id: normalizedUserId },
+            { $set: { profileId: normalizedProfileId } }
+        );
+
+        if (!updateResult.matchedCount) {
+            return next(new NotFoundError('User not found'));
+        }
+
+        const updatedDoc = await db.collection('users').findOne({ _id: normalizedUserId });
+
+        const updatedUser = {
+            ...updatedDoc,
+            _id: updatedDoc && updatedDoc._id ? updatedDoc._id.toString() : updatedDoc && updatedDoc._id,
+            profileId:
+                updatedDoc && updatedDoc.profileId ? updatedDoc.profileId.toString() : updatedDoc && updatedDoc.profileId
+        };
+
+        res.json({ status: 'success', message: 'Profile assigned', data: updatedUser });
     } catch (err) {
         next(err);
     }
