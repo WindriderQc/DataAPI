@@ -145,7 +145,8 @@
             </div>
         </div>
         <!-- Admin Debug Card -->
-    <% if (typeof user !== 'undefined' && user && user.isAdmin) { %>
+    <% const currentUser = (typeof user !== 'undefined' && user) ? user : (typeof locals !== 'undefined' && locals && locals.user ? locals.user : null); %>
+    <% if (currentUser && currentUser.isAdmin) { %>
         <div class="row mb-4">
             <div class="col-sm-8 mx-auto">
                 <div class="card border-primary">
