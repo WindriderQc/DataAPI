@@ -16,6 +16,12 @@ const extractTokenFromPayload = (payload) => {
     if (payload.token) {
         return payload.token;
     }
+    if (payload.data) {
+        const nested = extractTokenFromPayload(payload.data);
+        if (nested) {
+            return nested;
+        }
+    }
     if (payload.clientSecret) {
         return payload.clientSecret;
     }
@@ -23,6 +29,25 @@ const extractTokenFromPayload = (payload) => {
         return payload.client_secret.value;
     }
     return null;
+};
+
+const extractMessageFromPayload = (payload, fallback) => {
+    if (!payload) {
+        return fallback;
+    }
+    if (typeof payload.message === 'string') {
+        return payload.message;
+    }
+    if (payload.data) {
+        const nestedMessage = extractMessageFromPayload(payload.data);
+        if (nestedMessage) {
+            return nestedMessage;
+        }
+    }
+    if (payload.error && typeof payload.error.message === 'string') {
+        return payload.error.message;
+    }
+    return fallback;
 };
 
 export async function bootstrapAdminChat(options = {}) {
@@ -58,7 +83,7 @@ export async function bootstrapAdminChat(options = {}) {
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            const message = payload && payload.message ? payload.message : 'Unable to fetch chat token.';
+            const message = extractMessageFromPayload(payload, 'Unable to fetch chat token.');
             mountElement.innerHTML = `<div class="chatkit-error">${message}</div>`;
             return;
         }
@@ -67,6 +92,11 @@ export async function bootstrapAdminChat(options = {}) {
         if (!token) {
             mountElement.innerHTML = '<div class="chatkit-error">Chat token missing from response.</div>';
             return;
+        }
+
+        const session = payload.data || payload;
+        if (session && session.expiresAt) {
+            mountElement.dataset.expiresAt = session.expiresAt;
         }
 
         await ChatKit.render({
