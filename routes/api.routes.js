@@ -104,6 +104,8 @@ router.get('/feed/events/private', requireAuth, feedController.sendPrivateFeedEv
 
 // Secure token endpoint for ChatKit admin chat
 router.post('/chatkit/token', requireAuth, chatkitController.createSessionToken);
+// Send message to ChatKit session
+router.post('/chatkit/message', requireAuth, chatkitController.sendChatMessage);
 
 // Database management routes
 router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
