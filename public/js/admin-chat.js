@@ -1,113 +1,152 @@
-import { ChatKit } from 'https://cdn.jsdelivr.net/npm/@openai/chatkit@latest/+esm';
+/**
+ * ChatKit integration for OpenAI Agents API
+ * Uses the ChatKit Web Component (custom element)
+ */
 
-const defaultMountId = 'admin-chat';
-
-const selectMountElement = (elementId) => {
-    if (typeof elementId === 'string' && elementId.length > 0) {
-        return document.getElementById(elementId);
-    }
-    return document.getElementById(defaultMountId);
-};
-
-const extractTokenFromPayload = (payload) => {
-    if (!payload) {
-        return null;
-    }
-    if (payload.token) {
-        return payload.token;
-    }
-    if (payload.data) {
-        const nested = extractTokenFromPayload(payload.data);
-        if (nested) {
-            return nested;
-        }
-    }
-    if (payload.clientSecret) {
-        return payload.clientSecret;
-    }
-    if (payload.client_secret && payload.client_secret.value) {
-        return payload.client_secret.value;
-    }
-    return null;
-};
-
-const extractMessageFromPayload = (payload, fallback) => {
-    if (!payload) {
-        return fallback;
-    }
-    if (typeof payload.message === 'string') {
-        return payload.message;
-    }
-    if (payload.data) {
-        const nestedMessage = extractMessageFromPayload(payload.data);
-        if (nestedMessage) {
-            return nestedMessage;
-        }
-    }
-    if (payload.error && typeof payload.error.message === 'string') {
-        return payload.error.message;
-    }
-    return fallback;
-};
-
-export async function bootstrapAdminChat(options = {}) {
-    const {
-        elementId = defaultMountId,
-        agentId,
-        tokenEndpoint = '/api/v1/chatkit/token'
-    } = options;
-
-    const mountElement = selectMountElement(elementId);
-    if (!mountElement) {
+export async function bootstrapAdminChat() {
+    const container = document.getElementById('admin-chat');
+    if (!container) {
+        console.warn('admin-chat element not found on page');
         return;
     }
 
-    const resolvedAgentId = agentId || mountElement.dataset.agentId;
-    if (!resolvedAgentId) {
-        mountElement.innerHTML = '<div class="chatkit-placeholder">Chat agent is not configured.</div>';
+    const agentId = container.getAttribute('data-agent-id');
+    if (!agentId || agentId.trim().length === 0) {
+        console.log('No agent ID provided; admin chat will not load.');
         return;
     }
 
-    mountElement.classList.add('chatkit-loading');
+    container.classList.add('chatkit-loading');
 
-    try {
-        const response = await fetch(tokenEndpoint, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ agentId: resolvedAgentId })
-        });
-
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            const message = extractMessageFromPayload(payload, 'Unable to fetch chat token.');
-            mountElement.innerHTML = `<div class="chatkit-error">${message}</div>`;
-            return;
+    // Wait for ChatKit custom element to be defined
+    const waitForChatKit = async () => {
+        // Check if customElements API is available
+        if (!('customElements' in window)) {
+            console.error('Custom Elements API not supported in this browser');
+            return false;
         }
 
-        const token = extractTokenFromPayload(payload);
-        if (!token) {
-            mountElement.innerHTML = '<div class="chatkit-error">Chat token missing from response.</div>';
-            return;
+        // Wait for the openai-chatkit element to be defined
+        try {
+            await customElements.whenDefined('openai-chatkit');
+            return true;
+        } catch (error) {
+            console.error('Failed to load ChatKit custom element:', error);
+            return false;
         }
+    };
 
-        const session = payload.data || payload;
-        if (session && session.expiresAt) {
-            mountElement.dataset.expiresAt = session.expiresAt;
+    const chatkitLoaded = await Promise.race([
+        waitForChatKit(),
+        new Promise(resolve => setTimeout(() => resolve(false), 10000)) // 10 second timeout
+    ]);
+
+    if (chatkitLoaded) {
+        try {
+            container.classList.remove('chatkit-loading');
+            
+            console.log('ChatKit custom element loaded, creating chat interface');
+            
+            // Create the ChatKit custom element
+            const chatkit = document.createElement('openai-chatkit');
+            
+            // Set options on the element
+            chatkit.setOptions({
+                api: {
+                    async getClientSecret(existing) {
+                        console.log('ChatKit requesting session token, existing:', existing);
+                        
+                        const response = await fetch('/api/v1/chatkit/token', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ agentId })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.message || 'Failed to fetch token');
+                        }
+
+                        const result = await response.json();
+                        console.log('Token response:', result);
+                        
+                        const tokenData = result.data || result;
+
+                        if (!tokenData.token) {
+                            throw new Error('No session token received');
+                        }
+
+                        return tokenData.token;
+                    }
+                },
+                theme: 'dark' // Match your dark theme
+            });
+
+            // Listen for ChatKit events
+            chatkit.addEventListener('chatkit.ready', () => {
+                console.log('✅ ChatKit ready and initialized');
+                
+                // Debug: Check if iframe loaded properly
+                setTimeout(() => {
+                    const iframe = chatkit.shadowRoot?.querySelector('iframe');
+                    console.log('ChatKit iframe:', iframe);
+                    console.log('ChatKit iframe src:', iframe?.src);
+                    console.log('ChatKit shadowRoot:', chatkit.shadowRoot);
+                }, 1000);
+            });
+
+            chatkit.addEventListener('chatkit.error', (event) => {
+                console.error('❌ ChatKit error:', event.detail.error);
+                // Show error in UI
+                container.innerHTML = `
+                    <div class="chatkit-error p-4">
+                        <div class="alert alert-danger" role="alert">
+                            <h5>ChatKit Error</h5>
+                            <p>${event.detail.error?.message || 'Unknown error occurred'}</p>
+                            <pre style="font-size: 0.8em; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; overflow: auto;">${event.detail.error?.stack || ''}</pre>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Add global error listener for uncaught errors
+            window.addEventListener('error', (event) => {
+                if (event.message.includes('randomUUID')) {
+                    console.error('🔴 Global error caught (crypto.randomUUID issue):', event);
+                    event.preventDefault();
+                }
+            });
+
+            // Replace container content with ChatKit element
+            container.innerHTML = '';
+            container.appendChild(chatkit);
+            
+            console.log('ChatKit element added to DOM with agent:', agentId);
+        } catch (error) {
+            container.classList.remove('chatkit-loading');
+            container.innerHTML = '<div class="chatkit-error"><strong>Chat Unavailable</strong><p>' + error.message + '</p></div>';
+            console.error('Failed to initialize ChatKit:', error);
         }
-
-        await ChatKit.render({
-            element: mountElement,
-            token,
-            agentId: resolvedAgentId
-        });
-    } catch (error) {
-        console.error('Failed to initialize admin chat', error);
-        mountElement.innerHTML = '<div class="chatkit-error">Failed to load chat interface.</div>';
-    } finally {
-        mountElement.classList.remove('chatkit-loading');
+    } else {
+        // Fallback: ChatKit library didn't load
+        container.classList.remove('chatkit-loading');
+        container.innerHTML = `
+            <div class="chatkit-error p-4">
+                <div class="alert alert-warning" role="alert">
+                    <h5><i class="fas fa-exclamation-triangle"></i> ChatKit Not Available</h5>
+                    <p class="mb-2">The ChatKit custom element did not load within 10 seconds.</p>
+                    <p class="mb-0"><strong>Workflow ID:</strong> <code>${agentId}</code></p>
+                    <hr>
+                    <small class="text-muted">
+                        Possible causes:<br>
+                        • CDN connectivity issues<br>
+                        • Browser compatibility (needs Custom Elements support)<br>
+                        • Script loading timeout
+                    </small>
+                </div>
+            </div>
+        `;
+        console.warn('ChatKit custom element not available');
+        console.warn('Workflow ID:', agentId);
     }
 }

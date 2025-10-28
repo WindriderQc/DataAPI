@@ -19,7 +19,8 @@
         .stack { color:#f87171; font-size:0.9em; margin-top:6px; }
         .admin-feed-panel { flex: 1 1 50%; }
         .admin-chat-panel { flex: 1 1 35%; min-width: 320px; }
-        #admin-chat { min-height: 480px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.25); overflow: hidden; background: rgba(15, 23, 42, 0.6); }
+        #admin-chat { min-height: 480px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.25); overflow: hidden; background: rgba(15, 23, 42, 0.6); display: flex; flex-direction: column; }
+        #admin-chat openai-chatkit { width: 100%; height: 100%; flex: 1; display: block; }
         #admin-chat.chatkit-loading { position: relative; }
         #admin-chat.chatkit-loading::after { content: 'Connecting to agent…'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.9); color: #94a3b8; font-size: 0.95rem; }
         .chatkit-placeholder, .chatkit-error { background: rgba(15, 23, 42, 0.6); color: #cbd5e1; padding: 16px; text-align: center; font-size: 0.95rem; border-radius: 8px; border: 1px dashed rgba(148, 163, 184, 0.4); }
@@ -57,13 +58,34 @@
         const initial = <%- rawFeed %> || [];
         window.__INITIAL_ADMIN_FEED__ = initial;
     </script>
+    <% if (chatkitAgentId) { %>
+    <!-- Polyfill for crypto.randomUUID() for older browsers -->
+    <script>
+        // Check if we're in a secure context
+        console.log('Secure context:', window.isSecureContext);
+        console.log('crypto.randomUUID available:', typeof crypto.randomUUID);
+        
+        if (!crypto.randomUUID) {
+            crypto.randomUUID = function() {
+                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                );
+            };
+            console.log('✅ crypto.randomUUID polyfill added');
+        }
+    </script>
+    <!-- Load ChatKit library - must load BEFORE admin-chat module -->
+    <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
+    <% } %>
     <script src="/js/admin-feed.js"></script>
     <% if (chatkitAgentId) { %>
     <script type="module">
         import { bootstrapAdminChat } from '/js/admin-chat.js';
-        const agentId = <%- JSON.stringify(chatkitAgentId) %>;
-        if (agentId) {
-            bootstrapAdminChat({ agentId });
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => bootstrapAdminChat());
+        } else {
+            bootstrapAdminChat();
         }
     </script>
     <% } %>
