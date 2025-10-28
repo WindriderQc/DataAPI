@@ -185,7 +185,8 @@ router.get('/admin-feed', requireAuth, async (req, res, next) => {
             title: 'Admin Feed',
             user: res.locals.user,
             rawFeed: JSON.stringify(rawFeed || []),
-            menuId: 'admin-feed'
+            menuId: 'admin-feed',
+            chatkitAgentId: process.env.CHATKIT_AGENT_ID || null
         });
     } catch (err) {
         next(err);
