@@ -119,6 +119,13 @@ const createFeedItemRow = (item) => {
 };
 
 document.addEventListener('DOMContentLoaded', async function() {
+    const toggleMapDataFeed = document.getElementById('toggleMapDataFeed');
+    const mapDataFeedCard = document.getElementById('mapDataFeedCard');
+
+    toggleMapDataFeed.addEventListener('change', function() {
+        mapDataFeedCard.style.display = this.checked ? 'block' : 'none';
+    });
+
     // Initialize the real-time feed
     initializeFeed((newItem) => {
         const feedTableBody = document.querySelector('.feed-scroll-container tbody');
