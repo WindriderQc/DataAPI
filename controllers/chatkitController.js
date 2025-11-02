@@ -158,8 +158,8 @@ const createSessionToken = async (req, res) => {
             ? session.client_secret
             : null;
 
-        if (!token) {
-            log('ChatKit session response did not include a client_secret.', 'error');
+        if (!token || !token.value || !token.expires_at) {
+            log('ChatKit session response did not include a valid client_secret.', 'error');
             return res.status(502).json({
                 status: 'error',
                 message: 'Invalid response from ChatKit session service.'
