@@ -90,8 +90,10 @@ describe('chatkitController.createSessionToken', () => {
             status: 'success',
             message: 'Chat session token issued.',
             data: {
-                token: tokenValue,
-                expiresAt,
+                token: {
+                    value: tokenValue,
+                    expires_at: expiresAt
+                },
                 sessionId: 'session-1',
                 agentId
             }
