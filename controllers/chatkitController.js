@@ -345,7 +345,11 @@ const createRealtimeSession = async (req, res) => {
     // or via the 'instructions' parameter if the model supports it.
     const payload = {
         model,
-        voice
+        voice,
+        // Enable input audio transcription to capture user speech as text
+        input_audio_transcription: {
+            model: 'whisper-1'
+        }
     };
 
     // Add modalities if specified
@@ -356,6 +360,11 @@ const createRealtimeSession = async (req, res) => {
     // Add instructions if specified (for agent behavior)
     if (process.env.OPENAI_REALTIME_INSTRUCTIONS) {
         payload.instructions = process.env.OPENAI_REALTIME_INSTRUCTIONS;
+    }
+
+    // Add temperature if specified
+    if (process.env.OPENAI_REALTIME_TEMPERATURE) {
+        payload.temperature = parseFloat(process.env.OPENAI_REALTIME_TEMPERATURE);
     }
 
     log(`Creating realtime session. Model: ${model}, Voice: ${voice}, Agent: ${agentId}`, 'info');

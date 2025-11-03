@@ -225,16 +225,214 @@ class VoiceAgentController {
 
         this.dataChannel = pc.createDataChannel('oai-events', { ordered: true });
         this.dataChannel.onmessage = (event) => {
-            this.log(`Agent: ${event.data}`);
+            this.handleRealtimeEvent(event.data);
         };
         this.dataChannel.onopen = () => {
             this.log('Data channel established.');
+            this.onDataChannelOpen();
         };
         this.dataChannel.onerror = (error) => {
             console.error('Data channel error:', error);
         };
 
         return pc;
+    }
+
+    onDataChannelOpen() {
+        // Optional: Send session configuration or function definitions
+        // Example: Enable function calling
+        const sessionUpdate = {
+            type: 'session.update',
+            session: {
+                // Add custom instructions if needed
+                // instructions: "You are a helpful assistant...",
+                
+                // Define tools/functions the agent can call
+                tools: [
+                    {
+                        type: 'function',
+                        name: 'get_earthquake_data',
+                        description: 'Retrieve recent earthquake information from the database',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                limit: {
+                                    type: 'number',
+                                    description: 'Number of earthquakes to retrieve'
+                                },
+                                minMagnitude: {
+                                    type: 'number',
+                                    description: 'Minimum magnitude filter'
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'function',
+                        name: 'get_iss_position',
+                        description: 'Get the current position of the International Space Station'
+                    },
+                    {
+                        type: 'function',
+                        name: 'query_database',
+                        description: 'Execute a database query',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                collection: {
+                                    type: 'string',
+                                    description: 'Database collection to query'
+                                },
+                                query: {
+                                    type: 'string',
+                                    description: 'Query description in natural language'
+                                }
+                            },
+                            required: ['collection', 'query']
+                        }
+                    }
+                ],
+                tool_choice: 'auto'
+            }
+        };
+        
+        // Uncomment to enable function calling:
+        // this.sendDataChannelMessage(sessionUpdate);
+    }
+
+    handleRealtimeEvent(data) {
+        try {
+            const event = JSON.parse(data);
+            console.log('[Realtime Event]', event.type, event);
+
+            switch (event.type) {
+                case 'conversation.item.created':
+                    // New item in conversation (user or assistant message)
+                    if (event.item?.content) {
+                        this.handleConversationItem(event.item);
+                    }
+                    break;
+
+                case 'response.audio_transcript.delta':
+                    // Partial transcript of agent's speech
+                    console.log('[Agent Speech]', event.delta);
+                    break;
+
+                case 'response.audio_transcript.done':
+                    // Complete transcript of agent's response
+                    this.log(`Agent: ${event.transcript}`);
+                    this.onAgentResponse(event.transcript);
+                    break;
+
+                case 'conversation.item.input_audio_transcription.completed':
+                    // User's speech transcribed
+                    this.log(`You: ${event.transcript}`);
+                    this.onUserSpeech(event.transcript);
+                    break;
+
+                case 'response.function_call_arguments.done':
+                    // Agent wants to call a function
+                    this.handleFunctionCall(event.name, event.arguments);
+                    break;
+
+                case 'error':
+                    console.error('[Realtime Error]', event.error);
+                    this.log(`Error: ${event.error?.message || 'Unknown error'}`);
+                    break;
+
+                default:
+                    // Log other event types for debugging
+                    console.debug('[Realtime Event]', event.type);
+            }
+        } catch (error) {
+            console.error('Failed to parse realtime event:', error);
+        }
+    }
+
+    onUserSpeech(transcript) {
+        // Hook: Called when user's speech is transcribed
+        // You can trigger actions based on what the user said
+        console.log('[User Said]', transcript);
+        
+        // Example: Detect keywords
+        const lower = transcript.toLowerCase();
+        if (lower.includes('earthquake') || lower.includes('quake')) {
+            console.log('User is asking about earthquakes');
+            // Could trigger UI updates, fetch data, etc.
+        }
+        if (lower.includes('iss') || lower.includes('space station')) {
+            console.log('User is asking about ISS');
+        }
+    }
+
+    onAgentResponse(transcript) {
+        // Hook: Called when agent's response is complete
+        console.log('[Agent Said]', transcript);
+        
+        // You could update UI, log to backend, etc.
+    }
+
+    async handleFunctionCall(functionName, args) {
+        console.log('[Function Call]', functionName, args);
+        this.log(`Calling function: ${functionName}`);
+
+        let result;
+        try {
+            // Route function calls to your API
+            switch (functionName) {
+                case 'get_earthquake_data':
+                    result = await this.callApiFunction('/api/v1/quakes', args);
+                    break;
+                case 'get_iss_position':
+                    result = await this.callApiFunction('/api/v1/iss', args);
+                    break;
+                case 'query_database':
+                    result = await this.callApiFunction('/api/v1/databases/query', args);
+                    break;
+                default:
+                    result = { error: `Unknown function: ${functionName}` };
+            }
+
+            // Send function result back to the agent
+            this.sendFunctionResult(functionName, result);
+        } catch (error) {
+            console.error('Function call failed:', error);
+            this.sendFunctionResult(functionName, { error: error.message });
+        }
+    }
+
+    async callApiFunction(endpoint, params) {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+        return response.json();
+    }
+
+    sendFunctionResult(functionName, result) {
+        const message = {
+            type: 'conversation.item.create',
+            item: {
+                type: 'function_call_output',
+                call_id: functionName, // Should use actual call_id from the function call event
+                output: JSON.stringify(result)
+            }
+        };
+        this.sendDataChannelMessage(message);
+    }
+
+    sendDataChannelMessage(message) {
+        if (this.dataChannel && this.dataChannel.readyState === 'open') {
+            this.dataChannel.send(JSON.stringify(message));
+        } else {
+            console.warn('Data channel not open, cannot send message');
+        }
+    }
+
+    handleConversationItem(item) {
+        // Process conversation items (messages)
+        console.log('[Conversation Item]', item);
     }
 
     async exchangeSdp(sdp, session) {
