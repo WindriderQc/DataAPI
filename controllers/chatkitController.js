@@ -137,13 +137,13 @@ const createSessionToken = async (req, res) => {
         log(`Attempting to create ChatKit session. URL: ${apiUrl}, Workflow ID: ${agentId}, User: ${userId}`, 'info');
         log(`Payload: ${JSON.stringify(payload)}`, 'debug');
 
-        // Try without OpenAI-Beta header first - ChatKit might not need it
         const response = await sendSessionRequest(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 Authorization: `Bearer ${apiKey}`,
+                'OpenAI-Beta': 'chatkit_beta=v1',
                 'User-Agent': 'DataAPI-ChatKit/1.0'
             },
             body: JSON.stringify(payload)
