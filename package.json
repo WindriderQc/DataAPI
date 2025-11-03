@@ -5,6 +5,7 @@
   "main": "data_serv.js",
   "scripts": {
     "dev": "nodemon data_serv.js",
+    "agent": "node data_serv.js",
     "geocode-worker": "node scripts/geocodeWorkerRunner.js",
     "start": "node data_serv.js",
     "test": "NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit",
