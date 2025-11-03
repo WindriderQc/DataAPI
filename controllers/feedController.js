@@ -85,8 +85,9 @@ exports.getRawFeedData = async () => {
 const createSseHandler = (allowFn) => (req, res) => {
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in Nginx
     res.flushHeaders(); // Flush the headers to establish the connection
 
     const sendEvent = (data) => {
@@ -135,8 +136,9 @@ exports.sendFeedEvents = createSseHandler((event) => {
 const createFullSseHandler = (allowFn) => (req, res) => {
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering in Nginx
     res.flushHeaders(); // Flush the headers to establish the connection
 
     const sendEvent = (data) => {
