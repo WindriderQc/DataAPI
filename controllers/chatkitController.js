@@ -337,18 +337,28 @@ const createRealtimeSession = async (req, res) => {
         });
     }
 
-    const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview';
+    const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-10-01';
     const voice = process.env.OPENAI_REALTIME_VOICE || 'alloy';
 
+    // Note: The Realtime API doesn't support workflow/agent IDs in the same way as ChatKit.
+    // Workflows/instructions must be configured via session.update events over WebRTC data channel
+    // or via the 'instructions' parameter if the model supports it.
     const payload = {
         model,
-        voice,
-        workflow: {
-            id: agentId
-        }
+        voice
     };
 
-    log(`Creating realtime session. Model: ${model}, Voice: ${voice}, Workflow: ${agentId}`, 'info');
+    // Add modalities if specified
+    if (process.env.OPENAI_REALTIME_MODALITIES) {
+        payload.modalities = process.env.OPENAI_REALTIME_MODALITIES.split(',').map(m => m.trim());
+    }
+
+    // Add instructions if specified (for agent behavior)
+    if (process.env.OPENAI_REALTIME_INSTRUCTIONS) {
+        payload.instructions = process.env.OPENAI_REALTIME_INSTRUCTIONS;
+    }
+
+    log(`Creating realtime session. Model: ${model}, Voice: ${voice}, Agent: ${agentId}`, 'info');
     log(`Realtime payload: ${JSON.stringify(payload)}`, 'debug');
 
     try {

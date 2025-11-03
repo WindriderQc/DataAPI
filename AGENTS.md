@@ -76,6 +76,12 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
     -   Uses `OpenAI-Beta: chatkit_beta=v1` header for ChatKit API requests
     -   Domain must be allowlisted in OpenAI Platform dashboard
     -   Frontend extracts `token.value` from response object to pass string client_secret to ChatKit SDK
+-   **OpenAI Realtime Voice Integration:** Real-time voice chat using WebRTC and OpenAI's Realtime API:
+    -   Session endpoint at `/api/v1/chatkit/realtime-session` creates ephemeral voice sessions
+    -   Uses `OpenAI-Beta: realtime=v1` header for Realtime API requests
+    -   Does NOT support `workflow` parameters (unlike ChatKit sessions)
+    -   Agent instructions configured via `OPENAI_REALTIME_INSTRUCTIONS` environment variable
+    -   See `REALTIME_VOICE_SETUP.md` for detailed configuration and troubleshooting
 
 ### Frontend
 -   **MDBootstrap 5:** This is the standard UI library, loaded via CDN.
