@@ -3,7 +3,7 @@ const https = require('https');
 const { URL } = require('url');
 const { log } = require('../utils/logger');
 
-const CHATKIT_BETA_HEADER = 'agents=v1';
+const CHATKIT_BETA_HEADER = 'chatkit_beta=v1';
 const CHATKIT_TIMEOUT_MS = 10000;
 
 const performHttpRequest = (url, options = {}) => {
@@ -41,7 +41,7 @@ const performHttpRequest = (url, options = {}) => {
                             return JSON.parse(text);
                         } catch (err) {
                             log(`ChatKit session response JSON parse failed: ${err.message}`, 'warn');
-                            return {};
+                            return { _parse_error: true, _raw: text };
                         }
                     }
                 };
@@ -67,7 +67,10 @@ const performHttpRequest = (url, options = {}) => {
 
 const sendSessionRequest = (url, options) => {
     if (typeof fetch === 'function') {
-        return fetch(url, options);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), CHATKIT_TIMEOUT_MS);
+        return fetch(url, { ...options, signal: controller.signal })
+            .finally(() => clearTimeout(timeout));
     }
     return performHttpRequest(url, options);
 };
@@ -128,7 +131,8 @@ const createSessionToken = async (req, res) => {
 
         const payload = {
             workflow: {
-                id: agentId
+                id: agentId,
+                version: process.env.CHATKIT_WORKFLOW_VERSION || '2024-10-01'
             },
             user: userId
         };
@@ -143,7 +147,7 @@ const createSessionToken = async (req, res) => {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 Authorization: `Bearer ${apiKey}`,
-                'OpenAI-Beta': 'chatkit_beta=v1',
+                'OpenAI-Beta': CHATKIT_BETA_HEADER,
                 'User-Agent': 'DataAPI-ChatKit/1.0'
             },
             body: JSON.stringify(payload)
@@ -154,7 +158,22 @@ const createSessionToken = async (req, res) => {
             : Promise.resolve({}));
 
         log(`OpenAI API response status: ${response.status}, OK: ${response.ok}`, 'debug');
-        log(`Session response: ${JSON.stringify(session)}`, 'debug');
+        
+        // Redact sensitive data before logging
+        const safeSessionLog = (() => {
+            try {
+                const clone = JSON.parse(JSON.stringify(session || {}));
+                if (clone.client_secret) {
+                    clone.client_secret = typeof clone.client_secret === 'string' 
+                        ? '[REDACTED]' 
+                        : { ...clone.client_secret, value: '[REDACTED]' };
+                }
+                return JSON.stringify(clone);
+            } catch {
+                return '[unserializable session]';
+            }
+        })();
+        log(`Session response: ${safeSessionLog}`, 'debug');
 
         if (!response.ok) {
             const errorMessage = session && session.error && session.error.message
@@ -233,17 +252,8 @@ const sendChatMessage = async (req, res) => {
         });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-        log('ChatKit message requested but OPENAI_API_KEY is not set.', 'error');
-        return res.status(500).json({
-            status: 'error',
-            message: 'Chat agent is not available.'
-        });
-    }
-
     try {
-        // Send message to workflow using ChatKit API
+        // Send message to workflow using ChatKit API (authorized with session token)
         const apiUrl = `https://api.openai.com/v1/chatkit/sessions/${sessionId}/messages`;
         log(`Sending message to ChatKit session ${sessionId}`, 'info');
 
@@ -253,10 +263,11 @@ const sendChatMessage = async (req, res) => {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 Authorization: `Bearer ${token}`,
-                'OpenAI-Beta': 'chatkit_beta=v1',
+                'OpenAI-Beta': CHATKIT_BETA_HEADER,
                 'User-Agent': 'DataAPI-ChatKit/1.0'
             },
             body: JSON.stringify({
+                role: 'user',
                 content: message
             })
         });
