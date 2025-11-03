@@ -130,7 +130,7 @@ const createSessionToken = async (req, res) => {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 Authorization: `Bearer ${apiKey}`,
-                'OpenAI-Beta': 'chatkit_beta=v1',
+                'OpenAI-Beta': 'agents=v1',
                 'User-Agent': 'DataAPI-ChatKit/1.0'
             },
             body: JSON.stringify(payload)
@@ -141,16 +141,18 @@ const createSessionToken = async (req, res) => {
             : Promise.resolve({}));
 
         log(`OpenAI API response status: ${response.status}, OK: ${response.ok}`, 'debug');
-        log(`Session response: ${JSON.stringify(session).substring(0, 200)}`, 'debug');
+        log(`Session response: ${JSON.stringify(session)}`, 'debug');
 
         if (!response.ok) {
             const errorMessage = session && session.error && session.error.message
                 ? session.error.message
                 : `Failed to create ChatKit session (status ${response.status}).`;
             log(`ChatKit session creation failed: ${errorMessage}`, 'error');
+            log(`Full error response: ${JSON.stringify(session)}`, 'error');
             return res.status(response.status).json({
                 status: 'error',
-                message: errorMessage
+                message: errorMessage,
+                details: session.error || null
             });
         }
 
@@ -158,11 +160,30 @@ const createSessionToken = async (req, res) => {
             ? session.client_secret
             : null;
 
-        if (!token || !token.value || !token.expires_at) {
-            log('ChatKit session response did not include a valid client_secret.', 'error');
+        if (!token) {
+            log('ChatKit session response did not include a client_secret.', 'error');
+            log(`Full session object: ${JSON.stringify(session)}`, 'error');
             return res.status(502).json({
                 status: 'error',
-                message: 'Invalid response from ChatKit session service.'
+                message: 'Invalid response from ChatKit session service.',
+                details: 'No client_secret in response'
+            });
+        }
+
+        // Handle both string tokens and object tokens
+        let tokenValue, tokenExpiresAt;
+        if (typeof token === 'string') {
+            tokenValue = token;
+            tokenExpiresAt = null; // OpenAI might not always send expiration
+        } else if (token.value) {
+            tokenValue = token.value;
+            tokenExpiresAt = token.expires_at;
+        } else {
+            log('ChatKit client_secret format is invalid.', 'error');
+            log(`Token object: ${JSON.stringify(token)}`, 'error');
+            return res.status(502).json({
+                status: 'error',
+                message: 'Invalid token format from ChatKit session service.'
             });
         }
 
@@ -170,16 +191,21 @@ const createSessionToken = async (req, res) => {
             status: 'success',
             message: 'Chat session token issued.',
             data: {
-                token,
+                token: {
+                    value: tokenValue,
+                    expires_at: tokenExpiresAt
+                },
                 sessionId: session.id || null,
                 agentId
             }
         });
     } catch (error) {
         log(`Unexpected error creating ChatKit session: ${error.message}`, 'error');
+        log(`Error stack: ${error.stack}`, 'error');
         return res.status(500).json({
             status: 'error',
-            message: 'Unable to create chat session at this time.'
+            message: 'Unable to create chat session at this time.',
+            details: error.message
         });
     }
 };
