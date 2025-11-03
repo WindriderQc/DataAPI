@@ -10,7 +10,7 @@ const STATES = {
     error: 'error'
 };
 
-const ICE_GATHERING_TIMEOUT_MS = 5000;
+const ICE_GATHERING_TIMEOUT_MS = 15000; // Increased to 15 seconds for better reliability
 
 export function bootstrapAdminVoice() {
     const container = document.getElementById('admin-voice');
@@ -192,16 +192,26 @@ class VoiceAgentController {
 
     createPeerConnection() {
         const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
         });
 
         this.remoteStream = new MediaStream();
         this.elements.audio.srcObject = this.remoteStream;
 
         pc.ontrack = (event) => {
+            this.log('Receiving remote audio track');
             event.streams[0].getAudioTracks().forEach((track) => {
                 this.remoteStream.addTrack(track);
             });
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            const { iceConnectionState } = pc;
+            this.log(`ICE connection state: ${iceConnectionState}`);
         };
 
         pc.onconnectionstatechange = () => {
@@ -219,6 +229,9 @@ class VoiceAgentController {
         };
         this.dataChannel.onopen = () => {
             this.log('Data channel established.');
+        };
+        this.dataChannel.onerror = (error) => {
+            console.error('Data channel error:', error);
         };
 
         return pc;
@@ -288,15 +301,31 @@ class VoiceAgentController {
 }
 
 async function waitForIceGatheringComplete(pc) {
+    console.log(`[ICE] Initial gathering state: ${pc.iceGatheringState}`);
+    
     if (pc.iceGatheringState === 'complete') {
+        console.log('[ICE] Already complete, proceeding');
         return;
     }
 
     await new Promise((resolve, reject) => {
         let timeoutId = null;
+        let candidateCount = 0;
 
         const checkState = () => {
+            console.log(`[ICE] State changed to: ${pc.iceGatheringState}, candidates: ${candidateCount}`);
             if (pc.iceGatheringState === 'complete') {
+                cleanup();
+                resolve();
+            }
+        };
+
+        const onIceCandidate = (event) => {
+            if (event.candidate) {
+                candidateCount++;
+                console.log(`[ICE] Candidate ${candidateCount}:`, event.candidate.type, event.candidate.protocol);
+            } else {
+                console.log('[ICE] Null candidate received (gathering complete)');
                 cleanup();
                 resolve();
             }
@@ -307,14 +336,23 @@ async function waitForIceGatheringComplete(pc) {
                 clearTimeout(timeoutId);
             }
             pc.removeEventListener('icegatheringstatechange', checkState);
+            pc.removeEventListener('icecandidate', onIceCandidate);
         };
 
         timeoutId = setTimeout(() => {
+            console.warn(`[ICE] Timeout after ${ICE_GATHERING_TIMEOUT_MS}ms with ${candidateCount} candidates`);
             cleanup();
-            reject(new Error('ICE gathering timeout.'));
+            // If we have at least one candidate, proceed anyway
+            if (candidateCount > 0) {
+                console.log('[ICE] Proceeding with available candidates');
+                resolve();
+            } else {
+                reject(new Error(`ICE gathering timeout (no candidates collected).`));
+            }
         }, ICE_GATHERING_TIMEOUT_MS);
 
         pc.addEventListener('icegatheringstatechange', checkState);
+        pc.addEventListener('icecandidate', onIceCandidate);
         checkState();
     });
 }
