@@ -535,8 +535,9 @@ class VoiceAgentController {
             }
         };
         
-        // Uncomment to enable function calling:
-        // this.sendDataChannelMessage(sessionUpdate);
+        // Enable function calling - agent can now call your APIs!
+        this.sendDataChannelMessage(sessionUpdate);
+        this.log('Function calling enabled. Agent can call: get_earthquake_data, get_iss_position, query_database');
     }
 
     handleRealtimeEvent(data) {
