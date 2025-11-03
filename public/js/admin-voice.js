@@ -502,15 +502,28 @@ class VoiceAgentController {
                 // IMPORTANT: Clear instructions about what the agent CAN and CANNOT do
                 instructions: `You are a data assistant for the DataAPI platform.
 
+You ONLY have access to these 3 data sources:
+1. get_earthquake_data - Recent earthquake information
+2. get_iss_position - International Space Station position
+3. query_database - Database queries
 
-When users ask what data you have access to, ONLY mention:
-- Recent earthquake data (magnitude, location, depth, time)
-- International Space Station real-time position and tracking
-- Database queries for stored information
+You DO NOT have access to:
+- Weather APIs
+- Currency/financial data
+- Sports scores
+- Flight information
+- News feeds
+- Calculator or math computation tools
+- Web search
+- Any other external services
 
-If asked about capabilities you don't have, politely say "I don't have access to that data yet, but I let hope somebody  gets it butt to the job."
+When users ask what data you have access to, ONLY mention the 3 functions above.
 
-Be helpful, accurate, and never claim capabilities you don't have.`,
+If asked to perform calculations, respond: "I don't have a calculator function. Please use a calculator app for math."
+
+If asked about capabilities you don't have, politely say "I don't have access to that data yet."
+
+Be helpful, accurate, and never claim capabilities you don't have. Never attempt mental math - you are not a calculator.`,
                 
                 // Define tools/functions the agent can call
                 tools: [
