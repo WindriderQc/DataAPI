@@ -545,11 +545,51 @@ Be helpful, accurate, and never claim capabilities you don't have.`,
             console.log('[Realtime Event]', event.type, event);
 
             switch (event.type) {
-                case 'conversation.item.created':
-                    // New item in conversation (user or assistant message)
-                    if (event.item?.content) {
-                        this.handleConversationItem(event.item);
+                // === Session Events ===
+                case 'session.created':
+                    this.updateState(STATES.connected, '✅ Session initialized');
+                    break;
+
+                case 'session.updated':
+                    this.log('Session configuration updated');
+                    break;
+
+                // === User Input Events ===
+                case 'input_audio_buffer.speech_started':
+                    this.updateState(STATES.connected, '🎤 Listening...');
+                    this.addActionItem('status', '🎤 User Speaking', 'Detecting speech input...');
+                    break;
+
+                case 'input_audio_buffer.speech_stopped':
+                    this.updateState(STATES.connected, '⏸️ Processing speech...');
+                    this.addActionItem('status', '⏸️ Speech Ended', 'Transcribing audio...');
+                    break;
+
+                case 'input_audio_buffer.committed':
+                    this.addActionItem('status', '📝 Audio Committed', 'Audio buffer sent for processing');
+                    break;
+
+                case 'conversation.item.input_audio_transcription.completed':
+                    // User's speech transcribed
+                    this.log(`You: ${event.transcript}`);
+                    this.onUserSpeech(event.transcript);
+                    break;
+
+                // === Agent Response Events ===
+                case 'response.created':
+                    this.updateState(STATES.connected, '🤔 Thinking...');
+                    this.addActionItem('status', '🤔 Agent Thinking', 'Generating response...');
+                    break;
+
+                case 'response.audio.delta':
+                    // Agent is streaming audio (speaking)
+                    if (!this.elements.statusText.textContent.includes('💬 Speaking')) {
+                        this.updateState(STATES.connected, '💬 Speaking...');
                     }
+                    break;
+
+                case 'response.audio.done':
+                    this.updateState(STATES.connected, '✅ Response complete');
                     break;
 
                 case 'response.audio_transcript.delta':
@@ -563,20 +603,48 @@ Be helpful, accurate, and never claim capabilities you don't have.`,
                     this.onAgentResponse(event.transcript);
                     break;
 
-                case 'conversation.item.input_audio_transcription.completed':
-                    // User's speech transcribed
-                    this.log(`You: ${event.transcript}`);
-                    this.onUserSpeech(event.transcript);
+                case 'response.done':
+                    this.updateState(STATES.connected, '✨ Ready');
+                    this.addActionItem('status', '✅ Response Complete', 'Agent finished responding');
+                    break;
+
+                // === Function Calling Events ===
+                case 'response.function_call_arguments.delta':
+                    this.updateState(STATES.connected, '🔧 Calling API...');
                     break;
 
                 case 'response.function_call_arguments.done':
                     // Agent wants to call a function
+                    this.updateState(STATES.connected, '📡 Waiting for data...');
+                    this.addActionItem('status', '🔧 API Call Initiated', `Function: ${event.name}`);
                     this.handleFunctionCall(event.name, event.arguments);
                     break;
 
+                case 'conversation.item.created':
+                    // New item in conversation (user or assistant message)
+                    if (event.item?.content) {
+                        this.handleConversationItem(event.item);
+                    }
+                    break;
+
+                // === Rate Limiting ===
+                case 'rate_limits.updated':
+                    const limits = event.rate_limits || [];
+                    const requestLimits = limits.find(l => l.name === 'requests');
+                    if (requestLimits) {
+                        const remaining = requestLimits.remaining;
+                        const limit = requestLimits.limit;
+                        this.addActionItem('status', '⚠️ Rate Limits', 
+                            `Requests remaining: ${remaining}/${limit}\nResets: ${new Date(requestLimits.reset_seconds * 1000).toLocaleTimeString()}`);
+                    }
+                    break;
+
+                // === Error Handling ===
                 case 'error':
                     console.error('[Realtime Error]', event.error);
+                    this.updateState(STATES.error, `❌ Error: ${event.error?.message || 'Unknown'}`);
                     this.log(`Error: ${event.error?.message || 'Unknown error'}`);
+                    this.addActionItem('error', '❌ Error', event.error?.message || 'Unknown error');
                     break;
 
                 default:

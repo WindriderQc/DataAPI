@@ -53,10 +53,10 @@
                 <h2>Agent Chat</h2>
                 <% if (chatkitAgentId) { %>
                     <div class="agent-chat-wrapper">
-                        <div id="admin-chat" data-agent-id="<%= chatkitAgentId %>"></div>
                         <div id="admin-voice" data-agent-id="<%= chatkitAgentId %>">
                             <div class="chatkit-placeholder">Voice controls are loading…</div>
                         </div>
+                        <div id="admin-chat" data-agent-id="<%= chatkitAgentId %>"></div>
                     </div>
                 <% } else { %>
                     <div id="admin-chat" class="chatkit-placeholder">Set <code>CHATKIT_AGENT_ID</code> to enable the admin chat panel.</div>
