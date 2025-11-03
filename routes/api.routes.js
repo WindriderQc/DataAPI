@@ -110,6 +110,8 @@ router.get('/feed/events/private', requireAuth, feedController.sendPrivateFeedEv
 router.post('/chatkit/token', requireAuth, chatkitController.createSessionToken);
 // Send message to ChatKit session
 router.post('/chatkit/message', requireAuth, chatkitController.sendChatMessage);
+// Create realtime voice session for admin chat
+router.post('/chatkit/realtime-session', requireAuth, chatkitController.createRealtimeSession);
 
 // Database management routes
 router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);

@@ -4,6 +4,7 @@ const { URL } = require('url');
 const { log } = require('../utils/logger');
 
 const CHATKIT_BETA_HEADER = 'chatkit_beta=v1';
+const REALTIME_BETA_HEADER = 'realtime=v1';
 const CHATKIT_TIMEOUT_MS = 10000;
 
 const performHttpRequest = (url, options = {}) => {
@@ -316,7 +317,109 @@ const sendChatMessage = async (req, res) => {
     }
 };
 
+const createRealtimeSession = async (req, res) => {
+    const agentId = getAgentId(req.body && req.body.agentId);
+
+    if (!agentId) {
+        log('Realtime session requested without workflow ID.', 'error');
+        return res.status(400).json({
+            status: 'error',
+            message: 'Chat agent ID is not configured for realtime sessions.'
+        });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+        log('Realtime session requested but OPENAI_API_KEY is not set.', 'error');
+        return res.status(500).json({
+            status: 'error',
+            message: 'Realtime voice agent unavailable. Contact the administrator.'
+        });
+    }
+
+    const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview';
+    const voice = process.env.OPENAI_REALTIME_VOICE || 'alloy';
+
+    const payload = {
+        model,
+        voice,
+        workflow: {
+            id: agentId
+        }
+    };
+
+    log(`Creating realtime session. Model: ${model}, Voice: ${voice}, Workflow: ${agentId}`, 'info');
+    log(`Realtime payload: ${JSON.stringify(payload)}`, 'debug');
+
+    try {
+        const apiUrl = 'https://api.openai.com/v1/realtime/sessions';
+        const response = await sendSessionRequest(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                Authorization: `Bearer ${apiKey}`,
+                'OpenAI-Beta': REALTIME_BETA_HEADER,
+                'User-Agent': 'DataAPI-Realtime/1.0'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const session = await (response && typeof response.json === 'function'
+            ? response.json().catch(() => ({}))
+            : Promise.resolve({}));
+
+        log(`Realtime session response status: ${response.status}, OK: ${response.ok}`, 'debug');
+
+        if (!response.ok) {
+            const errorMessage = session?.error?.message || `Failed to create realtime session (status ${response.status}).`;
+            log(`Realtime session creation failed: ${errorMessage}`, 'error');
+            return res.status(response.status).json({
+                status: 'error',
+                message: errorMessage,
+                details: session.error || null
+            });
+        }
+
+        const clientSecret = session?.client_secret?.value || session?.client_secret || null;
+
+        if (!clientSecret) {
+            log('Realtime session response missing client_secret.', 'error');
+            return res.status(502).json({
+                status: 'error',
+                message: 'Invalid realtime session response (no client secret).'
+            });
+        }
+
+        const expiresAt = session?.client_secret?.expires_at || null;
+
+        return res.json({
+            status: 'success',
+            message: 'Realtime session created.',
+            data: {
+                token: {
+                    value: clientSecret,
+                    expires_at: expiresAt
+                },
+                sessionId: session.id || null,
+                agentId,
+                model,
+                voice
+            }
+        });
+    } catch (error) {
+        log(`Unexpected error creating realtime session: ${error.message}`, 'error');
+        log(`Realtime error stack: ${error.stack}`, 'error');
+        return res.status(500).json({
+            status: 'error',
+            message: 'Unable to create realtime session at this time.',
+            details: error.message
+        });
+    }
+};
+
 module.exports = {
     createSessionToken,
-    sendChatMessage
+    sendChatMessage,
+    createRealtimeSession
 };
