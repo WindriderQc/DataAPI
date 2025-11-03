@@ -81,7 +81,17 @@ export async function bootstrapAdminChat() {
                             throw new Error('No session token received');
                         }
 
-                        return tokenData.token;
+                        // Extract the token value (handle both string and object formats)
+                        const clientSecret = typeof tokenData.token === 'string' 
+                            ? tokenData.token 
+                            : tokenData.token.value;
+
+                        if (!clientSecret) {
+                            throw new Error('Invalid token format received');
+                        }
+
+                        console.log('Returning client_secret:', clientSecret.substring(0, 10) + '...');
+                        return clientSecret;
                     }
                 },
                 theme: 'dark' // Match your dark theme
