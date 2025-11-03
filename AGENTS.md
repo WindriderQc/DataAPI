@@ -11,6 +11,7 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
 - **Frontend:** EJS for templating, with vanilla JavaScript (ES6 modules) and MDBootstrap 5 for UI components.
 - **Testing:** Jest and Supertest.
 - **Session Management:** `express-session` with `connect-mongodb-session`.
+- **AI Integration:** OpenAI ChatKit for conversational AI interface on admin pages.
 
 ## 2. Development Workflow
 
@@ -69,6 +70,12 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
 -   **Route Order:** In `data_serv.js`, API routes **must** be registered before web page routes to ensure session middleware is not incorrectly applied to the API.
 -   **`APIFeatures` Class:** Use the reusable class in `utils/apiFeatures.js` for consistent sorting and pagination on API GET routes.
 -   **Server-Sent Events (SSE):** The application uses SSE for real-time event streaming on `/api/v1/feed/events/*` endpoints. In production, Nginx must be configured to disable response buffering for these endpoints (see `SSE_PROXY_CONFIG.md`).
+-   **OpenAI ChatKit Integration:** The application integrates OpenAI's ChatKit for conversational AI on admin pages. Key implementation details:
+    -   Requires `OPENAI_API_KEY` and `CHATKIT_AGENT_ID` environment variables
+    -   Token endpoint at `/api/v1/chatkit/token` generates ephemeral session tokens
+    -   Uses `OpenAI-Beta: chatkit_beta=v1` header for ChatKit API requests
+    -   Domain must be allowlisted in OpenAI Platform dashboard
+    -   Frontend extracts `token.value` from response object to pass string client_secret to ChatKit SDK
 
 ### Frontend
 -   **MDBootstrap 5:** This is the standard UI library, loaded via CDN.
