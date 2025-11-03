@@ -21,5 +21,6 @@ jobs:
             cd ./code/DataAPI
             git fetch origin
             git reset --hard origin/main
-            npm install
+            rm -rf node_modules package-lock.json
+            npm install --no-save
             pm2 restart data_serv
