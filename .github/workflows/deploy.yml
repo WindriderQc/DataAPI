@@ -20,7 +20,6 @@ jobs:
           script: |
             cd ./code/DataAPI
             git fetch origin
-            git checkout origin/main -- package-lock.json
-            git pull origin main
-            npm ci
+            git reset --hard origin/main
+            npm install
             pm2 restart data_serv
