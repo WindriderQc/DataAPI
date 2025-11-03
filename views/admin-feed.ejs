@@ -8,8 +8,8 @@
     <style>
         body { font-family: monospace; background: #0b1120; color: #e2e8f0; }
         main.container { padding: 32px 16px; }
-        .admin-panels { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
-        .panel { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 24px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.35); backdrop-filter: blur(8px); min-width: 280px; }
+        .admin-panels { display: flex; flex-direction: column; gap: 24px; }
+        .panel { background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 24px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.35); backdrop-filter: blur(8px); }
         .panel h2 { margin-top: 0; font-size: 1.4rem; color: #f8fafc; }
         .panel-subtitle { margin: -8px 0 16px; color: #94a3b8; font-size: 0.95rem; }
         #feed { white-space: pre-wrap; background:#0f1720; color:#cbd5e1; padding:12px; border-radius:6px; max-height:65vh; overflow:auto; border:1px solid rgba(148,163,184,0.2); }
@@ -17,8 +17,8 @@
         .ts { color:#94a3b8; font-size:0.9em }
         .type { font-weight:700; margin-right:8px; }
         .stack { color:#f87171; font-size:0.9em; margin-top:6px; }
-        .admin-feed-panel { flex: 1 1 50%; }
-        .admin-chat-panel { flex: 1 1 35%; min-width: 320px; }
+        .admin-feed-panel { width: 100%; }
+        .admin-chat-panel { width: 100%; }
         .agent-chat-wrapper { display: flex; flex-direction: column; gap: 16px; }
         #admin-chat { min-height: 360px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.25); overflow: hidden; background: rgba(15, 23, 42, 0.6); display: flex; flex-direction: column; }
         #admin-chat openai-chatkit { width: 100%; height: 100%; flex: 1; display: block; }
@@ -42,11 +42,6 @@
         .voice-audio { width: 100%; }
         .chatkit-placeholder, .chatkit-error { background: rgba(15, 23, 42, 0.6); color: #cbd5e1; padding: 16px; text-align: center; font-size: 0.95rem; border-radius: 8px; border: 1px dashed rgba(148, 163, 184, 0.4); }
         .chatkit-error { color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
-        @media (max-width: 960px) {
-            .admin-panels { flex-direction: column; }
-            #feed { max-height: none; }
-            #admin-chat { min-height: 320px; }
-        }
     </style>
 </head>
 <body>
@@ -54,11 +49,6 @@
         <h1>Admin Control Center</h1>
         <p>Monitor system activity and chat directly with the deployed agent.</p>
         <div class="admin-panels">
-            <section class="panel admin-feed-panel">
-                <h2>Real-time Event Feed</h2>
-                <p class="panel-subtitle">Private feed (authenticated users only). Displays full AppEvent objects including stacks.</p>
-                <div id="feed"></div>
-            </section>
             <section class="panel admin-chat-panel">
                 <h2>Agent Chat</h2>
                 <% if (chatkitAgentId) { %>
@@ -71,6 +61,11 @@
                 <% } else { %>
                     <div id="admin-chat" class="chatkit-placeholder">Set <code>CHATKIT_AGENT_ID</code> to enable the admin chat panel.</div>
                 <% } %>
+            </section>
+            <section class="panel admin-feed-panel">
+                <h2>Real-time Event Feed</h2>
+                <p class="panel-subtitle">Private feed (authenticated users only). Displays full AppEvent objects including stacks.</p>
+                <div id="feed"></div>
             </section>
         </div>
     </main>
