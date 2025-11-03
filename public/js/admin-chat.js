@@ -60,38 +60,53 @@ export async function bootstrapAdminChat() {
                         const requestBody = { agentId };
                         console.log('Request body:', JSON.stringify(requestBody));
                         
-                        const response = await fetch('/api/v1/chatkit/token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(requestBody)
-                        });
+                        try {
+                            const response = await fetch('/api/v1/chatkit/token', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(requestBody)
+                            });
 
-                        if (!response.ok) {
-                            const error = await response.json();
-                            console.error('Token request failed:', error);
-                            throw new Error(error.message || 'Failed to fetch token');
+                            if (!response.ok) {
+                                const error = await response.json();
+                                console.error('Token request failed:', error);
+                                throw new Error(error.message || 'Failed to fetch token');
+                            }
+
+                            const result = await response.json();
+                            console.log('Token response:', result);
+                            
+                            const tokenData = result.data || result;
+
+                            if (!tokenData.token) {
+                                console.error('No token in response:', result);
+                                throw new Error('No session token received');
+                            }
+
+                            // Extract the token value (handle both string and object formats)
+                            const clientSecret = typeof tokenData.token === 'string' 
+                                ? tokenData.token 
+                                : tokenData.token.value;
+
+                            if (!clientSecret) {
+                                console.error('Invalid token format:', tokenData.token);
+                                throw new Error('Invalid token format received');
+                            }
+
+                            if (!clientSecret.startsWith('ek_')) {
+                                console.error('Token does not start with ek_:', clientSecret);
+                                throw new Error('Invalid token prefix');
+                            }
+
+                            console.log('Returning client_secret:', clientSecret.substring(0, 10) + '...');
+                            console.log('Token length:', clientSecret.length);
+                            console.log('Token type:', typeof clientSecret);
+                            
+                            return clientSecret;
+                        } catch (error) {
+                            console.error('getClientSecret error:', error);
+                            throw error;
                         }
-
-                        const result = await response.json();
-                        console.log('Token response:', result);
-                        
-                        const tokenData = result.data || result;
-
-                        if (!tokenData.token) {
-                            throw new Error('No session token received');
-                        }
-
-                        // Extract the token value (handle both string and object formats)
-                        const clientSecret = typeof tokenData.token === 'string' 
-                            ? tokenData.token 
-                            : tokenData.token.value;
-
-                        if (!clientSecret) {
-                            throw new Error('Invalid token format received');
-                        }
-
-                        console.log('Returning client_secret:', clientSecret.substring(0, 10) + '...');
-                        return clientSecret;
                     }
                 },
                 theme: 'dark' // Match your dark theme
