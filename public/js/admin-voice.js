@@ -59,9 +59,234 @@ class VoiceAgentController {
                     <button class="voice-btn voice-start-btn">Start Voice Session</button>
                     <button class="voice-btn voice-stop-btn" disabled>Hang Up</button>
                 </div>
+                
+                <div class="voice-panels">
+                    <!-- Conversation Transcript Panel -->
+                    <div class="voice-panel">
+                        <div class="voice-panel-header">
+                            <strong>Conversation</strong>
+                            <button class="voice-panel-clear" data-target="transcript">Clear</button>
+                        </div>
+                        <div class="voice-transcript" id="voice-transcript"></div>
+                    </div>
+                    
+                    <!-- Actions & API Calls Panel -->
+                    <div class="voice-panel">
+                        <div class="voice-panel-header">
+                            <strong>Actions & API Results</strong>
+                            <button class="voice-panel-clear" data-target="actions">Clear</button>
+                        </div>
+                        <div class="voice-actions" id="voice-actions"></div>
+                    </div>
+                </div>
+                
                 <div class="voice-log" aria-live="polite"></div>
                 <audio class="voice-audio" autoplay playsinline></audio>
             </div>
+            
+            <style>
+                .voice-agent {
+                    font-family: system-ui, -apple-system, sans-serif;
+                }
+                .voice-status {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 16px;
+                    background: #1a1a1a;
+                    border-radius: 8px;
+                    margin-bottom: 16px;
+                }
+                .voice-status-indicator {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                    background: #666;
+                    transition: background 0.3s;
+                }
+                .voice-status-indicator[data-state="idle"] { background: #666; }
+                .voice-status-indicator[data-state="connecting"] { 
+                    background: #ffa500; 
+                    animation: pulse 1.5s infinite;
+                }
+                .voice-status-indicator[data-state="connected"] { background: #00ff00; }
+                .voice-status-indicator[data-state="error"] { background: #ff0000; }
+                
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                }
+                
+                .voice-controls {
+                    display: flex;
+                    gap: 12px;
+                    margin-bottom: 16px;
+                }
+                .voice-btn {
+                    padding: 10px 20px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .voice-start-btn {
+                    background: #0066cc;
+                    color: white;
+                }
+                .voice-start-btn:hover:not(:disabled) {
+                    background: #0052a3;
+                }
+                .voice-stop-btn {
+                    background: #dc3545;
+                    color: white;
+                }
+                .voice-stop-btn:hover:not(:disabled) {
+                    background: #bb2d3b;
+                }
+                .voice-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .voice-panels {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 16px;
+                    margin-bottom: 16px;
+                }
+                
+                @media (max-width: 768px) {
+                    .voice-panels {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                
+                .voice-panel {
+                    background: #1a1a1a;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                .voice-panel-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 12px 16px;
+                    background: #252525;
+                    border-bottom: 1px solid #333;
+                }
+                .voice-panel-clear {
+                    padding: 4px 12px;
+                    background: #444;
+                    color: #fff;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    cursor: pointer;
+                }
+                .voice-panel-clear:hover {
+                    background: #555;
+                }
+                
+                .voice-transcript, .voice-actions {
+                    max-height: 300px;
+                    overflow-y: auto;
+                    padding: 16px;
+                }
+                
+                .transcript-message {
+                    margin-bottom: 12px;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    animation: fadeIn 0.3s;
+                }
+                .transcript-message.user {
+                    background: #1e3a5f;
+                    margin-left: 20px;
+                }
+                .transcript-message.agent {
+                    background: #2d2d2d;
+                    margin-right: 20px;
+                }
+                .transcript-message-label {
+                    font-size: 11px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    color: #888;
+                    margin-bottom: 4px;
+                }
+                .transcript-message-text {
+                    color: #fff;
+                    line-height: 1.5;
+                }
+                
+                .action-item {
+                    margin-bottom: 12px;
+                    padding: 12px;
+                    background: #2d2d2d;
+                    border-radius: 6px;
+                    border-left: 4px solid #0066cc;
+                    animation: fadeIn 0.3s;
+                }
+                .action-item.success {
+                    border-left-color: #28a745;
+                }
+                .action-item.error {
+                    border-left-color: #dc3545;
+                }
+                .action-item.keyword {
+                    border-left-color: #ffa500;
+                }
+                .action-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+                .action-title {
+                    font-weight: 600;
+                    color: #fff;
+                }
+                .action-timestamp {
+                    font-size: 11px;
+                    color: #888;
+                }
+                .action-details {
+                    font-size: 13px;
+                    color: #ccc;
+                    white-space: pre-wrap;
+                    font-family: 'Courier New', monospace;
+                }
+                
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                .voice-log {
+                    background: #1a1a1a;
+                    border-radius: 8px;
+                    padding: 12px;
+                    max-height: 150px;
+                    overflow-y: auto;
+                    font-size: 12px;
+                    color: #999;
+                }
+                .voice-log-entry {
+                    padding: 4px 0;
+                    border-bottom: 1px solid #2a2a2a;
+                }
+                .voice-log-entry:last-child {
+                    border-bottom: none;
+                }
+            </style>
         `;
 
         this.elements.statusIndicator = this.container.querySelector('.voice-status-indicator');
@@ -70,11 +295,25 @@ class VoiceAgentController {
         this.elements.stopBtn = this.container.querySelector('.voice-stop-btn');
         this.elements.log = this.container.querySelector('.voice-log');
         this.elements.audio = this.container.querySelector('.voice-audio');
+        this.elements.transcript = this.container.querySelector('#voice-transcript');
+        this.elements.actions = this.container.querySelector('#voice-actions');
     }
 
     bindEvents() {
         this.elements.startBtn.addEventListener('click', () => this.startSession());
         this.elements.stopBtn.addEventListener('click', () => this.stopSession());
+        
+        // Clear buttons
+        this.container.querySelectorAll('.voice-panel-clear').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const target = e.target.dataset.target;
+                if (target === 'transcript') {
+                    this.elements.transcript.innerHTML = '';
+                } else if (target === 'actions') {
+                    this.elements.actions.innerHTML = '';
+                }
+            });
+        });
     }
 
     updateState(state, message) {
@@ -351,17 +590,42 @@ class VoiceAgentController {
 
     onUserSpeech(transcript) {
         // Hook: Called when user's speech is transcribed
-        // You can trigger actions based on what the user said
         console.log('[User Said]', transcript);
         
-        // Example: Detect keywords
+        // Display in transcript panel
+        this.addTranscriptMessage('user', transcript);
+        
+        // Detect keywords and trigger actions
         const lower = transcript.toLowerCase();
+        const keywords = [];
+        
         if (lower.includes('earthquake') || lower.includes('quake')) {
-            console.log('User is asking about earthquakes');
-            // Could trigger UI updates, fetch data, etc.
+            keywords.push('earthquake');
+            this.addActionItem('keyword', 'Earthquake Keyword Detected', 
+                `User mentioned earthquakes. Could trigger: fetch recent quakes, show map, etc.\nTranscript: "${transcript}"`);
         }
+        
         if (lower.includes('iss') || lower.includes('space station')) {
-            console.log('User is asking about ISS');
+            keywords.push('ISS');
+            this.addActionItem('keyword', 'ISS Keyword Detected', 
+                `User asked about ISS. Could trigger: fetch position, show trajectory, etc.\nTranscript: "${transcript}"`);
+        }
+        
+        if (lower.includes('weather') || lower.includes('temperature')) {
+            keywords.push('weather');
+            this.addActionItem('keyword', 'Weather Keyword Detected', 
+                `User asked about weather. Could trigger: fetch current conditions, forecast, etc.\nTranscript: "${transcript}"`);
+        }
+        
+        if (lower.includes('database') || lower.includes('query') || lower.includes('data')) {
+            keywords.push('database');
+            this.addActionItem('keyword', 'Database Keyword Detected', 
+                `User mentioned database/data. Could trigger: show collections, run queries, etc.\nTranscript: "${transcript}"`);
+        }
+        
+        // Log detected keywords
+        if (keywords.length > 0) {
+            console.log(`Keywords detected: ${keywords.join(', ')}`);
         }
     }
 
@@ -369,12 +633,49 @@ class VoiceAgentController {
         // Hook: Called when agent's response is complete
         console.log('[Agent Said]', transcript);
         
-        // You could update UI, log to backend, etc.
+        // Display in transcript panel
+        this.addTranscriptMessage('agent', transcript);
+    }
+
+    addTranscriptMessage(role, text) {
+        const message = document.createElement('div');
+        message.className = `transcript-message ${role}`;
+        message.innerHTML = `
+            <div class="transcript-message-label">${role === 'user' ? 'You' : 'Agent'}</div>
+            <div class="transcript-message-text">${this.escapeHtml(text)}</div>
+        `;
+        this.elements.transcript.appendChild(message);
+        this.elements.transcript.scrollTop = this.elements.transcript.scrollHeight;
+    }
+
+    addActionItem(type, title, details) {
+        const item = document.createElement('div');
+        item.className = `action-item ${type}`;
+        const timestamp = new Date().toLocaleTimeString();
+        item.innerHTML = `
+            <div class="action-header">
+                <div class="action-title">${this.escapeHtml(title)}</div>
+                <div class="action-timestamp">${timestamp}</div>
+            </div>
+            <div class="action-details">${this.escapeHtml(details)}</div>
+        `;
+        this.elements.actions.appendChild(item);
+        this.elements.actions.scrollTop = this.elements.actions.scrollHeight;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     async handleFunctionCall(functionName, args) {
         console.log('[Function Call]', functionName, args);
         this.log(`Calling function: ${functionName}`);
+        
+        // Show function call in actions panel
+        this.addActionItem('info', `Function Call: ${functionName}`, 
+            `Arguments:\n${JSON.stringify(args, null, 2)}\n\nExecuting...`);
 
         let result;
         try {
@@ -393,10 +694,19 @@ class VoiceAgentController {
                     result = { error: `Unknown function: ${functionName}` };
             }
 
+            // Show success result
+            this.addActionItem('success', `✓ ${functionName} - Success`, 
+                `Result:\n${JSON.stringify(result, null, 2)}`);
+
             // Send function result back to the agent
             this.sendFunctionResult(functionName, result);
         } catch (error) {
             console.error('Function call failed:', error);
+            
+            // Show error result
+            this.addActionItem('error', `✗ ${functionName} - Failed`, 
+                `Error: ${error.message}\n\nStack:\n${error.stack || 'N/A'}`);
+            
             this.sendFunctionResult(functionName, { error: error.message });
         }
     }
