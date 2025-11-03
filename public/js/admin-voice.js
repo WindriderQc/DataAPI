@@ -69,13 +69,27 @@ class VoiceAgentController {
                     <div class="voice-transcript" id="voice-transcript"></div>
                 </div>
                 
-                <!-- Actions & API Calls Panel - Full Width -->
+                <!-- Two-Column Events Panel -->
                 <div class="voice-panel voice-panel-full">
-                    <div class="voice-panel-header">
-                        <strong>⚡ Real-Time Events & API Results</strong>
-                        <button class="voice-panel-clear" data-target="actions">Clear</button>
+                    <div class="voice-events-grid">
+                        <!-- Status & API Events -->
+                        <div class="voice-events-column">
+                            <div class="voice-panel-header">
+                                <strong>⚡ Status & API Events</strong>
+                                <button class="voice-panel-clear" data-target="status">Clear</button>
+                            </div>
+                            <div class="voice-status-events" id="voice-status-events"></div>
+                        </div>
+                        
+                        <!-- Keyword Detections -->
+                        <div class="voice-events-column">
+                            <div class="voice-panel-header">
+                                <strong>🔍 Keyword Detections</strong>
+                                <button class="voice-panel-clear" data-target="keywords">Clear</button>
+                            </div>
+                            <div class="voice-keyword-events" id="voice-keyword-events"></div>
+                        </div>
                     </div>
-                    <div class="voice-actions" id="voice-actions"></div>
                 </div>
                 
                 <div class="voice-log" aria-live="polite"></div>
@@ -178,7 +192,17 @@ class VoiceAgentController {
                     background: #555;
                 }
                 
-                .voice-transcript, .voice-actions {
+                .voice-events-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 1px;
+                    background: #333;
+                }
+                .voice-events-column {
+                    background: #1a1a1a;
+                }
+                
+                .voice-transcript, .voice-status-events, .voice-keyword-events {
                     max-height: 300px;
                     overflow-y: auto;
                     padding: 16px;
@@ -285,7 +309,8 @@ class VoiceAgentController {
         this.elements.log = this.container.querySelector('.voice-log');
         this.elements.audio = this.container.querySelector('.voice-audio');
         this.elements.transcript = this.container.querySelector('#voice-transcript');
-        this.elements.actions = this.container.querySelector('#voice-actions');
+        this.elements.statusEvents = this.container.querySelector('#voice-status-events');
+        this.elements.keywordEvents = this.container.querySelector('#voice-keyword-events');
     }
 
     bindEvents() {
@@ -298,8 +323,10 @@ class VoiceAgentController {
                 const target = e.target.dataset.target;
                 if (target === 'transcript') {
                     this.elements.transcript.innerHTML = '';
-                } else if (target === 'actions') {
-                    this.elements.actions.innerHTML = '';
+                } else if (target === 'status') {
+                    this.elements.statusEvents.innerHTML = '';
+                } else if (target === 'keywords') {
+                    this.elements.keywordEvents.innerHTML = '';
                 }
             });
         });
@@ -734,10 +761,13 @@ Be helpful, accurate, and never claim capabilities you don't have.`,
             </div>
             <div class="action-details">${this.escapeHtml(details)}</div>
         `;
-        this.elements.actions.appendChild(item);
+        
+        // Route to appropriate column
+        const targetElement = (type === 'keyword') ? this.elements.keywordEvents : this.elements.statusEvents;
+        targetElement.appendChild(item);
         
         // Scroll to bottom - multiple methods for reliability
-        this.elements.actions.scrollTop = this.elements.actions.scrollHeight;
+        targetElement.scrollTop = targetElement.scrollHeight;
         
         // Also use scrollIntoView for the latest item
         requestAnimationFrame(() => {
