@@ -20,6 +20,7 @@ const { GeneralError } = require('./utils/errors');
 const createUserModel = require('./models/userModel');
 // auth middleware helpers
 const { attachUser, requireAuth } = require('./utils/auth');
+const createIntegrationsRouter = require('./routes/integrations');
 
 const IN_PROD = config.env === 'production';
 
@@ -202,6 +203,10 @@ async function createApp() {
     // Auth and web routes
     app.use('/', require("./routes/auth.routes"));
     app.use('/', require("./routes/web.routes"));
+
+    // Integrations router
+    app.use("/integrations", createIntegrationsRouter(app.locals.dbs.mainDb));
+    app.get("/health", (req, res) => res.json({ ok: true, version: pjson.version, ts: Date.now() }));
 
     app.use((err, req, res, next) => {
         if (res.headersSent) {
