@@ -173,6 +173,8 @@ async function createApp() {
     const sessionOptions = {
         secret: config.session.secret,
         store: mongoStore,
+        resave: false, // Don't save session if unmodified
+        saveUninitialized: false, // Don't create session until something stored
         cookie: {
             secure: IN_PROD,
             httpOnly: true,
