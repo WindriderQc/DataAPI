@@ -55,15 +55,20 @@ export async function bootstrapAdminChat() {
                 api: {
                     async getClientSecret(existing) {
                         console.log('ChatKit requesting session token, existing:', existing);
+                        console.log('Sending agentId:', agentId);
+                        
+                        const requestBody = { agentId };
+                        console.log('Request body:', JSON.stringify(requestBody));
                         
                         const response = await fetch('/api/v1/chatkit/token', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ agentId })
+                            body: JSON.stringify(requestBody)
                         });
 
                         if (!response.ok) {
                             const error = await response.json();
+                            console.error('Token request failed:', error);
                             throw new Error(error.message || 'Failed to fetch token');
                         }
 
