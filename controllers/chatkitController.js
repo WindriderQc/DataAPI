@@ -131,11 +131,15 @@ const createSessionToken = async (req, res) => {
 
         const payload = {
             workflow: {
-                id: agentId,
-                version: process.env.CHATKIT_WORKFLOW_VERSION || '2024-10-01'
+                id: agentId
             },
             user: userId
         };
+        
+        // Add version only if explicitly configured
+        if (process.env.CHATKIT_WORKFLOW_VERSION) {
+            payload.workflow.version = process.env.CHATKIT_WORKFLOW_VERSION;
+        }
 
         const apiUrl = `https://api.openai.com/v1/chatkit/sessions`;
         log(`Attempting to create ChatKit session. URL: ${apiUrl}, Workflow ID: ${agentId}, User: ${userId}`, 'info');
