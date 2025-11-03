@@ -59,11 +59,23 @@
         window.__INITIAL_ADMIN_FEED__ = initial;
     </script>
     <% if (chatkitAgentId) { %>
-    <!-- Polyfill for crypto.randomUUID() for older browsers -->
+    <!-- Polyfill for crypto.randomUUID() for non-secure contexts -->
     <script>
-        // Check if we're in a secure context
+        // Check secure context and add polyfill if needed
         console.log('Secure context:', window.isSecureContext);
-        console.log('crypto.randomUUID available:', typeof crypto.randomUUID);
+        console.log('crypto available:', typeof crypto);
+        console.log('crypto.randomUUID available:', typeof crypto?.randomUUID);
+        
+        if (typeof crypto === 'undefined') {
+            window.crypto = {
+                getRandomValues: function(arr) {
+                    for (let i = 0; i < arr.length; i++) {
+                        arr[i] = Math.floor(Math.random() * 256);
+                    }
+                    return arr;
+                }
+            };
+        }
         
         if (!crypto.randomUUID) {
             crypto.randomUUID = function() {
