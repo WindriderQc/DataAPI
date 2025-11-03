@@ -60,24 +60,22 @@ class VoiceAgentController {
                     <button class="voice-btn voice-stop-btn" disabled>Hang Up</button>
                 </div>
                 
-                <div class="voice-panels">
-                    <!-- Conversation Transcript Panel -->
-                    <div class="voice-panel">
-                        <div class="voice-panel-header">
-                            <strong>Conversation</strong>
-                            <button class="voice-panel-clear" data-target="transcript">Clear</button>
-                        </div>
-                        <div class="voice-transcript" id="voice-transcript"></div>
+                <!-- Conversation Transcript Panel - Full Width -->
+                <div class="voice-panel voice-panel-full">
+                    <div class="voice-panel-header">
+                        <strong>💬 Conversation</strong>
+                        <button class="voice-panel-clear" data-target="transcript">Clear</button>
                     </div>
-                    
-                    <!-- Actions & API Calls Panel -->
-                    <div class="voice-panel">
-                        <div class="voice-panel-header">
-                            <strong>Actions & API Results</strong>
-                            <button class="voice-panel-clear" data-target="actions">Clear</button>
-                        </div>
-                        <div class="voice-actions" id="voice-actions"></div>
+                    <div class="voice-transcript" id="voice-transcript"></div>
+                </div>
+                
+                <!-- Actions & API Calls Panel - Full Width -->
+                <div class="voice-panel voice-panel-full">
+                    <div class="voice-panel-header">
+                        <strong>⚡ Real-Time Events & API Results</strong>
+                        <button class="voice-panel-clear" data-target="actions">Clear</button>
                     </div>
+                    <div class="voice-actions" id="voice-actions"></div>
                 </div>
                 
                 <div class="voice-log" aria-live="polite"></div>
@@ -150,23 +148,14 @@ class VoiceAgentController {
                     cursor: not-allowed;
                 }
                 
-                .voice-panels {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    margin-bottom: 16px;
-                }
-                
-                @media (max-width: 768px) {
-                    .voice-panels {
-                        grid-template-columns: 1fr;
-                    }
-                }
-                
                 .voice-panel {
                     background: #1a1a1a;
                     border-radius: 8px;
                     overflow: hidden;
+                    margin-bottom: 16px;
+                }
+                .voice-panel-full {
+                    width: 100%;
                 }
                 .voice-panel-header {
                     display: flex;
