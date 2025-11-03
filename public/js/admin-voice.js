@@ -591,25 +591,25 @@ class VoiceAgentController {
         
         if (lower.includes('earthquake') || lower.includes('quake')) {
             keywords.push('earthquake');
-            this.addActionItem('keyword', 'Earthquake Keyword Detected', 
+            this.addActionItem('keyword', '🟠 Earthquake Keyword Detected', 
                 `User mentioned earthquakes. Could trigger: fetch recent quakes, show map, etc.\nTranscript: "${transcript}"`);
         }
         
         if (lower.includes('iss') || lower.includes('space station')) {
             keywords.push('ISS');
-            this.addActionItem('keyword', 'ISS Keyword Detected', 
+            this.addActionItem('keyword', '🟠 ISS Keyword Detected', 
                 `User asked about ISS. Could trigger: fetch position, show trajectory, etc.\nTranscript: "${transcript}"`);
         }
         
         if (lower.includes('weather') || lower.includes('temperature')) {
             keywords.push('weather');
-            this.addActionItem('keyword', 'Weather Keyword Detected', 
+            this.addActionItem('keyword', '🟠 Weather Keyword Detected', 
                 `User asked about weather. Could trigger: fetch current conditions, forecast, etc.\nTranscript: "${transcript}"`);
         }
         
         if (lower.includes('database') || lower.includes('query') || lower.includes('data')) {
             keywords.push('database');
-            this.addActionItem('keyword', 'Database Keyword Detected', 
+            this.addActionItem('keyword', '🟠 Database Keyword Detected', 
                 `User mentioned database/data. Could trigger: show collections, run queries, etc.\nTranscript: "${transcript}"`);
         }
         
@@ -635,7 +635,14 @@ class VoiceAgentController {
             <div class="transcript-message-text">${this.escapeHtml(text)}</div>
         `;
         this.elements.transcript.appendChild(message);
+        
+        // Scroll to bottom - multiple methods for reliability
         this.elements.transcript.scrollTop = this.elements.transcript.scrollHeight;
+        
+        // Also use scrollIntoView for the latest message
+        requestAnimationFrame(() => {
+            message.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
     }
 
     addActionItem(type, title, details) {
@@ -650,7 +657,14 @@ class VoiceAgentController {
             <div class="action-details">${this.escapeHtml(details)}</div>
         `;
         this.elements.actions.appendChild(item);
+        
+        // Scroll to bottom - multiple methods for reliability
         this.elements.actions.scrollTop = this.elements.actions.scrollHeight;
+        
+        // Also use scrollIntoView for the latest item
+        requestAnimationFrame(() => {
+            item.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
     }
 
     escapeHtml(text) {
@@ -664,7 +678,7 @@ class VoiceAgentController {
         this.log(`Calling function: ${functionName}`);
         
         // Show function call in actions panel
-        this.addActionItem('info', `Function Call: ${functionName}`, 
+        this.addActionItem('info', `🔵 Function Call: ${functionName}`, 
             `Arguments:\n${JSON.stringify(args, null, 2)}\n\nExecuting...`);
 
         let result;
@@ -672,20 +686,20 @@ class VoiceAgentController {
             // Route function calls to your API
             switch (functionName) {
                 case 'get_earthquake_data':
-                    result = await this.callApiFunction('/api/v1/quakes', args);
+                    result = await this.callApiFunction('/api/v1/quakes', 'GET', args);
                     break;
                 case 'get_iss_position':
-                    result = await this.callApiFunction('/api/v1/iss', args);
+                    result = await this.callApiFunction('/api/v1/iss', 'GET', args);
                     break;
                 case 'query_database':
-                    result = await this.callApiFunction('/api/v1/databases/query', args);
+                    result = await this.callApiFunction('/api/v1/databases/query', 'POST', args);
                     break;
                 default:
                     result = { error: `Unknown function: ${functionName}` };
             }
 
             // Show success result
-            this.addActionItem('success', `✓ ${functionName} - Success`, 
+            this.addActionItem('success', `🟢 ✓ ${functionName} - Success`, 
                 `Result:\n${JSON.stringify(result, null, 2)}`);
 
             // Send function result back to the agent
@@ -694,19 +708,45 @@ class VoiceAgentController {
             console.error('Function call failed:', error);
             
             // Show error result
-            this.addActionItem('error', `✗ ${functionName} - Failed`, 
+            this.addActionItem('error', `🔴 ✗ ${functionName} - Failed`, 
                 `Error: ${error.message}\n\nStack:\n${error.stack || 'N/A'}`);
             
             this.sendFunctionResult(functionName, { error: error.message });
         }
     }
 
-    async callApiFunction(endpoint, params) {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
-        });
+    async callApiFunction(endpoint, method = 'GET', params = {}) {
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+
+        let url = endpoint;
+        
+        if (method === 'GET' && Object.keys(params).length > 0) {
+            // Add query parameters for GET requests
+            const queryParams = new URLSearchParams();
+            Object.entries(params).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    queryParams.append(key, value);
+                }
+            });
+            const queryString = queryParams.toString();
+            if (queryString) {
+                url = `${endpoint}?${queryString}`;
+            }
+        } else if (method === 'POST') {
+            // Add body for POST requests
+            options.body = JSON.stringify(params);
+        }
+
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API returned ${response.status}: ${errorText}`);
+        }
+        
         return response.json();
     }
 
