@@ -83,11 +83,19 @@ const getAgentId = (bodyAgentId) => {
 };
 
 const createSessionToken = async (req, res) => {
+    log(`ChatKit token request received. Body: ${JSON.stringify(req.body)}`, 'debug');
+    log(`Environment CHATKIT_AGENT_ID: ${process.env.CHATKIT_AGENT_ID ? 'SET' : 'NOT SET'}`, 'debug');
+    
     const agentId = getAgentId(req.body && req.body.agentId);
     if (!agentId) {
+        log(`ChatKit agent ID not found. Body agentId: ${req.body?.agentId}, Env CHATKIT_AGENT_ID: ${process.env.CHATKIT_AGENT_ID}`, 'error');
         return res.status(400).json({
             status: 'error',
-            message: 'Chat agent ID is not configured.'
+            message: 'Chat agent ID is not configured.',
+            debug: {
+                bodyAgentId: req.body?.agentId || null,
+                envAgentIdSet: !!process.env.CHATKIT_AGENT_ID
+            }
         });
     }
 
