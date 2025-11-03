@@ -360,6 +360,20 @@ const createRealtimeSession = async (req, res) => {
     // Add instructions if specified (for agent behavior)
     if (process.env.OPENAI_REALTIME_INSTRUCTIONS) {
         payload.instructions = process.env.OPENAI_REALTIME_INSTRUCTIONS;
+    } else {
+        // Default instructions - be specific about available capabilities
+        payload.instructions = `You are a data assistant for the DataAPI platform.
+
+You have access to THREE specific data sources:
+1. Earthquake data - recent seismic activity worldwide
+2. ISS tracking - International Space Station real-time position
+3. Database queries - access to stored data in MongoDB
+
+You do NOT have access to weather, currency, sports, flights, or other external APIs.
+
+When asked about your capabilities, only mention these three data sources. If users ask for data you don't have, politely redirect them to what you CAN help with.
+
+Be accurate and helpful with the data you DO have access to.`;
     }
 
     // Add temperature if specified
