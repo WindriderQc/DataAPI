@@ -19,6 +19,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd ./code/DataAPI
+            git fetch origin
+            git checkout origin/main -- package-lock.json
             git pull origin main
-            npm install
+            npm ci
             pm2 restart data_serv
