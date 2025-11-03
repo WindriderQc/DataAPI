@@ -230,7 +230,8 @@ class VoiceAgentController {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${session.token}`,
-                'Content-Type': 'application/sdp'
+                'Content-Type': 'application/sdp',
+                'OpenAI-Beta': 'realtime=v1'
             },
             body: sdp
         });
