@@ -20,8 +20,9 @@ const profileController = require('../controllers/profileController');
 const mewController = require('../controllers/mewController');
 const storageController = require('../controllers/storageController');
 
-// Storage scan route
+// Storage scan routes
 router.post('/storage/scan', storageController.scan);
+router.get('/storage/status/:scan_id', storageController.getStatus);
 
 // User creation is allowed publicly (signup), but listing and per-user actions
 // require authentication.
