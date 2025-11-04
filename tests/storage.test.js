@@ -25,7 +25,7 @@ describe('Storage Scan API', () => {
   });
 
   describe('POST /storage/scan', () => {
-    it('should start a scan and return a job_id', async () => {
+    it('should start a scan and return standardized response', async () => {
       const res = await request(app)
         .post('/api/v1/storage/scan')
         .send({
@@ -34,16 +34,17 @@ describe('Storage Scan API', () => {
         });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('job_id');
-
-      const jobId = res.body.job_id;
+      expect(res.body.status).toBe('success');
+      expect(res.body.data).toHaveProperty('scan_id');
+      
+      const scanId = res.body.data.scan_id;
 
       // Wait for the background scan job to start and insert the document
       // The scan is fire-and-forget, so we need to poll for the document
       let scanDoc;
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => setTimeout(resolve, 100));
-        scanDoc = await db.mainDb.collection('nas_scans').findOne({ _id: jobId });
+        scanDoc = await db.mainDb.collection('nas_scans').findOne({ _id: scanId });
         if (scanDoc) break;
       }
 
@@ -55,8 +56,8 @@ describe('Storage Scan API', () => {
       let updatedScanDoc;
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        updatedScanDoc = await db.mainDb.collection('nas_scans').findOne({ _id: jobId });
-        if (updatedScanDoc.status === 'done') {
+        updatedScanDoc = await db.mainDb.collection('nas_scans').findOne({ _id: scanId });
+        if (updatedScanDoc.status === 'complete') {
           break;
         }
       }
@@ -71,21 +72,21 @@ describe('Storage Scan API', () => {
       expect(fileExtensions).toContain('mkv');
 
       // Check that the scan document was updated
-      expect(updatedScanDoc.status).toBe('done');
+      expect(updatedScanDoc.status).toBe('complete');
       expect(updatedScanDoc.counts.files_seen).toBe(3);
       expect(updatedScanDoc.counts.upserts).toBe(3);
 
       // Check that events were emitted (may be in events collection or may have been cleared)
       // The scan.done event should have been emitted based on scan completion
-      const events = await db.mainDb.collection('events').find({ scan_id: jobId }).toArray();
+      const events = await db.mainDb.collection('events').find({ scan_id: scanId }).toArray();
       // Events might be cleared by beforeEach, so we just verify the scan completed successfully
-      // The fact that updatedScanDoc.status is 'done' proves the job finished
+      // The fact that updatedScanDoc.status is 'complete' proves the job finished
       expect(updatedScanDoc.finished_at).toBeTruthy();
     }, 10000); // Increase timeout to 10 seconds
   });
 
   describe('GET /storage/status/:scan_id', () => {
-    it('should return scan status for existing scan', async () => {
+    it('should return scan status with live indicator', async () => {
       // Start a scan first
       const startRes = await request(app)
         .post('/api/v1/storage/scan')
@@ -94,7 +95,7 @@ describe('Storage Scan API', () => {
           extensions: ['jpg', 'png'],
         });
 
-      const scanId = startRes.body.job_id;
+      const scanId = startRes.body.data.scan_id;
 
       // Wait a moment for the scan document to be inserted
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -107,7 +108,9 @@ describe('Storage Scan API', () => {
       expect(statusRes.body.data).toHaveProperty('scan_id', scanId);
       expect(statusRes.body.data).toHaveProperty('status');
       expect(statusRes.body.data).toHaveProperty('counts');
-      expect(['running', 'done']).toContain(statusRes.body.data.status);
+      expect(statusRes.body.data).toHaveProperty('live');
+      expect(typeof statusRes.body.data.live).toBe('boolean');
+      expect(['running', 'complete']).toContain(statusRes.body.data.status);
     });
 
     it('should return 404 for non-existent scan_id', async () => {
@@ -116,6 +119,43 @@ describe('Storage Scan API', () => {
       expect(res.statusCode).toBe(404);
       expect(res.body.status).toBe('error');
       expect(res.body.message).toContain('not found');
+    });
+  });
+
+  describe('POST /storage/stop/:scan_id', () => {
+    it('should stop a running scan or handle completed scan gracefully', async () => {
+      // Start a scan
+      const startRes = await request(app)
+        .post('/api/v1/storage/scan')
+        .send({
+          roots: [tempDir],
+          extensions: ['jpg', 'png', 'mkv'],
+        });
+
+      const scanId = startRes.body.data.scan_id;
+
+      // Immediately try to stop it (might catch it running, might not)
+      const stopRes = await request(app).post(`/api/v1/storage/stop/${scanId}`);
+
+      // Either 200 (stopped successfully) or 404 (already completed)
+      expect([200, 404]).toContain(stopRes.statusCode);
+      expect(stopRes.body.status).toMatch(/success|error/);
+      
+      if (stopRes.statusCode === 200) {
+        expect(stopRes.body.message).toContain('Stop request sent');
+        expect(stopRes.body.data.scan_id).toBe(scanId);
+      } else {
+        // Scan finished before we could stop it
+        expect(stopRes.body.message).toContain('not running');
+      }
+    });
+
+    it('should return 404 when trying to stop non-running scan', async () => {
+      const res = await request(app).post('/api/v1/storage/stop/nonexistent-scan-id');
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body.status).toBe('error');
+      expect(res.body.message).toContain('not running');
     });
   });
 
@@ -174,7 +214,7 @@ describe('Storage Scan API', () => {
   });
 
   describe('State Transitions: Scan Lifecycle', () => {
-    it('should properly track scan status from running to done with counts', async () => {
+    it('should properly track scan status from running to complete with counts', async () => {
       const scansCol = db.mainDb.collection('nas_scans');
       const scanId = `test-scan:${Date.now()}`;
 
@@ -183,7 +223,6 @@ describe('Storage Scan API', () => {
         _id: scanId,
         status: 'running',
         counts: { files_seen: 0, upserts: 0, errors: 0 },
-        errors: [],
         started_at: new Date()
       });
 
@@ -215,11 +254,11 @@ describe('Storage Scan API', () => {
       // Finalize scan
       await scansCol.updateOne(
         { _id: scanId },
-        { $set: { status: 'done', finished_at: new Date() } }
+        { $set: { status: 'complete', finished_at: new Date() } }
       );
 
       scan = await scansCol.findOne({ _id: scanId });
-      expect(scan.status).toBe('done');
+      expect(scan.status).toBe('complete');
       expect(scan.finished_at).toBeTruthy();
       expect(scan.counts.files_seen).toBe(8);
       expect(scan.counts.upserts).toBe(8);

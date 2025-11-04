@@ -102,6 +102,15 @@ router.get('/tools', requireAuth, loadDashboardData, (req, res) => {
     });
 });
 
+router.get('/storage-tool', requireAuth, (req, res) => {
+    res.render('storage-tool', {
+        title: "Storage Scanner",
+        menuId: 'storage-tool',
+        user: res.locals.user,
+        appVersion: require('../package.json').version
+    });
+});
+
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {
