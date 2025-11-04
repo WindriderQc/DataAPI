@@ -90,6 +90,148 @@
             </div>
         </div>
 
+        <!-- SMB Network Drive Helper -->
+        <div class="row mb-4">
+            <div class="col-lg-8 mx-auto">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fa fa-network-wired"></i> Mount SMB Network Drive</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">
+                            <i class="fa fa-info-circle"></i> To scan files on a network share, you need to mount it first.
+                        </p>
+                        
+                        <div class="accordion" id="smbAccordion">
+                            <!-- Quick Mount Section -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingQuick">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuick">
+                                        <i class="fa fa-bolt me-2"></i> Quick Mount (Temporary)
+                                    </button>
+                                </h2>
+                                <div id="collapseQuick" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
+                                    <div class="accordion-body">
+                                        <p>Mount a network share temporarily (will unmount on reboot):</p>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+# Create mount point<br>
+sudo mkdir -p /mnt/network-share<br><br>
+# Mount the share<br>
+sudo mount -t cifs //SERVER_IP/SHARE_NAME /mnt/network-share -o username=YOUR_USERNAME,password=YOUR_PASSWORD<br><br>
+# Example:<br>
+sudo mount -t cifs //192.168.1.100/Media /mnt/media -o username=admin,password=mypass
+                                            </code>
+                                        </div>
+                                        <div class="alert alert-warning">
+                                            <i class="fa fa-exclamation-triangle"></i> <strong>Note:</strong> This mount will disappear after reboot.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Permanent Mount Section -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingPermanent">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePermanent">
+                                        <i class="fa fa-save me-2"></i> Permanent Mount (Survives Reboot)
+                                    </button>
+                                </h2>
+                                <div id="collapsePermanent" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
+                                    <div class="accordion-body">
+                                        <h6>Step 1: Create credentials file (recommended for security)</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+# Create credentials file<br>
+sudo nano /etc/samba/credentials/share_creds<br><br>
+# Add these lines:<br>
+username=YOUR_USERNAME<br>
+password=YOUR_PASSWORD<br>
+domain=WORKGROUP<br><br>
+# Secure the file<br>
+sudo chmod 600 /etc/samba/credentials/share_creds
+                                            </code>
+                                        </div>
+
+                                        <h6>Step 2: Edit /etc/fstab</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+sudo nano /etc/fstab<br><br>
+# Add this line at the end:<br>
+//SERVER_IP/SHARE_NAME /mnt/network-share cifs credentials=/etc/samba/credentials/share_creds,iocharset=utf8,file_mode=0777,dir_mode=0777 0 0<br><br>
+# Example:<br>
+//192.168.1.100/Media /mnt/media cifs credentials=/etc/samba/credentials/share_creds,iocharset=utf8,file_mode=0777,dir_mode=0777 0 0
+                                            </code>
+                                        </div>
+
+                                        <h6>Step 3: Create mount point and mount</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+# Create mount point<br>
+sudo mkdir -p /mnt/network-share<br><br>
+# Mount it<br>
+sudo mount -a<br><br>
+# Verify<br>
+df -h | grep network-share
+                                            </code>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Troubleshooting Section -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingTrouble">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTrouble">
+                                        <i class="fa fa-wrench me-2"></i> Troubleshooting & Tips
+                                    </button>
+                                </h2>
+                                <div id="collapseTrouble" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
+                                    <div class="accordion-body">
+                                        <h6>Install CIFS utilities (if not installed)</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+sudo apt-get update<br>
+sudo apt-get install cifs-utils
+                                            </code>
+                                        </div>
+
+                                        <h6>Common Mount Options</h6>
+                                        <ul>
+                                            <li><code>vers=3.0</code> - Force SMB version 3.0</li>
+                                            <li><code>uid=1000,gid=1000</code> - Set ownership to specific user</li>
+                                            <li><code>ro</code> - Mount read-only</li>
+                                            <li><code>noperm</code> - Disable permission checks</li>
+                                            <li><code>sec=ntlmssp</code> - Use NTLM authentication</li>
+                                        </ul>
+
+                                        <h6>Check if mounted</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+mount | grep cifs<br>
+df -h
+                                            </code>
+                                        </div>
+
+                                        <h6>Unmount a share</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>
+sudo umount /mnt/network-share
+                                            </code>
+                                        </div>
+
+                                        <div class="alert alert-info">
+                                            <i class="fa fa-lightbulb"></i> <strong>Tip:</strong> After mounting, you can add the mount path (e.g., <code>/mnt/network-share</code>) to the "Root Directories" field above to scan it.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Current Scan Status -->
         <div class="row mb-4" id="currentScanSection" style="display: none;">
             <div class="col-lg-8 mx-auto">
