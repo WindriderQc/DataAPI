@@ -212,20 +212,66 @@ function showCompletionNotification(scan) {
 // Load recent scans
 async function loadRecentScans() {
     try {
-        // For now, we'll show a message that this feature requires additional API endpoint
-        // In a full implementation, you'd create an endpoint to list recent scans
+        const response = await fetch('/api/v1/storage/scans?limit=20');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('recentScansBody');
+        
+        if (data.status === 'success' && data.data.scans.length > 0) {
+            tbody.innerHTML = data.data.scans.map(scan => {
+                const statusClass = scan.status === 'complete' ? 'success' 
+                                  : scan.status === 'running' ? 'primary'
+                                  : scan.status === 'stopped' ? 'warning'
+                                  : 'secondary';
+                
+                const duration = scan.duration ? `${scan.duration}s` : '-';
+                const startedAt = new Date(scan.started_at).toLocaleString();
+                
+                return `
+                    <tr>
+                        <td><code class="small">${scan._id}</code></td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${scan.status}</span>
+                            ${scan.live ? '<span class="badge bg-success ms-1"><i class="fa fa-circle"></i> Live</span>' : ''}
+                        </td>
+                        <td>${scan.counts?.files_seen || 0}</td>
+                        <td>${scan.counts?.upserts || 0}</td>
+                        <td>${scan.counts?.errors || 0}</td>
+                        <td>${startedAt}</td>
+                        <td>${duration}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="viewScanDetails('${scan._id}')" title="View Details">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-muted">
+                        <em>No scans found. Start your first scan above!</em>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading recent scans:', error);
         const tbody = document.getElementById('recentScansBody');
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center text-muted">
-                    <em>Recent scans list requires additional API endpoint</em><br>
-                    <small>Check MongoDB nas_scans collection directly or implement GET /api/v1/storage/scans endpoint</small>
+                <td colspan="8" class="text-center text-danger">
+                    <i class="fa fa-exclamation-triangle"></i> Failed to load recent scans
                 </td>
             </tr>
         `;
-    } catch (error) {
-        console.error('Error loading recent scans:', error);
     }
+}
+
+// View scan details (placeholder for future enhancement)
+function viewScanDetails(scanId) {
+    alert(`View details for scan: ${scanId}\n\nThis will show:\n- Full scan configuration\n- Detailed file list\n- Error details\n- Performance metrics`);
 }
 
 // Show notification (simple implementation)
