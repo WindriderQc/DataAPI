@@ -20,6 +20,7 @@ const { GeneralError } = require('./utils/errors');
 const createUserModel = require('./models/userModel');
 // auth middleware helpers
 const { attachUser, requireAuth } = require('./utils/auth');
+const createIntegrationsRouter = require('./routes/integrations');
 
 const IN_PROD = config.env === 'production';
 
@@ -172,6 +173,8 @@ async function createApp() {
     const sessionOptions = {
         secret: config.session.secret,
         store: mongoStore,
+        resave: false, // Don't save session if unmodified
+        saveUninitialized: false, // Don't create session until something stored
         cookie: {
             secure: IN_PROD,
             httpOnly: true,
@@ -205,6 +208,9 @@ async function createApp() {
 
     const scannerRoutes = require('./routes/scanner')(app.locals.dbs.mainDb);
     app.use('/scanner', scannerRoutes);
+    // Integrations router
+    app.use("/integrations", createIntegrationsRouter(app.locals.dbs.mainDb));
+    app.get("/health", (req, res) => res.json({ ok: true, version: pjson.version, ts: Date.now() }));
 
     app.use((err, req, res, next) => {
         if (res.headersSent) {

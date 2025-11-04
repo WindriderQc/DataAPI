@@ -11,6 +11,7 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
 - **Frontend:** EJS for templating, with vanilla JavaScript (ES6 modules) and MDBootstrap 5 for UI components.
 - **Testing:** Jest and Supertest.
 - **Session Management:** `express-session` with `connect-mongodb-session`.
+- **AI Integration:** OpenAI ChatKit for conversational AI interface on admin pages.
 
 ## 2. Development Workflow
 
@@ -20,13 +21,14 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
     ```bash
     npm install
     ```
+3.  **Production only:** Install and configure Nginx as a reverse proxy for HTTPS and SSE support.
 
 ### Running the Application
 -   **Development:** To run the server with automatic reloading via `nodemon`:
     ```bash
     npm run dev
     ```
-    To run the server without automatic reloading via `node`: (Recommended for agent to avoir trouble with nodemon reloading)
+    To run the server without automatic reloading via `node`: (Recommended for agent to avoid trouble with nodemon reloading)
     ```bash
     npm run agent
     ```
@@ -36,6 +38,7 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
     ```bash
     npm start
     ```
+    The application runs on port 3003 and requires Nginx as a reverse proxy for HTTPS and proper SSE (Server-Sent Events) handling. See `SSE_PROXY_CONFIG.md` for Nginx configuration details.
 
 ### Running Tests
 -   To run the entire test suite:
@@ -66,12 +69,43 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
 -   **Error Handling:** Use custom error classes from `utils/errors.js` (`BadRequest`, `NotFoundError`). A global error handler in `data_serv.js` catches and formats errors.
 -   **Route Order:** In `data_serv.js`, API routes **must** be registered before web page routes to ensure session middleware is not incorrectly applied to the API.
 -   **`APIFeatures` Class:** Use the reusable class in `utils/apiFeatures.js` for consistent sorting and pagination on API GET routes.
+-   **Server-Sent Events (SSE):** The application uses SSE for real-time event streaming on `/api/v1/feed/events/*` endpoints. In production, Nginx must be configured to disable response buffering for these endpoints (see `SSE_PROXY_CONFIG.md`).
+-   **OpenAI ChatKit Integration:** The application integrates OpenAI's ChatKit for conversational AI on admin pages. Key implementation details:
+    -   Requires `OPENAI_API_KEY` and `CHATKIT_AGENT_ID` environment variables
+    -   Token endpoint at `/api/v1/chatkit/token` generates ephemeral session tokens
+    -   Uses `OpenAI-Beta: chatkit_beta=v1` header for ChatKit API requests
+    -   Domain must be allowlisted in OpenAI Platform dashboard
+    -   Frontend extracts `token.value` from response object to pass string client_secret to ChatKit SDK
+-   **OpenAI Realtime Voice Integration:** Real-time voice chat using WebRTC and OpenAI's Realtime API:
+    -   Session endpoint at `/api/v1/chatkit/realtime-session` creates ephemeral voice sessions
+    -   Uses `OpenAI-Beta: realtime=v1` header for Realtime API requests
+    -   Does NOT support `workflow` parameters (unlike ChatKit sessions)
+    -   Agent instructions configured via `OPENAI_REALTIME_INSTRUCTIONS` environment variable
+    -   See `REALTIME_VOICE_SETUP.md` for detailed configuration and troubleshooting
 
 ### Frontend
 -   **MDBootstrap 5:** This is the standard UI library, loaded via CDN.
 -   **JavaScript Modules:** Client-side utilities are organized into ES6 modules in `public/js/utils/`. The main `public/js/utils/index.js` file exports them as namespaced objects (e.g., `API`, `DOM`) for clean, library-like access in page-specific scripts.
 -   **Script Loading:** To prevent DOM-related errors, MDBootstrap's JavaScript and other page scripts should be loaded at the end of the `<body>` tag, not in the `<head>`.
 -   **p5.js:** When using p5.js helper functions from `public/js/utils/p5-helpers.js`, always pass the p5.js instance (`p`) as the first argument.
+
+### Production Infrastructure
+-   **Reverse Proxy:** Production deployment requires Nginx as a reverse proxy to handle:
+    -   HTTPS/SSL termination
+    -   Server-Sent Events (SSE) streaming without buffering
+    -   WebSocket connections (if applicable)
+-   **SSE Configuration:** Critical location block required in Nginx config:
+    ```nginx
+    location /api/v1/feed/events {
+        proxy_pass http://localhost:3003;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+        chunked_transfer_encoding on;
+        proxy_set_header X-Accel-Buffering no;
+    }
+    ```
+    See `SSE_PROXY_CONFIG.md` for complete configuration details.
 
 ## 5. Considerations for Future Improvements
 
