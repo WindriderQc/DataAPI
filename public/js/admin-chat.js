@@ -55,28 +55,58 @@ export async function bootstrapAdminChat() {
                 api: {
                     async getClientSecret(existing) {
                         console.log('ChatKit requesting session token, existing:', existing);
+                        console.log('Sending agentId:', agentId);
                         
-                        const response = await fetch('/api/v1/chatkit/token', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ agentId })
-                        });
-
-                        if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.message || 'Failed to fetch token');
-                        }
-
-                        const result = await response.json();
-                        console.log('Token response:', result);
+                        const requestBody = { agentId };
+                        console.log('Request body:', JSON.stringify(requestBody));
                         
-                        const tokenData = result.data || result;
+                        try {
+                            const response = await fetch('/api/v1/chatkit/token', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(requestBody)
+                            });
 
-                        if (!tokenData.token) {
-                            throw new Error('No session token received');
+                            if (!response.ok) {
+                                const error = await response.json();
+                                console.error('Token request failed:', error);
+                                throw new Error(error.message || 'Failed to fetch token');
+                            }
+
+                            const result = await response.json();
+                            console.log('Token response:', result);
+                            
+                            const tokenData = result.data || result;
+
+                            if (!tokenData.token) {
+                                console.error('No token in response:', result);
+                                throw new Error('No session token received');
+                            }
+
+                            // Extract the token value (handle both string and object formats)
+                            const clientSecret = typeof tokenData.token === 'string' 
+                                ? tokenData.token 
+                                : tokenData.token.value;
+
+                            if (!clientSecret) {
+                                console.error('Invalid token format:', tokenData.token);
+                                throw new Error('Invalid token format received');
+                            }
+
+                            if (!clientSecret.startsWith('ek_')) {
+                                console.error('Token does not start with ek_:', clientSecret);
+                                throw new Error('Invalid token prefix');
+                            }
+
+                            console.log('Returning client_secret:', clientSecret.substring(0, 10) + '...');
+                            console.log('Token length:', clientSecret.length);
+                            console.log('Token type:', typeof clientSecret);
+                            
+                            return clientSecret;
+                        } catch (error) {
+                            console.error('getClientSecret error:', error);
+                            throw error;
                         }
-
-                        return tokenData.token;
                     }
                 },
                 theme: 'dark' // Match your dark theme
