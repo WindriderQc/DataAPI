@@ -21,6 +21,7 @@ const mewController = require('../controllers/mewController');
 const storageController = require('../controllers/storageController');
 
 // Storage scan routes
+router.get('/storage/scans', storageController.listScans);
 router.post('/storage/scan', storageController.scan);
 router.get('/storage/status/:scan_id', storageController.getStatus);
 router.post('/storage/stop/:scan_id', storageController.stopScan);

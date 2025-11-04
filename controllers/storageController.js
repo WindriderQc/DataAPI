@@ -153,8 +153,47 @@ const stopScan = async (req, res, next) => {
   }
 };
 
+const listScans = async (req, res, next) => {
+  try {
+    const { limit = 10, skip = 0 } = req.query;
+    const db = req.app.locals.dbs.mainDb;
+    
+    const scans = await db.collection('nas_scans')
+      .find({})
+      .sort({ started_at: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
+      .toArray();
+    
+    // Add live indicator to each scan
+    const scansWithLive = scans.map(scan => ({
+      ...scan,
+      live: runningScans.has(scan._id),
+      duration: scan.finished_at && scan.started_at 
+        ? Math.round((new Date(scan.finished_at) - new Date(scan.started_at)) / 1000)
+        : null
+    }));
+    
+    res.json({
+      status: 'success',
+      data: {
+        scans: scansWithLive,
+        count: scansWithLive.length
+      }
+    });
+  } catch (error) {
+    console.error('Failed to list scans:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve scans list',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scan,
   getStatus,
-  stopScan
+  stopScan,
+  listScans
 };
