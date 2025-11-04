@@ -154,6 +154,11 @@ async function updateScanStatus() {
                 setTimeout(() => {
                     loadRecentScans();
                     showCompletionNotification(scan);
+                    // Hide the current scan section after showing completion
+                    setTimeout(() => {
+                        document.getElementById('currentScanSection').style.display = 'none';
+                        currentScanId = null;
+                    }, 3000); // Give user 3 seconds to see the completion state
                 }, 1000);
             }
         }
