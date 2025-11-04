@@ -206,8 +206,6 @@ async function createApp() {
     app.use('/', require("./routes/auth.routes"));
     app.use('/', require("./routes/web.routes"));
 
-    const scannerRoutes = require('./routes/scanner')(app.locals.dbs.mainDb);
-    app.use('/scanner', scannerRoutes);
     // Integrations router
     app.use("/integrations", createIntegrationsRouter(app.locals.dbs.mainDb));
     app.get("/health", (req, res) => res.json({ ok: true, version: pjson.version, ts: Date.now() }));

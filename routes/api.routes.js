@@ -23,6 +23,7 @@ const storageController = require('../controllers/storageController');
 // Storage scan routes
 router.post('/storage/scan', storageController.scan);
 router.get('/storage/status/:scan_id', storageController.getStatus);
+router.post('/storage/stop/:scan_id', storageController.stopScan);
 
 // User creation is allowed publicly (signup), but listing and per-user actions
 // require authentication.
