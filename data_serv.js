@@ -203,6 +203,9 @@ async function createApp() {
     app.use('/', require("./routes/auth.routes"));
     app.use('/', require("./routes/web.routes"));
 
+    const scannerRoutes = require('./routes/scanner')(app.locals.dbs.mainDb);
+    app.use('/scanner', scannerRoutes);
+
     app.use((err, req, res, next) => {
         if (res.headersSent) {
             return next(err);
