@@ -10,6 +10,11 @@ const STATES = {
     error: 'error'
 };
 
+const MODES = {
+    conversation: 'conversation',
+    stt: 'stt'
+};
+
 const ICE_GATHERING_TIMEOUT_MS = 15000; // Increased to 15 seconds for better reliability
 
 export function bootstrapAdminVoice() {
@@ -35,16 +40,23 @@ class VoiceAgentController {
         this.agentId = agentId;
         this.state = STATES.idle;
         this.elements = {};
+        this.mode = MODES.conversation;
         this.peerConnection = null;
         this.localStream = null;
         this.remoteStream = null;
         this.dataChannel = null;
         this.sessionMeta = null;
+        this.speechRecognition = null;
+        this.isSpeechRecognitionActive = false;
+        this.textSelection = { start: 0, end: 0 };
+        const browserLocale = (navigator.language || 'en-US').toLowerCase();
+        this.transcriptionLanguage = browserLocale.startsWith('fr') ? 'fr-CA' : 'en-US';
     }
 
     init() {
         this.render();
         this.bindEvents();
+        this.updateModeUi();
         this.updateState(STATES.idle, 'Ready to connect');
     }
 
@@ -55,9 +67,33 @@ class VoiceAgentController {
                     <span class="voice-status-indicator" data-state="${STATES.idle}"></span>
                     <span class="voice-status-text">Initializing…</span>
                 </div>
+                <div class="voice-mode-toggle" role="group" aria-label="Voice mode selector">
+                    <button type="button" class="voice-mode-btn active" data-mode="${MODES.conversation}">Conversation</button>
+                    <button type="button" class="voice-mode-btn" data-mode="${MODES.stt}">Speech to Text</button>
+                </div>
                 <div class="voice-controls">
                     <button class="voice-btn voice-start-btn">Start Voice Session</button>
                     <button class="voice-btn voice-stop-btn" disabled>Hang Up</button>
+                </div>
+                <div class="voice-panel voice-panel-full voice-stt-panel" hidden>
+                    <div class="voice-panel-header">
+                        <strong>📝 Speech to Text Pad</strong>
+                        <div class="voice-stt-actions">
+                            <span class="voice-stt-status">Idle</span>
+                            <button class="voice-panel-clear" data-target="stt">Clear</button>
+                            <button class="voice-copy-btn">Copy to Clipboard</button>
+                        </div>
+                    </div>
+                    <div class="voice-stt-language">
+                        <label>
+                            Language
+                            <select class="voice-language-select">
+                                <option value="en-US">English (US)</option>
+                                <option value="fr-CA">Français (Canada)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <textarea class="voice-textarea" rows="10" spellcheck="true" placeholder="Transcribed text will appear here…"></textarea>
                 </div>
                 
                 <!-- Conversation Transcript Panel - Full Width -->
@@ -108,6 +144,27 @@ class VoiceAgentController {
                     background: #1a1a1a;
                     border-radius: 8px;
                     margin-bottom: 16px;
+                }
+                .voice-mode-toggle {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 16px;
+                }
+                .voice-mode-btn {
+                    flex: 1;
+                    padding: 10px 16px;
+                    border-radius: 6px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                    background: rgba(255,255,255,0.04);
+                    color: #e2e8f0;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .voice-mode-btn.active {
+                    background: linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%);
+                    color: #0f172a;
+                    border-color: transparent;
                 }
                 .voice-status-indicator {
                     width: 12px;
@@ -168,6 +225,9 @@ class VoiceAgentController {
                     overflow: hidden;
                     margin-bottom: 16px;
                 }
+                .voice-stt-panel[hidden] {
+                    display: none;
+                }
                 .voice-panel-full {
                     width: 100%;
                 }
@@ -190,6 +250,66 @@ class VoiceAgentController {
                 }
                 .voice-panel-clear:hover {
                     background: #555;
+                }
+                .voice-stt-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .voice-stt-language {
+                    display: flex;
+                    justify-content: flex-start;
+                    padding: 12px 16px;
+                    background: #111827;
+                    border-top: 1px solid #2a2a2a;
+                }
+                .voice-stt-language label {
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    font-size: 13px;
+                    color: #cbd5e1;
+                }
+                .voice-language-select {
+                    background: #1f2937;
+                    color: #e2e8f0;
+                    border: 1px solid #374151;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 13px;
+                }
+                .voice-stt-status {
+                    font-size: 12px;
+                    color: #9ca3af;
+                }
+                .voice-copy-btn {
+                    padding: 4px 12px;
+                    background: #0ea5e9;
+                    color: #0f172a;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                }
+                .voice-copy-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+                .voice-textarea {
+                    width: 100%;
+                    min-height: 200px;
+                    padding: 16px;
+                    border: none;
+                    border-top: 1px solid #333;
+                    background: #111827;
+                    color: #e2e8f0;
+                    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+                    font-size: 14px;
+                    resize: vertical;
+                }
+                .voice-textarea:focus {
+                    outline: 2px solid #0ea5e9;
                 }
                 
                 .voice-events-grid {
@@ -311,11 +431,40 @@ class VoiceAgentController {
         this.elements.transcript = this.container.querySelector('#voice-transcript');
         this.elements.statusEvents = this.container.querySelector('#voice-status-events');
         this.elements.keywordEvents = this.container.querySelector('#voice-keyword-events');
+        this.elements.modeButtons = this.container.querySelectorAll('.voice-mode-btn');
+        this.elements.sttPanel = this.container.querySelector('.voice-stt-panel');
+        this.elements.textarea = this.container.querySelector('.voice-textarea');
+        this.elements.copyBtn = this.container.querySelector('.voice-copy-btn');
+        this.elements.sttStatus = this.container.querySelector('.voice-stt-status');
+        this.elements.languageSelect = this.container.querySelector('.voice-language-select');
     }
 
     bindEvents() {
         this.elements.startBtn.addEventListener('click', () => this.startSession());
         this.elements.stopBtn.addEventListener('click', () => this.stopSession());
+        if (this.elements.modeButtons) {
+            this.elements.modeButtons.forEach((btn) => {
+                btn.addEventListener('click', () => this.setMode(btn.dataset.mode));
+            });
+        }
+        if (this.elements.copyBtn) {
+            this.elements.copyBtn.addEventListener('click', () => this.handleCopyToClipboard());
+        }
+        if (this.elements.languageSelect) {
+            this.elements.languageSelect.value = this.transcriptionLanguage;
+            this.elements.languageSelect.addEventListener('change', (event) => {
+                this.onLanguageChange(event.target.value);
+            });
+        }
+        if (this.elements.textarea) {
+            const trackSelection = () => {
+                this.textSelection.start = this.elements.textarea.selectionStart;
+                this.textSelection.end = this.elements.textarea.selectionEnd;
+            };
+            ['select', 'keyup', 'click', 'input'].forEach(eventName => {
+                this.elements.textarea.addEventListener(eventName, trackSelection);
+            });
+        }
         
         // Clear buttons
         this.container.querySelectorAll('.voice-panel-clear').forEach(btn => {
@@ -327,9 +476,205 @@ class VoiceAgentController {
                     this.elements.statusEvents.innerHTML = '';
                 } else if (target === 'keywords') {
                     this.elements.keywordEvents.innerHTML = '';
+                } else if (target === 'stt' && this.elements.textarea) {
+                    this.elements.textarea.value = '';
+                    this.textSelection = { start: 0, end: 0 };
                 }
             });
         });
+    }
+
+    setMode(mode) {
+        const nextMode = Object.values(MODES).includes(mode) ? mode : MODES.conversation;
+        if (this.mode === nextMode) {
+            return;
+        }
+
+        if (this.mode === MODES.conversation) {
+            this.stopConversationSession(true);
+        } else {
+            this.stopSpeechToTextSession(true);
+        }
+
+        this.mode = nextMode;
+        this.updateModeUi();
+        const message = this.mode === MODES.conversation ? 'Ready to connect' : 'Ready to transcribe';
+        this.updateState(STATES.idle, message);
+    }
+
+    updateModeUi() {
+        if (this.elements.modeButtons) {
+            this.elements.modeButtons.forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.mode === this.mode);
+            });
+        }
+        if (this.elements.sttPanel) {
+            this.elements.sttPanel.hidden = this.mode !== MODES.stt;
+        }
+        if (this.elements.startBtn) {
+            this.elements.startBtn.textContent = this.mode === MODES.conversation
+                ? 'Start Voice Session'
+                : 'Start Speech Capture';
+        }
+        if (this.elements.stopBtn) {
+            this.elements.stopBtn.textContent = this.mode === MODES.conversation
+                ? 'Hang Up'
+                : 'Stop Speech Capture';
+        }
+        this.updateSttStatus(this.mode === MODES.stt ? 'Idle' : 'Hidden');
+    }
+
+    updateSttStatus(text) {
+        if (this.elements.sttStatus) {
+            this.elements.sttStatus.textContent = text;
+        }
+    }
+
+    onLanguageChange(value) {
+        if (!value) {
+            return;
+        }
+        this.transcriptionLanguage = value;
+        if (this.elements.languageSelect && this.elements.languageSelect.value !== value) {
+            this.elements.languageSelect.value = value;
+        }
+        this.log(`Speech-to-text language set to ${value}.`);
+        if (this.isSpeechRecognitionActive) {
+            this.stopSpeechToTextSession(true);
+            this.startSpeechToTextSession();
+        }
+    }
+
+    async handleCopyToClipboard() {
+        if (!this.elements.textarea) {
+            return;
+        }
+        const text = this.elements.textarea.value;
+        if (!text) {
+            this.log('Nothing to copy.');
+            return;
+        }
+        if (!navigator.clipboard) {
+            this.log('Clipboard API unavailable in this browser.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            this.log('Text copied to clipboard.');
+        } catch (error) {
+            console.error('Clipboard copy failed:', error);
+            this.log('Failed to copy text. Check browser permissions.');
+        }
+    }
+
+    insertTextAtCursor(text, { trailingSpace = true } = {}) {
+        if (!this.elements.textarea) {
+            return;
+        }
+        const textarea = this.elements.textarea;
+        const insertion = trailingSpace ? `${text} ` : text;
+        const value = textarea.value;
+        const start = typeof textarea.selectionStart === 'number'
+            ? textarea.selectionStart
+            : this.textSelection.start || value.length;
+        const end = typeof textarea.selectionEnd === 'number'
+            ? textarea.selectionEnd
+            : this.textSelection.end || value.length;
+        textarea.value = value.slice(0, start) + insertion + value.slice(end);
+        const newPos = start + insertion.length;
+        textarea.setSelectionRange(newPos, newPos);
+        textarea.focus();
+        this.textSelection = { start: newPos, end: newPos };
+    }
+
+    startSpeechToTextSession() {
+        if (this.isSpeechRecognitionActive) {
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            this.log('Speech-to-text mode requires a browser with the Web Speech API.');
+            this.updateState(STATES.error, 'Speech recognition unsupported in this browser');
+            return;
+        }
+
+        try {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = this.transcriptionLanguage || navigator.language || 'en-US';
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                this.isSpeechRecognitionActive = true;
+                this.updateState(STATES.connected, 'Listening (speech-to-text)…');
+                this.updateSttStatus('Listening…');
+                this.log('Speech recognition started.');
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event);
+                this.log(`Speech recognition error: ${event.error || 'unknown'}`);
+                this.updateState(STATES.error, 'Speech recognition error');
+                this.stopSpeechToTextSession(true);
+            };
+
+            recognition.onend = () => {
+                this.isSpeechRecognitionActive = false;
+                this.updateSttStatus('Idle');
+                if (this.mode === MODES.stt) {
+                    this.updateState(STATES.idle, 'Ready to transcribe');
+                }
+            };
+
+            recognition.onresult = (event) => {
+                for (let i = event.resultIndex; i < event.results.length; i += 1) {
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        const transcript = result[0].transcript.trim();
+                        if (transcript) {
+                            this.handleSttTranscript(transcript);
+                        }
+                    }
+                }
+            };
+
+            this.speechRecognition = recognition;
+            this.updateState(STATES.connecting, 'Requesting microphone access…');
+            this.updateSttStatus('Initializing…');
+            recognition.start();
+        } catch (error) {
+            console.error('Unable to start speech recognition:', error);
+            this.log('Unable to start speech recognition. See console for details.');
+            this.updateState(STATES.error, 'Speech recognition failed to start');
+        }
+    }
+
+    stopSpeechToTextSession(silent = false) {
+        if (this.speechRecognition) {
+            try {
+                this.speechRecognition.onstart = null;
+                this.speechRecognition.onerror = null;
+                this.speechRecognition.onend = null;
+                this.speechRecognition.onresult = null;
+                this.speechRecognition.stop();
+            } catch (error) {
+                console.warn('Failed to stop speech recognition cleanly:', error);
+            }
+            this.speechRecognition = null;
+        }
+        this.isSpeechRecognitionActive = false;
+        this.updateSttStatus('Idle');
+        if (!silent) {
+            this.updateState(STATES.idle, 'Ready to transcribe');
+            this.log('Speech-to-text session stopped.');
+        }
+    }
+
+    handleSttTranscript(transcript) {
+        this.log(`STT: ${transcript}`);
+        this.insertTextAtCursor(transcript);
     }
 
     updateState(state, message) {
@@ -368,6 +713,14 @@ class VoiceAgentController {
     }
 
     async startSession() {
+        if (this.mode === MODES.stt) {
+            this.startSpeechToTextSession();
+            return;
+        }
+        await this.startConversationSession();
+    }
+
+    async startConversationSession() {
         if (this.state === STATES.connecting || this.state === STATES.connected) {
             return;
         }
@@ -413,7 +766,7 @@ class VoiceAgentController {
             console.error('Voice session error:', error);
             this.log(`Error: ${error.message || error}`);
             this.updateState(STATES.error, 'Connection failed');
-            this.stopSession(true);
+            this.stopConversationSession(true);
         }
     }
 
@@ -474,7 +827,7 @@ class VoiceAgentController {
             this.log(`Connection state: ${connectionState}`);
             if (connectionState === 'failed' || connectionState === 'disconnected') {
                 this.updateState(STATES.error, 'Connection lost');
-                this.stopSession(true);
+                this.stopConversationSession(true);
             }
         };
 
@@ -917,6 +1270,14 @@ Be helpful, accurate, and never claim capabilities you don't have. Never attempt
     }
 
     stopSession(silent = false) {
+        if (this.mode === MODES.stt) {
+            this.stopSpeechToTextSession(silent);
+        } else {
+            this.stopConversationSession(silent);
+        }
+    }
+
+    stopConversationSession(silent = false) {
         if (!silent) {
             this.log('Disconnecting session…');
         }
