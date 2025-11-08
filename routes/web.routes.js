@@ -111,6 +111,15 @@ router.get('/storage-tool', requireAuth, (req, res) => {
     });
 });
 
+router.get('/file-browser', requireAuth, (req, res) => {
+    res.render('file-browser', {
+        title: "File Browser",
+        menuId: 'file-browser',
+        user: res.locals.user,
+        appVersion: require('../package.json').version
+    });
+});
+
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {

@@ -191,9 +191,28 @@ const listScans = async (req, res, next) => {
   }
 };
 
+const getDirectoryCount = async (req, res, next) => {
+  try {
+    const db = req.app.locals.dbs.mainDb;
+    const directories = db.collection('nas_directories');
+    
+    const count = await directories.countDocuments();
+    
+    res.json({
+      status: 'success',
+      data: {
+        count
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   scan,
   getStatus,
   stopScan,
-  listScans
+  listScans,
+  getDirectoryCount
 };

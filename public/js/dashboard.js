@@ -154,18 +154,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (worldMapTitle) {
                 worldMapTitle.innerText = `- ${selectedCollection.charAt(0).toUpperCase() + selectedCollection.slice(1)}`;
             }
-            listAllLogs(selectedCollection); // Refresh the map and table with the selected source
+            listAllLogs(selectedCollection); // Refresh the map with the selected source
         });
     });
 
-    const sourceSelect = document.getElementById('sourceSelect');
-    sourceSelect.addEventListener('change', function() {
-        source = this.value;
-        listAllLogs(source);
-    });
-
+    // Initialize world map with default data (userLogs)
     listAllLogs("userLogs");
-    await getUserInfo();
 
     // Draggable scroll for summary cards
     const scrollContainer = document.getElementById('card-scroll-container');
@@ -200,11 +194,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 });
-
-async function getUserInfo() {
-    const info = await getUserLocation();
-    document.getElementById('ip_id').innerHTML = "<pre>" + JSON.stringify(info.TimeZone, null, '\t') + "</pre>";
-}
 
 function generateCustomLegend() {
     const legendContainer = document.getElementById('worldMapLegend');
@@ -361,7 +350,7 @@ function updateMapDataFeed(countryCounts) {
 const loadingElement = document.querySelector('.loading');
 
 function listAllLogs(source) {
-    loadingElement.style.display = '';
+    if (loadingElement) loadingElement.style.display = '';
     const url = `api/v1/v2/logs?source=${source}`;
     fetch(url)
         .then(response => response.json())
@@ -377,8 +366,7 @@ function listAllLogs(source) {
                 console.warn('[dashboard] debug logging failed', e.message);
             }
 
-            // Use the server-side aggregation endpoint to get authoritative counts
-            // This avoids counting only the paginated subset (1000 items).
+            // Use the server-side aggregation endpoint to get authoritative counts for the world map
             fetch(`api/v1/v2/logs/countries?source=${source}`)
                 .then(r => r.json())
                 .then(countryResp => {
@@ -395,81 +383,15 @@ function listAllLogs(source) {
                     setWorlGraph(result.logs || []);
                 });
 
-            if (!result.logs || result.logs.length === 0) {
-                loadDataTable({ data: [], columns: [] });
-                loadingElement.style.display = 'none';
-                return;
-            }
-
-            const allKeys = new Set();
-            result.logs.forEach(log => {
-                if (log && typeof log === 'object') {
-                    Object.keys(log).forEach(key => allKeys.add(key));
-                }
-            });
-
-            const normalizedLogs = result.logs.map(log => {
-                const normalizedLog = {};
-                allKeys.forEach(key => {
-                    normalizedLog[key] = log && log.hasOwnProperty(key) ? log[key] : "";
-                });
-                return normalizedLog;
-            });
-
-            const columns = Array.from(allKeys).map((key) => ({
-                title: key.charAt(0).toUpperCase() + key.slice(1),
-                data: key,
-                defaultContent: "",
-                render: (key === 'date' || key === 'created') ? function(data) {
-                    if (!data) return "";
-                    const dateObj = new Date(data);
-                    return isNaN(dateObj.getTime()) ? "" : dateObj.toLocaleString();
-                } : null,
-            }));
-
-            loadDataTable({ data: normalizedLogs, columns });
-            loadingElement.style.display = 'none';
+            if (loadingElement) loadingElement.style.display = 'none';
         })
         .catch(error => {
             console.error('Error fetching logs:', error);
-            loadingElement.style.display = 'none';
+            if (loadingElement) loadingElement.style.display = 'none';
         });
 }
 
-function loadDataTable(dataset) {
-    // Ensure jQuery is loaded
-    if (typeof $ === 'undefined') {
-        console.error('jQuery is not loaded');
-        return;
-    }
-    
-    const table = $('#logsTable');
-    
-    // Ensure table element exists
-    if (!table.length) {
-        console.error('Table element #logsTable not found');
-        return;
-    }
-    
-    // Check if DataTables is loaded and if table is already initialized
-    if (typeof $.fn.DataTable !== 'undefined') {
-        if ($.fn.DataTable.isDataTable(table)) {
-            table.DataTable().clear().destroy();
-        }
-        
-        table.empty();
-        
-        // Initialize DataTable
-        table.DataTable({
-            data: dataset.data,
-            columns: dataset.columns,
-            destroy: true,
-            scrollX: true
-        });
-    } else {
-        console.error('DataTables library not loaded');
-    }
-}
+// loadDataTable function removed - use the dedicated databases viewer page instead
 
 // Sidebar toggle functionality
 var mySidebar = document.getElementById("mySidebar");
