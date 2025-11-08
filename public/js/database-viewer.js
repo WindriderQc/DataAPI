@@ -120,6 +120,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(url);
+            
+            // Check if the response is ok (status 200-299)
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error(`Collection endpoint not found: ${params.collection}. This collection may not have an API endpoint.`);
+                }
+                if (response.status === 429) {
+                    throw new Error(`Too many requests. Please wait a moment before trying again.`);
+                }
+                // Try to get error message from response
+                let errorMsg = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorText = await response.text();
+                    if (errorText) errorMsg = errorText;
+                } catch (e) {
+                    // Ignore text parsing errors
+                }
+                throw new Error(errorMsg);
+            }
+            
             const result = await response.json();
 
             if (result.data) {
@@ -185,18 +205,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 loadingElement.style.display = 'none';
-                console.log(result.meta.has_more ? "Droplist has more" : "Droplist is done");
-                if (!result.meta.has_more) {
+                
+                // Check if result.meta exists before accessing has_more
+                if (result.meta) {
+                    console.log(result.meta.has_more ? "Droplist has more" : "Droplist is done");
+                    if (!result.meta.has_more) {
+                        loadMoreElement.style.visibility = 'hidden';
+                        finished = true;
+                    } else {
+                        loadMoreElement.style.visibility = 'visible';
+                    }
+                } else {
+                    // No meta information, assume no more data
                     loadMoreElement.style.visibility = 'hidden';
                     finished = true;
-                } else {
-                    loadMoreElement.style.visibility = 'visible';
                 }
             }
         } catch (error) {
             console.error('Error fetching data:', error);
-            errorElement.textContent = 'Failed to fetch data. Please try again.';
+            errorElement.textContent = error.message || 'Failed to fetch data. Please try again.';
             errorElement.style.display = 'block';
+            loadingElement.style.display = 'none';
+            loadMoreElement.style.visibility = 'hidden';
+            finished = true; // Stop trying to load more on error
         }
 
         loading = false;

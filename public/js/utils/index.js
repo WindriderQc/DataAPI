@@ -15,3 +15,6 @@ export const DOM = DOMUtils;
 export const API = APIUtils;
 export const GEO = GeoUtils;
 export const P5 = P5Helpers;
+
+// Export commonly used functions directly for convenience
+export const { formatFileSize, formatDate, formatNumber } = GeneralUtils;

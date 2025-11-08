@@ -111,3 +111,46 @@ export const getTextBetween = (source, startTag, endTag) => {
   }
   return source.substring(startIndex + startTag.length, endIndex);
 };
+
+/**
+ * Formats file size in human-readable format.
+ * @param {number} bytes - The size in bytes.
+ * @returns {string} The formatted size (e.g., "1.5 MB").
+ */
+export const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+};
+
+/**
+ * Formats a date in human-readable format.
+ * @param {Date} date - The date to format.
+ * @returns {string} The formatted date (e.g., "Jan 15, 2025").
+ */
+export const formatDate = (date) => {
+  if (!date || !(date instanceof Date) || isNaN(date)) {
+    return 'Invalid Date';
+  }
+  
+  const options = { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+  
+  return date.toLocaleDateString('en-US', options);
+};
+
+/**
+ * Formats a number with thousands separators.
+ * @param {number} num - The number to format.
+ * @returns {string} The formatted number (e.g., "1,234,567").
+ */
+export const formatNumber = (num) => {
+  return num.toLocaleString('en-US');
+};

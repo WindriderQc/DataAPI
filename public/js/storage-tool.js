@@ -1,5 +1,7 @@
 // Storage Tool Client-Side Logic
 
+import { formatFileSize } from '/js/utils/general-utils.js';
+
 let currentScanId = null;
 let pollInterval = null;
 
@@ -297,7 +299,140 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
+// Export functionality
+async function generateExport() {
+    const type = document.getElementById('exportType').value;
+    const format = document.getElementById('exportFormat').value;
+    const statusElement = document.getElementById('exportStatus');
+    
+    if (!type || !format) {
+        alert('Please select both report type and format');
+        return;
+    }
+
+    statusElement.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generating...';
+
+    try {
+        const response = await fetch('/api/v1/files/export', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                type,
+                format
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            statusElement.innerHTML = '<i class="fa fa-check text-success"></i> Generated!';
+            showNotification(`Report generated: ${data.data.filename}`, 'success');
+            
+            // Refresh the exports list
+            setTimeout(() => {
+                loadExportList();
+                statusElement.innerHTML = '';
+            }, 2000);
+        } else {
+            statusElement.innerHTML = '<i class="fa fa-times text-danger"></i> Failed';
+            showNotification('Error: ' + data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error generating export:', error);
+        statusElement.innerHTML = '<i class="fa fa-times text-danger"></i> Error';
+        showNotification('Failed to generate export: ' + error.message, 'danger');
+    }
+}
+
+// Load available exports list
+async function loadExportList() {
+    const tbody = document.getElementById('exportsListBody');
+    
+    try {
+        const response = await fetch('/api/v1/files/exports');
+        const data = await response.json();
+
+        if (data.status === 'success' && data.data.length > 0) {
+            tbody.innerHTML = data.data.map(file => `
+                <tr>
+                    <td>
+                        <i class="fa fa-file-${file.filename.endsWith('.csv') ? 'excel' : 'code'}-o"></i>
+                        ${file.filename}
+                    </td>
+                    <td>${formatFileSize(file.size)}</td>
+                    <td>${formatDate(file.created)}</td>
+                    <td>
+                        <a href="/exports/${file.filename}" class="btn btn-sm btn-success" download>
+                            <i class="fa fa-download"></i> Download
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteExport('${file.filename}')">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        <em>No export files found. Generate your first report above!</em>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading exports:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-danger">
+                    <i class="fa fa-exclamation-triangle"></i> Failed to load exports
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// Delete an export file
+async function deleteExport(filename) {
+    if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/v1/files/exports/${filename}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showNotification(`Deleted ${filename}`, 'success');
+            loadExportList(); // Refresh the list
+        } else {
+            showNotification('Error: ' + data.message, 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting export:', error);
+        showNotification('Failed to delete file: ' + error.message, 'danger');
+    }
+}
+
+// Format date for display
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentScans();
+    loadExportList(); // Load export list on page load
 });
+
+// Export functions to global scope for onclick handlers
+window.startScan = startScan;
+window.stopCurrentScan = stopCurrentScan;
+window.generateReport = generateReport;
+window.deleteExport = deleteExport;

@@ -82,39 +82,7 @@
     </div>
     </div>
 
-    <hr>
-   
-    <hr>
-
-    <div class="container">
-        <h5>TimeZone</h5>
-        <div id="ip_id"></div>
-        <br>
-        <div>
-            <label for="sourceSelect">Select Source:</label>
-            <select id="sourceSelect">
-                <% collectionInfo.forEach(info => { %>
-                    <option value="<%= info.collection %>" <%= info.collection === 'userLogs' ? 'selected' : '' %>><%= info.collection.charAt(0).toUpperCase() + info.collection.slice(1) %></option>
-                <% }); %>
-            </select>
-        </div>
-        <div id="tableContainer">
-            <hr />
-            <h3>Server logs</h3>
-            <table id="logsTable" class="display"> </table>
-        </div>
-        <div class='loading'>
-            <img src='img/loading.gif' alt=''>
-        </div>
-    </div>
-
-
-   
-
     <div class="row">
-
-              
-
      </div>
     
    
@@ -122,11 +90,6 @@
                  
 <%- include('partials/footer') %>
 </div>
-
-<!-- Load jQuery and DataTables before the dashboard script -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/moment@latest/moment.min.js"></script>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
