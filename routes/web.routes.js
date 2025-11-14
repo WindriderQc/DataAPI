@@ -112,11 +112,21 @@ router.get('/storage-tool', requireAuth, (req, res) => {
 });
 
 router.get('/file-browser', requireAuth, (req, res) => {
+    const title = "File Browser";
     res.render('file-browser', {
-        title: "File Browser",
-        menuId: 'file-browser',
+        title,
         user: res.locals.user,
-        appVersion: require('../package.json').version
+        env: config.env
+    });
+});
+
+// n8n Webhook Test Page
+router.get('/n8n-test', requireAuth, (req, res) => {
+    const title = "n8n Webhook Tester";
+    res.render('n8n-test', {
+        title,
+        user: res.locals.user,
+        env: config.env
     });
 });
 

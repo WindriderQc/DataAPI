@@ -1,13 +1,23 @@
 const fetch = global.fetch || require('node-fetch');
 
-async function fetchWithTimeoutAndRetry(url, { timeout = 8000, retries = 1, name = 'request' } = {}) {
+async function fetchWithTimeoutAndRetry(url, options = {}) {
+    const { 
+        timeout = 8000, 
+        retries = 1, 
+        name = 'request',
+        ...fetchOptions // Capture all other fetch options (method, headers, body, etc.)
+    } = options;
+    
     const backoff = (attempt) => Math.min(500 * Math.pow(2, attempt), 5000);
 
     for (let attempt = 0; attempt <= retries; attempt++) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
         try {
-            const res = await fetch(url, { signal: controller.signal });
+            const res = await fetch(url, { 
+                ...fetchOptions, // Pass through all fetch options
+                signal: controller.signal 
+            });
             clearTimeout(id);
             if (!res.ok) {
                 const text = await res.text().catch(() => '');
