@@ -68,6 +68,10 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
     `{ status: 'success', message: '...', data: ... }`
 -   **Error Handling:** Use custom error classes from `utils/errors.js` (`BadRequest`, `NotFoundError`). A global error handler in `data_serv.js` catches and formats errors.
 -   **Route Order:** In `data_serv.js`, API routes **must** be registered before web page routes to ensure session middleware is not incorrectly applied to the API.
+-   **n8n Integration:** The application supports server-to-server automation via n8n workflows. n8n-specific routes at `/api/v1/n8n/*` use header-based API key authentication (`x-api-key` header) instead of session cookies. These routes bypass session middleware entirely. See `N8N_INTEGRATION.md` for complete documentation.
+-   **Authentication Methods:** The application supports two authentication patterns:
+    1. **Browser/Session-based**: Cookie authentication for web UI and browser API calls
+    2. **API Key-based**: Header authentication (`x-api-key`) for server-to-server automation (n8n, scripts, integrations)
 -   **`APIFeatures` Class:** Use the reusable class in `utils/apiFeatures.js` for consistent sorting and pagination on API GET routes.
 -   **Server-Sent Events (SSE):** The application uses SSE for real-time event streaming on `/api/v1/feed/events/*` endpoints. In production, Nginx must be configured to disable response buffering for these endpoints (see `SSE_PROXY_CONFIG.md`).
 -   **OpenAI ChatKit Integration:** The application integrates OpenAI's ChatKit for conversational AI on admin pages. Key implementation details:
@@ -109,7 +113,9 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
 
 ## 5. Considerations for Future Improvements
 
--   **Environment Variables:** Currently, some configuration (like the port number) is hardcoded. These should be moved to a `.env` file for better configuration management.
+-   **Environment Variables:** Currently, some configuration (like the port number) is hardcoded. These should be moved to a `.env` file for better configuration management. **Note:** The following environment variables are now required for n8n integration:
+    -   `N8N_API_KEY`: Required for n8n authentication (generate with `openssl rand -hex 32`)
+    -   `N8N_LAN_ONLY`: Optional, set to `true` to restrict n8n access to LAN only
 -   **Frontend Dependencies:** Frontend libraries like MDBootstrap are loaded via CDN. For better reliability and version control, they should be managed via npm.
 -   **Test Coverage:** While tests exist, coverage could be improved, especially for controller logic and edge cases.
 -   **Input Validation:** Enhance and standardize input validation using `express-validator` across all relevant routes.

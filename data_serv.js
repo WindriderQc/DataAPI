@@ -193,13 +193,37 @@ async function createApp() {
         }
     }
 
-    // Apply session middleware globally so both API and web routes can use sessions
-    app.use(session(sessionOptions));
+    // Apply session middleware globally, but skip it for n8n requests
+    app.use((req, res, next) => {
+        // Check if this is an n8n request (has the API key header)
+        const n8nApiKey = req.header('x-api-key');
+        const expectedN8nKey = process.env.N8N_API_KEY;
+        
+        // Skip session middleware for valid n8n requests
+        if (n8nApiKey && expectedN8nKey && n8nApiKey === expectedN8nKey) {
+            req.skipSession = true;
+            return next();
+        }
+        
+        // Apply session middleware for all other requests
+        session(sessionOptions)(req, res, next);
+    });
+    
     // Attach user to res.locals for all routes (web pages need this for templates)
-    app.use(attachUser);
+    // Skip for n8n requests as they don't use sessions
+    app.use((req, res, next) => {
+        if (req.skipSession) {
+            return next();
+        }
+        attachUser(req, res, next);
+    });
 
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
     app.use('/api/', apiLimiter);
+    
+    // n8n routes - must come before regular API routes to avoid session middleware issues
+    app.use('/api/v1', require("./routes/n8n.routes"));
+    
     app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
 
     // Auth and web routes
