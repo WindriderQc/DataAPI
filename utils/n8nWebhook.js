@@ -9,8 +9,8 @@ const { log } = require('./logger');
  * @returns {Promise<object>} n8n response
  */
 async function triggerWebhook(webhookId, data = {}, options = {}) {
-  const n8nBaseUrl = process.env.N8N_WEBHOOK_BASE_URL || 'https://n8n.specialblend.icu';
-  const url = `${n8nBaseUrl}/webhook-test/${webhookId}`;
+  const n8nBaseUrl = process.env.N8N_WEBHOOK_BASE_URL || 'https://n8n.specialblend.icu/webhook';
+  const url = `${n8nBaseUrl}/${webhookId}`;
 
   try {
     log(`Triggering n8n webhook: ${webhookId}`, 'info');
@@ -22,7 +22,7 @@ async function triggerWebhook(webhookId, data = {}, options = {}) {
         ...options.headers
       },
       body: JSON.stringify(data),
-      timeout: options.timeout || 5000,
+      timeout: options.timeout || 30000, // 30 seconds for AI Agent responses
       retries: options.retries || 1,
       name: 'n8n-webhook'
     });

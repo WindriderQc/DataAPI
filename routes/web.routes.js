@@ -130,6 +130,16 @@ router.get('/n8n-test', requireAuth, (req, res) => {
     });
 });
 
+// AI Control Board
+router.get('/ai-control', requireAuth, (req, res) => {
+    res.render('ai-control', {
+        title: "AI Control Board",
+        menuId: 'ai-control',
+        user: res.locals.user,
+        appVersion: require('../package.json').version
+    });
+});
+
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {
