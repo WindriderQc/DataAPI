@@ -11,9 +11,11 @@ const { log } = require('./logger');
 async function triggerWebhook(webhookId, data = {}, options = {}) {
   const n8nBaseUrl = process.env.N8N_WEBHOOK_BASE_URL || 'https://n8n.specialblend.icu/webhook';
   const url = `${n8nBaseUrl}/${webhookId}`;
+  const timeout = options.timeout || parseInt(process.env.N8N_WEBHOOK_TIMEOUT_MS) || 120000; // 2 minutes for AI agents (Ollama can be slow)
+  const requestStart = Date.now();
 
   try {
-    log(`Triggering n8n webhook: ${webhookId}`, 'info');
+    log(`[n8n] Starting webhook: ${webhookId} (timeout: ${timeout}ms)`, 'info');
     
     const response = await fetchWithTimeoutAndRetry(url, {
       method: options.method || 'POST',
@@ -22,14 +24,15 @@ async function triggerWebhook(webhookId, data = {}, options = {}) {
         ...options.headers
       },
       body: JSON.stringify(data),
-      timeout: options.timeout || 30000, // 30 seconds for AI Agent responses
+      timeout,
       retries: options.retries || 1,
       name: 'n8n-webhook'
     });
 
     const result = await response.json();
+    const elapsed = Date.now() - requestStart;
     
-    log(`n8n webhook response: ${webhookId}`, 'info');
+    log(`[n8n] Webhook response: ${webhookId} (${elapsed}ms)`, 'info');
     
     return {
       success: true,
@@ -37,7 +40,8 @@ async function triggerWebhook(webhookId, data = {}, options = {}) {
       data: result
     };
   } catch (error) {
-    log(`Failed to trigger n8n webhook: ${webhookId} - ${error.message}`, 'warn');
+    const elapsed = Date.now() - requestStart;
+    log(`[n8n] Webhook failed: ${webhookId} after ${elapsed}ms - ${error.message}`, 'warn');
     
     // Don't throw - just log and return failure
     // This prevents n8n being down from breaking DataAPI
