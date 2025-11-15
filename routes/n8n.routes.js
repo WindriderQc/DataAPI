@@ -12,6 +12,28 @@ const router = express.Router();
  */
 
 /**
+ * Diagnostic endpoint for testing n8n connectivity
+ * GET /api/v1/n8n/diagnostic
+ */
+router.get('/n8n/diagnostic', n8nAuth, (req, res) => {
+  const startTime = Date.now();
+  
+  res.json({
+    status: 'success',
+    message: 'n8n diagnostic endpoint responding',
+    server: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      nodeVersion: process.version
+    },
+    timing: {
+      responseTime: Date.now() - startTime
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
  * Health check endpoint for n8n
  * GET /api/v1/n8n/health
  */

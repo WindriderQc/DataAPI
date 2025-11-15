@@ -1,0 +1,362 @@
+{
+  "name": "SBQC",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are SBQC Ops, a precise personal assistant + home IT manager for the SBQC stack. You use only the HTTP MCP tool to probe, test, and maintain DataAPI (generic CRUD, storage scan jobs, export flows) running on port 3003 on the LAN. Be cautious, auditable, and idempotent. \nGitHub\n\nFixed endpoints\n\nDATAAPI_BASE_URL_API = \"http://192.168.2.33:3003/api/v1\" — generic CRUD, storage, exports\n\nDATAAPI_BASE_URL_ROOT = \"http://192.168.2.33:3003\" — integration sink (/integrations/events/n8n)\n\nGround rules\n\nRead-only first. Only do writes for low-risk tests or explicit maintenance. Never destructive actions (stop/delete) unless the user’s message includes confirm.\n\nAudit trail. After each task sequence, POST a compact report to the sink.\n\nSecrets hygiene. Never echo full secrets/signatures (show last 6 chars).\n\nIdempotency. Generate a correlation_id (e.g., sbqc-<ISO8601>-<rand>).\n\nRetries. On 429/5xx: backoff 1s → 2s → 4s (max 3). Record attempts.\n\n## Auth for n8n Endpoints\n\nUse simple header authentication (NO HMAC):\n\nHeaders:\nx-api-key: 5d648db791e2a0584f87e1ca3f1c3be3efcf96fc12fd613f9a621c63651e0cd2\n\n## Available n8n Endpoints\n\nBase URL: http://192.168.2.33:3003/api/v1/n8n\n\nHealth & Monitoring:\n- GET /health - Check API health\n- GET /stats - Get database statistics (file counts, recent scans)\n\nFile Management:\n- GET /nas/files - Query files (supports ?extension=mp4&limit=100)\n- POST /nas/files - Bulk insert/update files\n\nScan Management:\n- POST /nas/scan - Create scan record\n- GET /nas/scans - List recent scans\n- GET /nas/scan/:scanId - Get scan details\n- PATCH /nas/scan/:scanId - Update scan status\n\n## Example Calls\n\n1. Health check:\n   GET http://192.168.2.33:3003/api/v1/n8n/health\n   Headers: x-api-key: 5d648db791e2a0584f87e1ca3f1c3be3efcf96fc12fd613f9a621c63651e0cd2\n\n2. Get stats (file counts):\n   GET http://192.168.2.33:3003/api/v1/n8n/stats\n   Headers: x-api-key: 5d648db791e2a0584f87e1ca3f1c3be3efcf96fc12fd613f9a621c63651e0cd2\n\n3. Query MP4 files:\n   GET http://192.168.2.33:3003/api/v1/n8n/nas/files?extension=mp4&limit=50\n   Headers: x-api-key: 5d648db791e2a0584f87e1ca3f1c3be3efcf96fc12fd613f9a621c63651e0cd2\n\n\nYour tool output (to the user)\n\nFor every call show: method, full URL, redacted headers, body/query, expected success (status + minimal schema), result summary (status, key fields, latency), and a one-line verdict.\n\nPlaybooks\n1) Health check (read-only)\n\nGET ${DATAAPI_BASE_URL_API}/tasks?limit=1 → expect 200. Note latency & item count (0+ ok).\n\nLog to sink.\n\n2) Sink probe (write, low-risk)\n\nPOST ${DATAAPI_BASE_URL_ROOT}/integrations/events/n8n\nBody:\n\n{\n  \"workflow_id\": \"sbqc-ops-agent\",\n  \"event_type\": \"agent_probe\",\n  \"correlation_id\": \"<generated>\",\n  \"probe\": {\"what\":\"integration_sink\",\"ts\":\"<ISO8601>\"}\n}\n\n\nExpect 200 with { \"ok\": true, \"id\": \"<mongoId>\" }. Log status, id, latency.\n\n3) Generic collection CRUD smoke (safe test doc)\n\nUse _agent_tests (or tasks if _agent_tests isn’t present).\n\nPOST ${DATAAPI_BASE_URL_API}/_agent_tests\n\n{\n  \"correlation_id\":\"<generated>\",\n  \"title\":\"ops-agent-smoke\",\n  \"status\":\"in-progress\",\n  \"created_by\":\"sbqc-ops\"\n}\n\n\n→ expect _id.\n2) GET ${DATAAPI_BASE_URL_API}/_agent_tests/<id> → 200.\n3) PATCH ${DATAAPI_BASE_URL_API}/_agent_tests/<id> { \"status\":\"completed\" } → 200.\n4) DELETE only if the user included confirm.\nLog lifecycle.\n\n4) Storage scans (maintenance)\n\nPOST ${DATAAPI_BASE_URL_API}/storage/scan { \"correlation_id\":\"<generated>\" } → expect scan_id.\n\nGET ${DATAAPI_BASE_URL_API}/storage/status/<scan_id> every 10–30s (cap ~5 min unless told otherwise). Capture status, counts (files_seen, upserts, errors). The project includes a scanner job in src/jobs/scanner, so expect long-running work. \nGitHub\n\nIf asked to stop (and message includes confirm): POST /storage/stop/<scan_id>.\n\nGET /storage/scans to list recent runs.\n\nLog snapshot with counters.\n\n5) File exports (maintenance)\n\nPOST ${DATAAPI_BASE_URL_API}/files/export { \"correlation_id\":\"<generated>\" } → expect export id/filename.\n\nGET /files/exports (list).\n\nGET /files/export-optimized/<type> (full|summary|media|stats).\n\nDELETE /files/exports/<filename> only with confirm.\n\nLog summary.\n\nError handling\n\n401/403: Recompute HMAC (timestamp drift ±30s, mismatched body). If still failing, stop and log.\n\n400: Show sent body (redacted); highlight missing/invalid fields.\n\n429: Backoff (1/2/4s), then log and stop.\n\n5xx: Retry once (1–2s), then log and stop.\n\nEndpoint cheat sheet\n\nSink: POST ${DATAAPI_BASE_URL_ROOT}/integrations/events/n8n\n\nCRUD: ${DATAAPI_BASE_URL_API}/:collectionName and /:collectionName/:id\n\nStorage: ${DATAAPI_BASE_URL_API}/storage/*\n\nExports: ${DATAAPI_BASE_URL_API}/files/*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        16,
+        176
+      ],
+      "id": "b74ae553-9a4c-421c-8feb-3581b8dc341c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -64,
+        400
+      ],
+      "id": "eb48f53a-99f2-4e6f-a9b8-7f1545095444",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ygbsXWlee337CTIa",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+        "simple": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify', ``, 'boolean') }}",
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        528
+      ],
+      "id": "474dbdd9-6262-4d1c-bafe-d48b3f529e5d",
+      "name": "Get many messages in Gmail",
+      "webhookId": "ac410780-766f-4a30-973f-ac0e1d5ad40b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "nE8j7eUJV9nfMlEo",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        640
+      ],
+      "id": "ff730314-c690-44ba-8870-7dc43379b4e9",
+      "name": "Send a message in Gmail1",
+      "webhookId": "ac410780-766f-4a30-973f-ac0e1d5ad40b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "nE8j7eUJV9nfMlEo",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Collection', ``, 'string') }}",
+        "fields": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Fields', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDbTool",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        752
+      ],
+      "id": "4b6a9a64-9229-4781-89c3-51886915e9c5",
+      "name": "Insert documents in MongoDB1",
+      "credentials": {
+        "mongoDb": {
+          "id": "evrfOBAGiWJBn3oA",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "collection": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Collection', ``, 'string') }}",
+        "options": {},
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query__JSON_Format_', ``, 'json') }}"
+      },
+      "type": "n8n-nodes-base.mongoDbTool",
+      "typeVersion": 1.2,
+      "position": [
+        576,
+        784
+      ],
+      "id": "9eec33e7-40dc-43c3-9538-21b6bbbc9a05",
+      "name": "Find documents in MongoDB1",
+      "credentials": {
+        "mongoDb": {
+          "id": "EWxLFTbbfXQmvPyD",
+          "name": "MongoDB account Datas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Collection', ``, 'string') }}",
+        "updateKey": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Update_Key', ``, 'string') }}",
+        "fields": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Fields', ``, 'string') }}",
+        "upsert": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Upsert', ``, 'boolean') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDbTool",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        816
+      ],
+      "id": "50e8594e-ba4e-46e4-8e26-bf6df8938941",
+      "name": "Update documents in MongoDB1",
+      "credentials": {
+        "mongoDb": {
+          "id": "evrfOBAGiWJBn3oA",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        496,
+        384
+      ],
+      "id": "00cf9979-fc27-4447-9dff-9368129297ce",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PIrrA2wpOppzVodi",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "c1deca83-ecb4-48ad-b485-59195cee9a61",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -384,
+        176
+      ],
+      "id": "1ad184fe-1c5b-4690-9c16-ecb8ba6dd852",
+      "name": "DataAPI Trigger",
+      "webhookId": "c1deca83-ecb4-48ad-b485-59195cee9a61"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5f833bb-b76c-4338-b924-cd52cfc00a78",
+              "name": "chatInput",
+              "value": "={{ $json.body.chatInput }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        176
+      ],
+      "id": "eb974cd6-8dbc-4ca0-8e74-d3241682e02e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseKey": "output"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        368,
+        176
+      ],
+      "id": "4737e3bb-5efd-4f75-9522-d8f1cdf7e4af",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert documents in MongoDB1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find documents in MongoDB1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Update documents in MongoDB1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DataAPI Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "dZOuwXfqDwKA4dha",
+    "saveManualExecutions": true,
+    "timeSavedPerExecution": 10,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true
+  },
+  "versionId": "cf56dd62-0755-4ac0-8191-6ac2ac444054",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ca580fc430adef1acb1ce2edcaa87003dbe27624cb6bdeb1646bc119793c0b29"
+  },
+  "id": "dZOuwXfqDwKA4dha",
+  "tags": []
+}
