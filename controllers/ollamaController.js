@@ -1,5 +1,21 @@
 const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 
+const getOllamaUrl = (target) => {
+    // If a target is provided, use it. Ensure it has a protocol and port if missing.
+    if (target) {
+        let url = target.trim();
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = `http://${url}`;
+        }
+        // If no port specified and not standard http/https ports, add default Ollama port
+        const hasPort = /:\d+$/.test(url);
+        if (!hasPort) {
+            url = `${url}:11434`;
+        }
+        return url;
+    }
+    return process.env.OLLAMA_API_URL || 'http://localhost:11434';
+};
 const getOllamaUrl = () => process.env.OLLAMA_API_URL || 'http://localhost:11434';
 
 /**
@@ -7,7 +23,9 @@ const getOllamaUrl = () => process.env.OLLAMA_API_URL || 'http://localhost:11434
  */
 exports.listModels = async (req, res) => {
     try {
-        const baseUrl = getOllamaUrl();
+        const target = req.query.target;
+        const baseUrl = getOllamaUrl(target);
+
         const response = await fetchWithTimeoutAndRetry(`${baseUrl}/api/tags`, {
             method: 'GET',
             timeout: 5000,
@@ -36,13 +54,13 @@ exports.listModels = async (req, res) => {
  */
 exports.chat = async (req, res) => {
     try {
-        const { prompt, model } = req.body;
+        const { prompt, model, target } = req.body;
 
         if (!prompt) {
             return res.status(400).json({ status: 'error', message: 'Prompt is required' });
         }
 
-        const baseUrl = getOllamaUrl();
+        const baseUrl = getOllamaUrl(target);
         const selectedModel = model || process.env.OLLAMA_DEFAULT_MODEL || 'llama3';
 
         // Use /api/chat for chat-based models

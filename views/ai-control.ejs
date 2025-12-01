@@ -268,11 +268,19 @@
                             </div>
 
                             <div id="ollamaModelDiv" style="display: none;">
-                                <label class="form-label mt-2">Ollama Model</label>
+                                <label class="form-label mt-2">Ollama Instance</label>
+                                <select class="form-select form-select-sm mb-2" id="ollamaInstanceSelector" onchange="loadOllamaModels()">
+                                    <option value="192.168.2.12">192.168.2.12</option>
+                                    <option value="192.168.2.99">192.168.2.99</option>
+                                    <option value="localhost">Localhost</option>
+                                </select>
+
+                                <label class="form-label">Ollama Model</label>
                                 <select class="form-select form-select-sm" id="ollamaModelSelector">
                                     <option value="" disabled selected>Loading models...</option>
                                 </select>
                                 <div class="d-flex justify-content-between">
+                                    <small class="text-muted">Models on selected instance</small>
                                     <small class="text-muted">Models on local Ollama instance</small>
                                     <a href="#" onclick="loadOllamaModels(); return false;"><small><i class="fas fa-sync"></i> Refresh</small></a>
                                 </div>
@@ -437,13 +445,14 @@
 
     async function loadOllamaModels() {
         const select = document.getElementById('ollamaModelSelector');
+        const instance = document.getElementById('ollamaInstanceSelector').value;
         // Don't reload if already loaded and has options (except the loading one)
         if (select.options.length > 1 && select.value) return;
 
         select.innerHTML = '<option disabled selected>Loading...</option>';
 
         try {
-            const res = await fetch('/api/v1/ollama/models');
+            const res = await fetch(`/api/v1/ollama/models?target=${encodeURIComponent(instance)}`);
             const result = await res.json();
 
             if (result.status === 'success' && result.data) {
@@ -491,10 +500,11 @@
 
             if (selector.value === 'ollama') {
                 const model = document.getElementById('ollamaModelSelector').value;
+                const target = document.getElementById('ollamaInstanceSelector').value;
                 response = await fetch('/api/v1/ollama/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: message, model })
+                    body: JSON.stringify({ prompt: message, model, target })
                 });
             } else {
                 // n8n logic

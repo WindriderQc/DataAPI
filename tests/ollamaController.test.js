@@ -7,7 +7,7 @@ describe('Ollama Controller', () => {
     let req, res;
 
     beforeEach(() => {
-        req = { body: {} };
+        req = { body: {}, query: {} };
         res = {
             json: jest.fn(),
             status: jest.fn().mockReturnThis()
@@ -35,6 +35,22 @@ describe('Ollama Controller', () => {
             });
         });
 
+        it('should use target host if provided', async () => {
+            req.query = { target: '192.168.1.50' };
+            const mockModels = { models: [] };
+            fetchUtils.fetchWithTimeoutAndRetry.mockResolvedValue({
+                json: async () => mockModels,
+                ok: true
+            });
+
+            await ollamaController.listModels(req, res);
+
+            expect(fetchUtils.fetchWithTimeoutAndRetry).toHaveBeenCalledWith(
+                'http://192.168.1.50:11434/api/tags',
+                expect.any(Object)
+            );
+        });
+
         it('should handle errors', async () => {
             fetchUtils.fetchWithTimeoutAndRetry.mockRejectedValue(new Error('Connection failed'));
 
@@ -48,6 +64,23 @@ describe('Ollama Controller', () => {
     });
 
     describe('chat', () => {
+        it('should use target host if provided', async () => {
+            req.body = { prompt: 'Hello', target: '192.168.1.99' };
+            const mockResponse = { message: { content: 'Hi' } };
+
+            fetchUtils.fetchWithTimeoutAndRetry.mockResolvedValue({
+                json: async () => mockResponse,
+                ok: true
+            });
+
+            await ollamaController.chat(req, res);
+
+            expect(fetchUtils.fetchWithTimeoutAndRetry).toHaveBeenCalledWith(
+                'http://192.168.1.99:11434/api/chat',
+                expect.any(Object)
+            );
+        });
+
         it('should send prompt and return output', async () => {
             req.body = { prompt: 'Hello', model: 'llama3' };
             const mockResponse = {
