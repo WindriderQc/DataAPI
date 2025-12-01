@@ -256,6 +256,7 @@
                                 <option value="<%= process.env.HOOK14B %>">Ollama 14B</option>
                                 <% } %>
                                 <option value="custom">Custom Endpoint...</option>
+                                <option value="ollama">Direct Ollama (LAN)</option>
                             </select>
 
                             <div id="customWebhookDiv" style="display: none;">
@@ -264,6 +265,17 @@
                                        id="customWebhookId"
                                        placeholder="Enter n8n Webhook ID">
                                 <small class="text-muted">Enter the UUID from n8n Webhook node</small>
+                            </div>
+
+                            <div id="ollamaModelDiv" style="display: none;">
+                                <label class="form-label mt-2">Ollama Model</label>
+                                <select class="form-select form-select-sm" id="ollamaModelSelector">
+                                    <option value="" disabled selected>Loading models...</option>
+                                </select>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">Models on local Ollama instance</small>
+                                    <a href="#" onclick="loadOllamaModels(); return false;"><small><i class="fas fa-sync"></i> Refresh</small></a>
+                                </div>
                             </div>
                         </div>
                         
@@ -329,7 +341,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-robot me-2"></i>Ollama Chat API Guide</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" onclick="hideGuide()"></button>
             </div>
             <div class="modal-body">
                 <h6>Connecting a New Ollama Source</h6>
@@ -369,7 +381,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" onclick="hideGuide()">Close</button>
             </div>
         </div>
     </div>
@@ -413,7 +425,47 @@
     function handleWebhookChange() {
         const selector = document.getElementById('webhookSelector');
         const customDiv = document.getElementById('customWebhookDiv');
+        const ollamaDiv = document.getElementById('ollamaModelDiv');
+
         customDiv.style.display = selector.value === 'custom' ? 'block' : 'none';
+        ollamaDiv.style.display = selector.value === 'ollama' ? 'block' : 'none';
+
+        if (selector.value === 'ollama') {
+            loadOllamaModels();
+        }
+    }
+
+    async function loadOllamaModels() {
+        const select = document.getElementById('ollamaModelSelector');
+        // Don't reload if already loaded and has options (except the loading one)
+        if (select.options.length > 1 && select.value) return;
+
+        select.innerHTML = '<option disabled selected>Loading...</option>';
+
+        try {
+            const res = await fetch('/api/v1/ollama/models');
+            const result = await res.json();
+
+            if (result.status === 'success' && result.data) {
+                select.innerHTML = '';
+                if (result.data.length === 0) {
+                     select.innerHTML = '<option disabled selected>No models found</option>';
+                     return;
+                }
+
+                result.data.forEach(model => {
+                    const opt = document.createElement('option');
+                    opt.value = model.name;
+                    opt.text = model.name;
+                    select.appendChild(opt);
+                });
+            } else {
+                select.innerHTML = '<option disabled selected>Error loading models</option>';
+            }
+        } catch (e) {
+            console.error(e);
+            select.innerHTML = '<option disabled selected>Connection failed</option>';
+        }
     }
 
     async function sendMessage() {
@@ -433,23 +485,35 @@
         // Show typing indicator
         const typingIndicator = addTypingIndicator();
         
-        // Send to n8n
         try {
-            const webhookId = getActiveWebhookId();
-            if (!webhookId) {
-                throw new Error('No webhook ID configured');
+            const selector = document.getElementById('webhookSelector');
+            let response;
+
+            if (selector.value === 'ollama') {
+                const model = document.getElementById('ollamaModelSelector').value;
+                response = await fetch('/api/v1/ollama/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: message, model })
+                });
+            } else {
+                // n8n logic
+                const webhookId = getActiveWebhookId();
+                if (!webhookId) {
+                    throw new Error('No webhook ID configured');
+                }
+                response = await fetch(`/api/v1/n8n/trigger/${webhookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': '<%= process.env.N8N_API_KEY || "" %>'
+                    },
+                    body: JSON.stringify({
+                        chatInput: message,
+                        timestamp: new Date().toISOString()
+                    })
+                });
             }
-            const response = await fetch(`/api/v1/n8n/trigger/${webhookId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': '<%= process.env.N8N_API_KEY || "" %>'
-                },
-                body: JSON.stringify({
-                    chatInput: message,
-                    timestamp: new Date().toISOString()
-                })
-            });
             
             const result = await response.json();
             
@@ -644,18 +708,27 @@
         return div.innerHTML;
     }
 
+    let guideModalInstance = null;
+
     function showGuide() {
+        const el = document.getElementById('guideModal');
         // Use mdb.Modal if available (MDB 5)
         if (typeof mdb !== 'undefined' && mdb.Modal) {
-            const modal = new mdb.Modal(document.getElementById('guideModal'));
-            modal.show();
+            guideModalInstance = mdb.Modal.getInstance(el) || new mdb.Modal(el);
+            guideModalInstance.show();
         }
         // Fallback to bootstrap global if mdb is not defined
         else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            const modal = new bootstrap.Modal(document.getElementById('guideModal'));
-            modal.show();
+            guideModalInstance = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+            guideModalInstance.show();
         } else {
             console.error('No modal library found');
+        }
+    }
+
+    function hideGuide() {
+        if (guideModalInstance) {
+            guideModalInstance.hide();
         }
     }
 
