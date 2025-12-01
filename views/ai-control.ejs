@@ -281,6 +281,7 @@
                                 </select>
                                 <div class="d-flex justify-content-between">
                                     <small class="text-muted">Models on selected instance</small>
+                                    <small class="text-muted">Models on local Ollama instance</small>
                                     <a href="#" onclick="loadOllamaModels(); return false;"><small><i class="fas fa-sync"></i> Refresh</small></a>
                                 </div>
                             </div>
@@ -445,6 +446,8 @@
     async function loadOllamaModels() {
         const select = document.getElementById('ollamaModelSelector');
         const instance = document.getElementById('ollamaInstanceSelector').value;
+        // Don't reload if already loaded and has options (except the loading one)
+        if (select.options.length > 1 && select.value) return;
 
         select.innerHTML = '<option disabled selected>Loading...</option>';
 
