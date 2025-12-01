@@ -269,7 +269,7 @@
 
                             <div id="ollamaModelDiv" style="display: none;">
                                 <label class="form-label mt-2">Ollama Instance</label>
-                                <select class="form-select form-select-sm mb-2" id="ollamaInstanceSelector" onchange="loadOllamaModels()">
+                                <select class="form-select form-select-sm mb-2" id="ollamaInstanceSelector" onchange="loadOllamaModels(true)">
                                     <option value="192.168.2.12">192.168.2.12</option>
                                     <option value="192.168.2.99">192.168.2.99</option>
                                     <option value="localhost">Localhost</option>
@@ -282,7 +282,7 @@
                                 <div class="d-flex justify-content-between">
                                     <small class="text-muted">Models on selected instance</small>
                                     <small class="text-muted">Models on local Ollama instance</small>
-                                    <a href="#" onclick="loadOllamaModels(); return false;"><small><i class="fas fa-sync"></i> Refresh</small></a>
+                                    <a href="#" onclick="loadOllamaModels(true); return false;"><small><i class="fas fa-sync"></i> Refresh</small></a>
                                 </div>
                             </div>
                         </div>
@@ -401,6 +401,7 @@
     let messageCount = 0;
     let responseCount = 1;
     const sessionStart = new Date();
+    const ollamaModelCache = {};
 
     // Update session time
     setInterval(() => {
@@ -439,15 +440,18 @@
         ollamaDiv.style.display = selector.value === 'ollama' ? 'block' : 'none';
 
         if (selector.value === 'ollama') {
-            loadOllamaModels();
+            loadOllamaModels(true);
         }
     }
 
-    async function loadOllamaModels() {
+    async function loadOllamaModels(forceRefresh = false) {
         const select = document.getElementById('ollamaModelSelector');
         const instance = document.getElementById('ollamaInstanceSelector').value;
-        // Don't reload if already loaded and has options (except the loading one)
-        if (select.options.length > 1 && select.value) return;
+
+        if (!forceRefresh && Array.isArray(ollamaModelCache[instance])) {
+            populateOllamaModelOptions(select, ollamaModelCache[instance]);
+            return;
+        }
 
         select.innerHTML = '<option disabled selected>Loading...</option>';
 
@@ -456,25 +460,32 @@
             const result = await res.json();
 
             if (result.status === 'success' && result.data) {
-                select.innerHTML = '';
-                if (result.data.length === 0) {
-                     select.innerHTML = '<option disabled selected>No models found</option>';
-                     return;
-                }
-
-                result.data.forEach(model => {
-                    const opt = document.createElement('option');
-                    opt.value = model.name;
-                    opt.text = model.name;
-                    select.appendChild(opt);
-                });
+                ollamaModelCache[instance] = result.data;
+                populateOllamaModelOptions(select, result.data);
             } else {
                 select.innerHTML = '<option disabled selected>Error loading models</option>';
+                delete ollamaModelCache[instance];
             }
         } catch (e) {
             console.error(e);
             select.innerHTML = '<option disabled selected>Connection failed</option>';
+            delete ollamaModelCache[instance];
         }
+    }
+
+    function populateOllamaModelOptions(select, models) {
+        select.innerHTML = '';
+        if (!models || models.length === 0) {
+            select.innerHTML = '<option disabled selected>No models found</option>';
+            return;
+        }
+
+        models.forEach(model => {
+            const opt = document.createElement('option');
+            opt.value = model.name;
+            opt.text = model.name;
+            select.appendChild(opt);
+        });
     }
 
     async function sendMessage() {
@@ -501,6 +512,9 @@
             if (selector.value === 'ollama') {
                 const model = document.getElementById('ollamaModelSelector').value;
                 const target = document.getElementById('ollamaInstanceSelector').value;
+                if (!model) {
+                    throw new Error('Select an Ollama model before chatting');
+                }
                 response = await fetch('/api/v1/ollama/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
