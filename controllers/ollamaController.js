@@ -16,7 +16,7 @@ const getOllamaUrl = (target) => {
     }
     return process.env.OLLAMA_API_URL || 'http://localhost:11434';
 };
-const getOllamaUrl = () => process.env.OLLAMA_API_URL || 'http://localhost:11434';
+//const getOllamaUrl = () => process.env.OLLAMA_API_URL || 'http://localhost:11434';
 
 /**
  * List available Ollama models
