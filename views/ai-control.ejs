@@ -282,7 +282,7 @@
                                 <i class="fas fa-trash me-1"></i>
                                 Clear Chat
                             </button>
-                            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#guideModal">
+                            <button class="btn btn-outline-info btn-sm" onclick="showGuide()">
                                 <i class="fas fa-book me-1"></i>
                                 Ollama API Guide
                             </button>
@@ -642,6 +642,21 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function showGuide() {
+        // Use mdb.Modal if available (MDB 5)
+        if (typeof mdb !== 'undefined' && mdb.Modal) {
+            const modal = new mdb.Modal(document.getElementById('guideModal'));
+            modal.show();
+        }
+        // Fallback to bootstrap global if mdb is not defined
+        else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modal = new bootstrap.Modal(document.getElementById('guideModal'));
+            modal.show();
+        } else {
+            console.error('No modal library found');
+        }
     }
 
     function clearChat() {
