@@ -9,7 +9,7 @@ This setup runs `WindriderQc/DataAPI` on Linux Mint using:
 
 ## ⚠️ Important: Install MongoDB First!
 
-The deployment script **does not install MongoDB**. You must install it manually before running the script. The script includes a preflight check that will abort the deployment if MongoDB is not reachable at `127.0.0.1:27017`.
+The deployment script **does not install MongoDB**. You must install it manually before running the script. The script includes a preflight check that will abort the deployment if MongoDB is not reachable at the configured host and port (default: `127.0.0.1:27017`).
 
 ## 1) Prepare the Machine & Install MongoDB
 

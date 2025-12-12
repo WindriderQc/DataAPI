@@ -20,6 +20,7 @@ PORT="3003"
 NODE_ENV="production"
 
 # MongoDB Configuration (Manual install required)
+# Authentication is optional but recommended. Set variables below if enabled.
 MONGO_HOST="127.0.0.1"
 MONGO_PORT="27017"
 MONGO_DB_NAME="IoT"
