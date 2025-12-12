@@ -23,6 +23,8 @@ NODE_ENV="production"
 MONGO_HOST="127.0.0.1"
 MONGO_PORT="27017"
 MONGO_DB_NAME="IoT"
+MONGO_USER=""  # Leave empty if no auth
+MONGO_PASS=""  # Leave empty if no auth
 
 # MQTT (Mosquitto installed/configured by script)
 MQTT_BROKER_URL="mqtt://localhost:1883"
@@ -59,7 +61,7 @@ require_cmd() {
 
 ensure_pkg() {
   # usage: ensure_pkg pkg1 pkg2 ...
-  apt update -y >/dev/null
+  # 'apt update' is run once at the start
   DEBIAN_FRONTEND=noninteractive apt install -y "$@"
 }
 
@@ -68,16 +70,6 @@ safe_backup_file() {
   if [[ -f "$f" ]]; then
     cp -a "$f" "${f}.bak.$(date +%Y%m%d_%H%M%S)"
   fi
-}
-
-detect_ubuntu_codename() {
-  # Mint usually sets UBUNTU_CODENAME in /etc/os-release
-  local codename=""
-  codename="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-}")"
-  if [[ -z "$codename" ]]; then
-    codename="$(. /etc/os-release && echo "${VERSION_CODENAME:-}")"
-  fi
-  echo "$codename"
 }
 
 ########################################
@@ -115,6 +107,7 @@ say "MongoDB is reachable."
 # Install dependencies
 ########################################
 say "Installing baseline dependencies"
+apt update -y >/dev/null
 ensure_pkg git curl ca-certificates gnupg lsb-release build-essential
 
 ########################################
@@ -167,8 +160,8 @@ listener 1883
 listener 9001
 protocol websockets
 EOF
-  touch "$MOSQ_PASSFILE"
-  chmod 600 "$MOSQ_PASSFILE"
+  # Securely create the password file
+  install -m 0600 /dev/null "$MOSQ_PASSFILE"
   mosquitto_passwd -b "$MOSQ_PASSFILE" "$MQTT_USERNAME" "$MQTT_PASSWORD"
 else
   warn "MQTT_USERNAME or MQTT_PASSWORD empty -> enabling anonymous MQTT"
@@ -241,6 +234,14 @@ fi
 # Write .env (owned by app user, 600)
 ########################################
 say "Writing .env"
+
+# Construct MONGO_URL with auth if provided
+if [[ -n "${MONGO_USER}" && -n "${MONGO_PASS}" ]]; then
+  MONGO_URL_VAL="mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}"
+else
+  MONGO_URL_VAL="mongodb://${MONGO_HOST}:${MONGO_PORT}"
+fi
+
 sudo -u "$APP_USER" bash -lc "
 set -euo pipefail
 cat > '${APP_DIR}/.env' <<EOF
@@ -248,7 +249,7 @@ NODE_ENV=${NODE_ENV}
 PORT=${PORT}
 
 # MongoDB
-MONGO_URL=mongodb://${MONGO_HOST}:${MONGO_PORT}
+MONGO_URL=${MONGO_URL_VAL}
 MONGO_DB_NAME=${MONGO_DB_NAME}
 
 # MQTT
@@ -264,9 +265,10 @@ chmod 600 '${APP_DIR}/.env'
 # PM2 ecosystem file
 ########################################
 say "Writing PM2 ecosystem config"
+# Note: delimiter is EOF (unquoted) to allow variable expansion
 sudo -u "$APP_USER" bash -lc "
 set -euo pipefail
-cat > '${APP_DIR}/ecosystem.config.cjs' <<'EOF'
+cat > '${APP_DIR}/ecosystem.config.cjs' <<EOF
 module.exports = {
   apps: [
     {
@@ -281,7 +283,7 @@ module.exports = {
       env: {
         NODE_ENV: '${NODE_ENV}',
         PORT: '${PORT}',
-        MONGO_URL: 'mongodb://${MONGO_HOST}:${MONGO_PORT}',
+        MONGO_URL: '${MONGO_URL_VAL}',
         MONGO_DB_NAME: '${MONGO_DB_NAME}',
         MQTT_BROKER_URL: '${MQTT_BROKER_URL}',
         MQTT_USERNAME: '${MQTT_USERNAME}',
@@ -313,8 +315,11 @@ pm2 save
 # Enable PM2 startup on boot
 ########################################
 say "Enabling PM2 startup via systemd"
+# Determine the actual home directory of the app user for the startup command
+APP_USER_HOME="$(getent passwd "$APP_USER" | cut -d: -f6)"
+
 # pm2 startup outputs a command; run it safely
-env PATH=$PATH:/usr/bin pm2 startup systemd -u "$APP_USER" --hp "/home/${APP_USER}" | bash
+env PATH=$PATH:/usr/bin pm2 startup systemd -u "$APP_USER" --hp "${APP_USER_HOME}" | bash
 sudo -u "$APP_USER" pm2 save
 
 ########################################

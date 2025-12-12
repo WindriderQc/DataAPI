@@ -48,6 +48,12 @@ Follow [MongoDB’s official install documentation](https://www.mongodb.com/docs
     ```
     Then restart: `sudo systemctl restart mongod`
 
+4.  **(Optional) Authentication:**
+    If you require MongoDB authentication (recommended):
+    *   Enable it in `/etc/mongod.conf`.
+    *   Create a user in MongoDB.
+    *   **Important:** Update the `deploy_dataapi_mint.sh` script to set `MONGO_USER` and `MONGO_PASS` before running it.
+
 ## 2) Run the Deployment Script
 
 Once MongoDB is running, you can proceed with the script.
