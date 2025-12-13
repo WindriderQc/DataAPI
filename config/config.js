@@ -55,6 +55,7 @@ const config = {
         defaultFetchTimeout: parseInt(process.env.DEFAULT_FETCH_TIMEOUT_MS, 10) || 8000,
         defaultFetchRetries: parseInt(process.env.DEFAULT_FETCH_RETRIES, 10) || 1,
         iss: {
+            enabled: process.env.ISS_API_ENABLED === 'true',
             url: process.env.ISS_API_URL || 'http://api.open-notify.org/iss-now.json', //'https://api.wheretheiss.at/v1/satellites/25544', //'http://api.open-notify.org/iss-now.json',
             interval: parseInt(process.env.ISS_API_INTERVAL_MS, 10) || 10000,
             // How long to wait for the HTTP request before aborting (ms)
@@ -64,6 +65,7 @@ const config = {
             maxLogs: parseInt(process.env.ISS_MAX_LOGS, 10) || 8000,
         },
         quakes: {
+            enabled: process.env.QUAKES_API_ENABLED === 'true',
             url: process.env.QUAKES_API_URL || 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.csv',
             interval: parseInt(process.env.QUAKES_API_INTERVAL_MS, 10) || oneDayInMs, // 1 day
             // How long to wait for the HTTP request before aborting (ms)
@@ -83,6 +85,7 @@ const config = {
     weather: {
         apiKey: process.env.WEATHER_API_KEY,
         api: {
+            enabled: process.env.WEATHER_API_ENABLED === 'true',
             url: 'https://api.openweathermap.org/data/2.5/weather',
             interval: 60000,
             timeout: 10000,
