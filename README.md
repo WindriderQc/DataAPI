@@ -1,6 +1,34 @@
 # DataAPI
 MongoDB API
 
+## Automated Deployment (Recommended)
+
+For automated deployment on Linux Mint / Ubuntu (especially TrueNAS SCALE VMs):
+
+```bash
+# 1. Review prerequisites
+cat DEPLOY_PREREQUISITES.md
+
+# 2. Run preflight check
+sudo ./scripts/preflight_check.sh
+
+# 3. Configure deployment
+cp deploy.env.example deploy.env
+nano deploy.env  # Edit with your credentials
+
+# 4. Deploy
+set -a; source deploy.env; set +a; sudo -E ./deploy_dataapi_mint.sh
+```
+
+**Documentation:**
+- 📋 [`DEPLOY_PREREQUISITES.md`](DEPLOY_PREREQUISITES.md) - TrueNAS/VM setup requirements
+- ⚡ [`QUICK_START.md`](QUICK_START.md) - Quick deployment guide  
+- 🔧 [`DEPLOY_CONFIG_GUIDE.md`](DEPLOY_CONFIG_GUIDE.md) - Environment variable configuration
+- 📝 [`DEPLOYMENT_FIXES_SUMMARY.md`](DEPLOYMENT_FIXES_SUMMARY.md) - What was fixed
+
+---
+
+## Manual Installation
 
 On a fresh linux install like Bodhi 7
 

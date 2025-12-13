@@ -2,39 +2,57 @@
 # deploy_dataapi_mint.sh
 # Linux Mint (Ubuntu-based) deployment for WindriderQc/DataAPI using PM2.
 # MongoDB is NOT installed by this script (documented in DEPLOY_MINT.md).
+#
+# PREREQUISITES:
+#   1. Review DEPLOY_PREREQUISITES.md for TrueNAS/VM setup requirements
+#   2. Run: sudo ./scripts/preflight_check.sh
+#   3. Only proceed if all critical checks pass
+#
 set -euo pipefail
 
 ########################################
-# CONFIG (edit before running)
+# CONFIG
+# Values can be set via environment variables or defaults below
+# To use .env file: set -a; source deploy.env; set +a; sudo -E ./deploy_dataapi_mint.sh
 ########################################
-SERVER_IP="192.168.2.33"
 
-REPO_URL="https://github.com/WindriderQc/DataAPI.git"
-APP_NAME="DataAPI"
-APP_USER="dataapi"
+# Server Configuration
+SERVER_IP="${SERVER_IP:-192.168.2.33}"
 
-APP_ROOT="/opt/servers"
-APP_DIR="${APP_ROOT}/DataAPI"
+# TrueNAS Host Configuration
+TRUENAS_HOST_IP="${TRUENAS_HOST_IP:-192.168.2.31}"
+ENABLE_SMB_MOUNTS="${ENABLE_SMB_MOUNTS:-yes}"     # yes/no
+SMB_USER="${SMB_USER:-}"                          # SMB username (required if ENABLE_SMB_MOUNTS=yes)
+SMB_PASS="${SMB_PASS:-}"                          # SMB password (required if ENABLE_SMB_MOUNTS=yes)
 
-PORT="3003"
-NODE_ENV="production"
+# Repository Configuration
+REPO_URL="${REPO_URL:-https://github.com/WindriderQc/DataAPI.git}"
+APP_NAME="${APP_NAME:-DataAPI}"
+APP_USER="${APP_USER:-dataapi}"
+
+APP_ROOT="${APP_ROOT:-/opt/servers}"
+APP_DIR="${APP_DIR:-${APP_ROOT}/DataAPI}"
+
+# Application Configuration
+PORT="${PORT:-3003}"
+NODE_ENV="${NODE_ENV:-production}"
 
 # MongoDB Configuration (Manual install required)
-MONGO_HOST="127.0.0.1"
-MONGO_PORT="27017"
-MONGO_DB_NAME="IoT"
+MONGO_HOST="${MONGO_HOST:-127.0.0.1}"
+MONGO_PORT="${MONGO_PORT:-27017}"
+MONGO_DB_NAME="${MONGO_DB_NAME:-IoT}"
 
 # MQTT (Mosquitto installed/configured by script)
-MQTT_BROKER_URL="mqtt://localhost:1883"
-MQTT_ISS_TOPIC="liveData/iss"
-MQTT_USERNAME="dataapi"         # set "" to allow anonymous
-MQTT_PASSWORD="ChangeMeNow!"    # set "" to allow anonymous
+MQTT_BROKER_URL="${MQTT_BROKER_URL:-mqtt://localhost:1883}"
+MQTT_ISS_TOPIC="${MQTT_ISS_TOPIC:-liveData/iss}"
+MQTT_USERNAME="${MQTT_USERNAME:-dataapi}"         # set "" to allow anonymous
+MQTT_PASSWORD="${MQTT_PASSWORD:-}"                # REQUIRED if MQTT_USERNAME is set
 
 # Nginx reverse proxy
-ENABLE_NGINX="yes"              # yes/no
+ENABLE_NGINX="${ENABLE_NGINX:-yes}"              # yes/no
 
 # Entrypoint - repo root includes data_serv.js
-ENTRY_SCRIPT="data_serv.js"
+ENTRY_SCRIPT="${ENTRY_SCRIPT:-data_serv.js}"
 
 ########################################
 # Helpers
@@ -97,19 +115,77 @@ if [[ "${ENABLE_NGINX}" != "yes" && "${ENABLE_NGINX}" != "no" ]]; then
   exit 1
 fi
 
+# Validate required credentials
+if [[ "${ENABLE_SMB_MOUNTS}" == "yes" ]]; then
+  if [[ -z "${SMB_USER}" || -z "${SMB_PASS}" ]]; then
+    err "ENABLE_SMB_MOUNTS=yes requires SMB_USER and SMB_PASS to be set."
+    err "Either set them as environment variables or disable SMB mounts."
+    exit 1
+  fi
+fi
+
+if [[ -n "${MQTT_USERNAME}" && -z "${MQTT_PASSWORD}" ]]; then
+  err "MQTT_USERNAME is set but MQTT_PASSWORD is empty."
+  err "Either set MQTT_PASSWORD or clear MQTT_USERNAME for anonymous access."
+  exit 1
+fi
+
 ########################################
-# Check MongoDB Reachability (Preflight)
+# PREFLIGHT CHECKS
 ########################################
+say "Running preflight checks..."
+
+# 1) CPU AVX check (required for MongoDB 7.x)
+say "Checking CPU for AVX support (required for MongoDB 7.x)"
+if ! lscpu | grep -qiE 'avx'; then
+  err "FATAL: CPU flags missing AVX. MongoDB 7.x will crash with illegal instruction."
+  err "Fix: Set VM CPU mode to 'Host Passthrough' in TrueNAS SCALE."
+  err "You must STOP and START the VM (not just reboot) for changes to apply."
+  err ""
+  err "Current CPU model: $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
+  err "Current CPU flags: $(lscpu | grep '^Flags:' | cut -d: -f2 | xargs)"
+  exit 1
+fi
+say "✓ CPU has AVX support"
+
+# 2) TrueNAS host reachability (required for SMB mounts)
+if [[ "${ENABLE_SMB_MOUNTS}" == "yes" ]]; then
+  say "Checking TrueNAS host reachability at ${TRUENAS_HOST_IP}"
+  if ! ping -c1 -W2 "$TRUENAS_HOST_IP" >/dev/null 2>&1; then
+    err "FATAL: Cannot reach TrueNAS host at ${TRUENAS_HOST_IP}."
+    err "This likely means the VM NIC is not properly bridged."
+    err ""
+    err "Required setup:"
+    err "  1. Create Linux bridge (br1) in TrueNAS SCALE"
+    err "  2. Move host IP to bridge (${TRUENAS_HOST_IP}/24)"
+    err "  3. Physical NIC becomes bridge member with no IP"
+    err "  4. Attach VM NIC to br1"
+    err ""
+    err "Current network config:"
+    ip addr show | grep -E '^[0-9]+:|inet ' || true
+    exit 1
+  fi
+  say "✓ TrueNAS host is reachable"
+fi
+
+# 3) DNS and gateway check
+say "Checking network configuration"
+if ! ip route | grep -q default; then
+  warn "No default gateway found. External connectivity may be limited."
+fi
+
+# 4) MongoDB reachability
 say "Checking MongoDB reachability on ${MONGO_HOST}:${MONGO_PORT}"
-# Using bash's built-in TCP check to avoid netcat dependency issues
-if ! timeout 2 bash -c "cat < /dev/null > /dev/tcp/${MONGO_HOST}/${MONGO_PORT}"; then
+if ! timeout 2 bash -c "cat < /dev/null > /dev/tcp/${MONGO_HOST}/${MONGO_PORT}" 2>/dev/null; then
   err "MongoDB is NOT reachable at ${MONGO_HOST}:${MONGO_PORT}."
   err "This deployment script REQUIRES MongoDB to be installed and running first."
   err "Please install MongoDB and ensure it is listening on ${MONGO_HOST}:${MONGO_PORT}."
   err "Refer to DEPLOY_MINT.md for manual MongoDB installation instructions."
   exit 1
 fi
-say "MongoDB is reachable."
+say "✓ MongoDB is reachable"
+
+say "All preflight checks passed!"
 
 ########################################
 # Install dependencies
@@ -167,9 +243,18 @@ listener 1883
 listener 9001
 protocol websockets
 EOF
-  touch "$MOSQ_PASSFILE"
-  chmod 600 "$MOSQ_PASSFILE"
+  
+  # Create password file with proper ownership and permissions
+  if [ ! -f "$MOSQ_PASSFILE" ]; then
+    install -o mosquitto -g mosquitto -m 640 /dev/null "$MOSQ_PASSFILE"
+  fi
+  
+  # Set/update password (use -b to avoid prompt)
   mosquitto_passwd -b "$MOSQ_PASSFILE" "$MQTT_USERNAME" "$MQTT_PASSWORD"
+  
+  # Ensure correct ownership and permissions
+  chown mosquitto:mosquitto "$MOSQ_PASSFILE"
+  chmod 640 "$MOSQ_PASSFILE"
 else
   warn "MQTT_USERNAME or MQTT_PASSWORD empty -> enabling anonymous MQTT"
   cat > "$MOSQ_CONF" <<EOF
@@ -183,7 +268,63 @@ EOF
 fi
 
 systemctl restart mosquitto
-systemctl is-active --quiet mosquitto || { err "Mosquitto failed to start. Check: sudo journalctl -u mosquitto -n 200 --no-pager"; exit 1; }
+if ! systemctl is-active --quiet mosquitto; then
+  err "Mosquitto failed to start. Recent logs:"
+  journalctl -u mosquitto -n 60 --no-pager
+  exit 1
+fi
+say "✓ Mosquitto is running"
+
+########################################
+# SMB Mounts (optional)
+########################################
+if [[ "${ENABLE_SMB_MOUNTS}" == "yes" ]]; then
+  say "Configuring SMB mounts to TrueNAS host"
+  
+  # Install CIFS utilities
+  ensure_pkg cifs-utils
+  
+  # Create mount points
+  mkdir -p /mnt/datalake /mnt/media
+  
+  # Create credentials file
+  SMB_CREDS="/root/.smbcredentials"
+  cat > "$SMB_CREDS" <<EOF
+username=${SMB_USER}
+password=${SMB_PASS}
+EOF
+  chmod 600 "$SMB_CREDS"
+  
+  # Test mount before adding to fstab
+  say "Testing SMB mount to ${TRUENAS_HOST_IP}..."
+  if ! mount -t cifs "//${TRUENAS_HOST_IP}/Datalake" /mnt/datalake -o credentials="$SMB_CREDS",vers=3.1.1,iocharset=utf8 2>/dev/null; then
+    warn "SMB mount test failed. Skipping fstab configuration."
+    warn "You may need to configure SMB shares manually."
+  else
+    say "✓ SMB mount successful, adding to fstab"
+    umount /mnt/datalake
+    
+    # Add to fstab if not already present
+    if ! grep -q "/mnt/datalake" /etc/fstab; then
+      cat >> /etc/fstab <<EOF
+
+# TrueNAS SMB shares
+//${TRUENAS_HOST_IP}/Datalake  /mnt/datalake  cifs  credentials=${SMB_CREDS},vers=3.1.1,iocharset=utf8,uid=1000,gid=1000,file_mode=0755,dir_mode=0755  0  0
+//${TRUENAS_HOST_IP}/Media     /mnt/media     cifs  credentials=${SMB_CREDS},vers=3.1.1,iocharset=utf8,uid=1000,gid=1000,file_mode=0755,dir_mode=0755  0  0
+EOF
+    fi
+    
+    # Mount all
+    mount -a
+    
+    # Verify
+    if mount | grep -q "on /mnt/datalake "; then
+      say "✓ SMB shares mounted successfully"
+    else
+      warn "SMB mount verification failed"
+    fi
+  fi
+fi
 
 ########################################
 # App user + directories
@@ -191,6 +332,8 @@ systemctl is-active --quiet mosquitto || { err "Mosquitto failed to start. Check
 say "Ensuring app user exists: ${APP_USER}"
 if ! id -u "$APP_USER" >/dev/null 2>&1; then
   adduser --disabled-password --gecos "" "$APP_USER"
+  # Add to users group
+  usermod -aG users "$APP_USER"
 fi
 
 say "Ensuring app directory exists: ${APP_ROOT}"
@@ -313,8 +456,11 @@ pm2 save
 # Enable PM2 startup on boot
 ########################################
 say "Enabling PM2 startup via systemd"
-# pm2 startup outputs a command; run it safely
-env PATH=$PATH:/usr/bin pm2 startup systemd -u "$APP_USER" --hp "/home/${APP_USER}" | bash
+# pm2 startup outputs a command; capture and execute it properly
+STARTUP_CMD=$(env PATH=$PATH:/usr/bin pm2 startup systemd -u "$APP_USER" --hp "/home/${APP_USER}" | tail -n 1)
+if [[ "$STARTUP_CMD" =~ ^sudo ]]; then
+  eval "$STARTUP_CMD"
+fi
 sudo -u "$APP_USER" pm2 save
 
 ########################################
