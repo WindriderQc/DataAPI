@@ -15,6 +15,7 @@ let initialized = false; // guard to prevent double initialization
 // use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
+    if (!config.api.iss.enabled) return;
     if (!mainDb) {
         log('[liveData] getISS: Database not initialized.', 'error');
         return;
@@ -70,6 +71,7 @@ async function getISS() {
 }
 
 async function getQuakes() {
+    if (!config.api.quakes.enabled) return;
     if (!mainDb) {
         log('[liveData] getQuakes: Database not initialized.', 'error');
         return;
@@ -109,10 +111,12 @@ function init(dbConnection) {
 
     log(`LiveData initializing at ${new Date().toISOString()}`);
 
-    if (!fs.existsSync(config.api.quakes.path)) {
-        log(`No Earthquakes data file found. Will request from API now and update daily: ${config.api.quakes.path}`);
-    } else {
-        log('quakes file found');
+    if (config.api.quakes.enabled) {
+        if (!fs.existsSync(config.api.quakes.path)) {
+            log(`No Earthquakes data file found. Will request from API now and update daily: ${config.api.quakes.path}`);
+        } else {
+            log('quakes file found');
+        }
     }
 
     mqttClient.init();
@@ -133,17 +137,28 @@ async function setAutoUpdate(updateNow = false) {
     };
 
     if (updateNow) {
-        await Promise.all([getQuakes(), getISS(), getPressure()]);
+        const tasks = [];
+        if (config.api.quakes.enabled) tasks.push(getQuakes());
+        if (config.api.iss.enabled) tasks.push(getISS());
+        if (config.weather.api.enabled) tasks.push(getPressure());
+        await Promise.all(tasks);
     }
 
-    intervalIds.push(setInterval(getQuakes, intervals.quakes));  //  quakes is actualized rarely, saving to mongodb
-    intervalIds.push(setInterval(getISS, intervals.iss));   //  iss is actualized frequently, broadcasting to mqtt
-    intervalIds.push(setInterval(getPressure, intervals.pressure));
+    if (config.api.quakes.enabled) {
+        intervalIds.push(setInterval(getQuakes, intervals.quakes));  //  quakes is actualized rarely, saving to mongodb
+    }
+    if (config.api.iss.enabled) {
+        intervalIds.push(setInterval(getISS, intervals.iss));   //  iss is actualized frequently, broadcasting to mqtt
+    }
+    if (config.weather.api.enabled) {
+        intervalIds.push(setInterval(getPressure, intervals.pressure));
+    }
 
-    log(`LiveData configured - Intervals: ${JSON.stringify(intervals)}`);
+    log(`LiveData configured - Intervals: ${JSON.stringify(intervals)} - Enabled: ISS=${config.api.iss.enabled}, Quakes=${config.api.quakes.enabled}, Pressure=${config.weather.api.enabled}`);
 }
 
 async function getPressure() {
+    if (!config.weather.api.enabled) return;
     if (!mainDb) {
         log('[liveData] getPressure: Database not initialized.', 'error');
         return;
