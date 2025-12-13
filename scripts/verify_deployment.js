@@ -96,8 +96,9 @@ async function checkMQTT() {
 
 async function checkWebServer() {
     log('\nChecking Web Server...', COLORS.yellow);
+    const host = process.env.HOST || 'localhost';
     const port = process.env.PORT || 3003;
-    const url = `http://localhost:${port}/health`;
+    const url = `http://${host}:${port}/health`;
 
     return new Promise((resolve) => {
         log(`Fetching ${url}...`);
