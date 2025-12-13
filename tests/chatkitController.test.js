@@ -123,7 +123,10 @@ describe('chatkitController.createSessionToken', () => {
         expect(res.status).toHaveBeenCalledWith(403);
         expect(res.json).toHaveBeenCalledWith({
             status: 'error',
-            message: 'Forbidden'
+            message: 'Forbidden',
+            details: {
+                message: 'Forbidden'
+            }
         });
     });
 });
