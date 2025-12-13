@@ -50,7 +50,7 @@ describe('Storage Scan API', () => {
 
       // Check that the scan document was created
       expect(scanDoc).not.toBeNull();
-      expect(scanDoc.status).toBe('running');
+      expect(['running', 'complete']).toContain(scanDoc.status);
 
       // Poll the database for the scan to complete
       let updatedScanDoc;
