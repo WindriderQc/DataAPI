@@ -1,0 +1,36 @@
+╔═══════════════════════════════════════════════════════════════╗
+║              DataAPI Deployment - Quick Reference             ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📋 PREREQUISITES CHECKLIST:
+  □ TrueNAS bridge (br1) created with host IP 192.168.2.31
+  □ VM CPU mode: Host Passthrough
+  □ VM NIC attached to bridge
+  □ MongoDB installed in VM
+  □ VM can ping TrueNAS host
+
+🚀 DEPLOYMENT STEPS:
+
+  1. Create config:
+     $ cp deploy.env.example deploy.env
+     $ nano deploy.env
+
+  2. Run preflight check:
+     $ sudo ./scripts/preflight_check.sh
+
+  3. Deploy:
+     $ sudo ./deploy.sh
+
+✅ VERIFY:
+  $ sudo systemctl status mongod mosquitto
+  $ sudo -u dataapi pm2 list
+  $ curl http://192.168.2.33:3003/
+
+📚 DOCUMENTATION:
+  See DOCS_INDEX.md for complete documentation index
+
+🆘 HELP:
+  - Common issues: QUICK_START.md
+  - Prerequisites: DEPLOY_PREREQUISITES.md
+  - Configuration: DEPLOY_CONFIG_GUIDE.md
+
