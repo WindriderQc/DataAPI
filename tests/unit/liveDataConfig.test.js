@@ -55,14 +55,14 @@ describe('LiveData Configuration', () => {
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), config.api.iss.interval);
     });
 
-     it('should start Quakes interval when enabled', async () => {
+    it('should start Quakes interval when enabled', async () => {
         config.api.quakes.enabled = true;
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).toHaveBeenCalledTimes(1);
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), config.api.quakes.interval);
     });
 
-     it('should start Pressure interval when enabled', async () => {
+    it('should start Pressure interval when enabled', async () => {
         config.weather.api.enabled = true;
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).toHaveBeenCalledTimes(1);
