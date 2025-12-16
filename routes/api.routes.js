@@ -15,6 +15,14 @@ const fileExportController = require('../controllers/fileExportController');
 const { generateOptimizedReport } = require('../controllers/fileExportControllerOptimized');
 const externalApiController = require('../controllers/externalApiController');
 
+// New imports from PR
+const databasesController = require('../controllers/databasesController');
+const { requireAuth } = require('../utils/auth');
+const chatkitController = require('../controllers/chatkitController');
+const weatherController = require('../controllers/weatherController');
+const ollamaController = require('../controllers/ollamaController');
+const liveDataConfigController = require('../controllers/liveDataConfigController');
+
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
   res.json({
@@ -132,7 +140,71 @@ router.get('/quakes', liveDatasController.quakes);
 
 // SSE feed (tool stream)
 router.get('/feed/events', feedController.sendFeedEvents);
-router.get('/feed/events/private', feedController.sendPrivateFeedEvents);
+// Protected private feed (requires authentication) for user/device logs
+router.get('/feed/events/private', requireAuth, feedController.sendPrivateFeedEvents);
+
+// Secure token endpoint for ChatKit admin chat
+router.post('/chatkit/token', requireAuth, chatkitController.createSessionToken);
+// Send message to ChatKit session
+router.post('/chatkit/message', requireAuth, chatkitController.sendChatMessage);
+// Create realtime voice session for admin chat
+router.post('/chatkit/realtime-session', requireAuth, chatkitController.createRealtimeSession);
+
+// Database management routes
+router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
+
+// Server-Sent Events endpoint for copy progress
+router.get('/databases/copy-progress/:jobId', (req, res) => {
+    const { jobId } = req.params;
+    const { get } = require('../utils/progressBus');
+    const emitter = get(jobId);
+    if (!emitter) {
+        return res.status(404).json({ status: 'error', message: 'Job not found' });
+    }
+
+    // set SSE headers
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+    });
+
+    const onProgress = (data) => {
+        res.write(`event: progress\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const onComplete = (data) => {
+        res.write(`event: complete\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const onError = (data) => {
+        res.write(`event: error\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    emitter.on('progress', onProgress);
+    emitter.on('complete', onComplete);
+    emitter.on('error', onError);
+
+    // cleanup when client disconnects
+    req.on('close', () => {
+        emitter.off('progress', onProgress);
+        emitter.off('complete', onComplete);
+        emitter.off('error', onError);
+    });
+});
+
+router.post('/weather/register-location', requireAuth, weatherController.registerLocation);
+
+// LiveData Configuration
+router.get('/livedata/config', requireAuth, liveDataConfigController.getConfigs);
+router.post('/livedata/config', requireAuth, liveDataConfigController.updateConfig);
+
+// Ollama routes
+router.get('/ollama/models', requireAuth, ollamaController.listModels);
+router.post('/ollama/chat', requireAuth, ollamaController.chat);
 
 // External API / live-data helpers
 router.get('/weather', externalApiController.getWeather);
