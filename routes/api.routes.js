@@ -64,6 +64,10 @@ router.post('/logs/user', [body('*').escape()], logController.createUserLog);
 router.get('/logs/server', logController.getServerLogs);
 router.post('/logs/server', [body('*').escape()], logController.createServerLog);
 
+// Dashboard v2 log endpoints
+router.get('/v2/logs', logController.getLogsForSource);
+router.get('/v2/logs/countries', logController.getCountryCounts);
+
 // Storage scan routes
 router.get('/storage/scans', storageController.listScans);
 router.post('/storage/scan', storageController.scan);
