@@ -239,8 +239,13 @@ router.get('/geolocation', async (req, res) => {
 const externalApiController = require('../controllers/externalApiController');
 const weatherController = require('../controllers/weatherController');
 const ollamaController = require('../controllers/ollamaController');
+const liveDataConfigController = require('../controllers/liveDataConfigController');
 
 router.post('/weather/register-location', requireAuth, weatherController.registerLocation);
+
+// LiveData Configuration
+router.get('/livedata/config', requireAuth, liveDataConfigController.getConfigs);
+router.post('/livedata/config', requireAuth, liveDataConfigController.updateConfig);
 
 // Ollama routes
 router.get('/ollama/models', requireAuth, ollamaController.listModels);
