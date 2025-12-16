@@ -1,5 +1,7 @@
 # DataAPI Deployment (Linux Mint + PM2) — 192.168.2.33
 
+Note: this document describes the legacy “deploy script to `/opt/servers/DataAPI`” workflow. In the current architecture, DataAPI is a headless tool server for AgentX (no UI). For the simplest setup (run from your workspace and manage in the same PM2 list as AgentX), see `README.md` + `QUICK_START.md`.
+
 This setup runs `WindriderQc/DataAPI` on Linux Mint using:
 - Node.js (LTS)
 - PM2 (with systemd boot startup)
@@ -71,15 +73,26 @@ Once MongoDB is running, you can proceed with the script.
 
 ## 3) Where things live
 
-- **App code:** `/opt/servers/DataAPI`
-- **Env file:** `/opt/servers/DataAPI/.env` (chmod 600)
-- **PM2 config:** `/opt/servers/DataAPI/ecosystem.config.cjs`
+- **App code (script mode):** `/opt/servers/DataAPI`
+- **Env file (script mode):** `/opt/servers/DataAPI/.env` (chmod 600)
+- **PM2 config (script mode):** `/opt/servers/DataAPI/ecosystem.config.cjs`
+- **App code (simple workspace mode):** your checkout, e.g. `/home/yb/codes/DataAPI`
 - **Mosquitto config:** `/etc/mosquitto/mosquitto.conf`
 - **Nginx site (if enabled):** `/etc/nginx/sites-available/dataapi`
 
 ## 4) Verify Services
 
 ### PM2
+
+If you run DataAPI in the same PM2 process list as AgentX (recommended “one process list” mode):
+
+```bash
+pm2 status
+pm2 logs dataapi
+```
+
+If you run DataAPI under a dedicated Linux user (legacy script mode):
+
 ```bash
 sudo -u dataapi pm2 ls
 sudo -u dataapi pm2 logs DataAPI
@@ -98,13 +111,18 @@ mosquitto_pub -t test -m hello -u dataapi -P 'ChangeMeNow!'
 ```
 
 ### HTTP
-If Nginx enabled:
+DataAPI is headless. Verify health + auth behavior.
+
+If Nginx enabled (proxying to :3003):
 ```bash
-curl -i http://192.168.2.33/
+curl -i http://192.168.2.33/health
 ```
 If Nginx disabled:
 ```bash
-curl -i http://192.168.2.33:3003/
+curl -i http://192.168.2.33:3003/health
+
+# Tool endpoints should require x-api-key
+curl -o /dev/null -w "HTTP %{http_code}\n" http://192.168.2.33:3003/api/v1/
 ```
 
 ## 5) Update / Redeploy Workflow
@@ -120,6 +138,16 @@ pm2 save
 "
 ```
 Or simply re-run the `deploy_dataapi_mint.sh` script.
+
+If you are running the “one process list” workspace mode, the update loop is typically:
+
+```bash
+cd /home/yb/codes/DataAPI
+git pull --ff-only
+npm ci || npm install
+pm2 reload dataapi --update-env
+pm2 save
+```
 
 ## 6) Common Failure Patterns
 

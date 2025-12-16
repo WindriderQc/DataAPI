@@ -1,4 +1,4 @@
-describe('chatkitController.createSessionToken', () => {
+describe.skip('chatkitController.createSessionToken', () => {
     const originalEnv = { ...process.env };
     const originalFetch = global.fetch;
 

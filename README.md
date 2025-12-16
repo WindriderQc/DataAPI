@@ -1,5 +1,16 @@
 # DataAPI
-MongoDB API
+
+Headless tool server for AgentX (no UI).
+
+## Architecture boundary (important)
+
+- AgentX is the only UI/brain/routing layer.
+- DataAPI is a LAN-only/headless tool server.
+- All tool endpoints under `/api/v1/*` require `x-api-key: <DATAAPI_API_KEY>`.
+
+Health check:
+
+- `GET /health` returns `{ ok: true, version, ts }`
 
 ## Automated Deployment (Recommended)
 
@@ -28,7 +39,35 @@ set -a; source deploy.env; set +a; sudo -E ./deploy_dataapi_mint.sh
 
 ---
 
+## Running locally (simple)
+
+1. Create `.env` (example keys below; do not commit secrets):
+
+```bash
+NODE_ENV=development
+PORT=3003
+MONGO_URL=mongodb://localhost:27017/agentx
+MONGO_DB_NAME=data
+DATAAPI_API_KEY=change-me-long-random
+```
+
+2. Install and run:
+
+```bash
+npm install
+npm run agent
+```
+
+3. Verify:
+
+```bash
+curl -sS http://127.0.0.1:3003/health
+curl -sS -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:3003/api/v1/   # should be 401 without x-api-key
+```
+
 ## Manual Installation
+
+Note: the section below contains legacy setup notes. For the current AgentX + headless DataAPI architecture, prefer the “Running locally (simple)” steps above.
 
 On a fresh linux install like Bodhi 7
 

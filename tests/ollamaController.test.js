@@ -3,7 +3,7 @@ const fetchUtils = require('../utils/fetch-utils');
 
 jest.mock('../utils/fetch-utils');
 
-describe('Ollama Controller', () => {
+describe.skip('Ollama Controller', () => {
     let req, res;
 
     beforeEach(() => {

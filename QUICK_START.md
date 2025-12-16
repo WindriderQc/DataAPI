@@ -11,6 +11,8 @@ The deployment script now has:
 
 ## Quick Deployment Steps
 
+Note: DataAPI is a headless tool server. In the current architecture, AgentX is the only UI, and (in the recommended setup) both services are managed from a single PM2 process list using AgentX’s `ecosystem.config.js`.
+
 ### 1. Prerequisites (One-Time Setup)
 
 Complete these steps in TrueNAS SCALE **before** running deployment:
@@ -146,13 +148,24 @@ set -a; source deploy.env; set +a; sudo -E ./deploy_dataapi_mint.sh
 sudo systemctl status mongod mosquitto
 
 # Check PM2
-sudo -u dataapi pm2 list
-sudo -u dataapi pm2 logs DataAPI --lines 50
+# If you are running DataAPI under the same user as AgentX (one process list):
+pm2 status
+pm2 logs dataapi --lines 50
 
-# Test application
-curl http://192.168.2.33:3003/
-# or if Nginx enabled:
-curl http://192.168.2.33/
+# If you are standardizing on the PM2 ecosystem workflow, apply changes from AgentX:
+# cd /home/yb/codes/AgentX
+# pm2 reload ecosystem.config.js --update-env
+# pm2 save
+
+# If you are running DataAPI under a dedicated user (separate PM2 home):
+# sudo -u dataapi pm2 status
+# sudo -u dataapi pm2 logs DataAPI --lines 50
+
+# Test application (headless tool server)
+curl http://192.168.2.33:3003/health
+
+# Tool endpoints should require x-api-key
+curl -o /dev/null -w "HTTP %{http_code}\n" http://192.168.2.33:3003/api/v1/
 ```
 
 ## Common Issues & Quick Fixes

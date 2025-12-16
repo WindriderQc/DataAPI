@@ -2,6 +2,8 @@ const request = require('supertest');
 const fs = require('fs-extra');
 const path = require('path');
 
+const TOOL_KEY = process.env.DATAAPI_API_KEY;
+
 describe('Storage Scan API', () => {
   const tempDir = path.join(__dirname, 'temp_scan_dir');
 
@@ -28,6 +30,7 @@ describe('Storage Scan API', () => {
     it('should start a scan and return standardized response', async () => {
       const res = await request(app)
         .post('/api/v1/storage/scan')
+        .set('x-api-key', TOOL_KEY)
         .send({
           roots: [tempDir],
           extensions: ['jpg', 'png', 'mkv'],
@@ -90,6 +93,7 @@ describe('Storage Scan API', () => {
       // Start a scan first
       const startRes = await request(app)
         .post('/api/v1/storage/scan')
+        .set('x-api-key', TOOL_KEY)
         .send({
           roots: [tempDir],
           extensions: ['jpg', 'png'],
@@ -101,7 +105,9 @@ describe('Storage Scan API', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Get status
-      const statusRes = await request(app).get(`/api/v1/storage/status/${scanId}`);
+      const statusRes = await request(app)
+        .get(`/api/v1/storage/status/${scanId}`)
+        .set('x-api-key', TOOL_KEY);
 
       expect(statusRes.statusCode).toBe(200);
       expect(statusRes.body.status).toBe('success');
@@ -114,7 +120,9 @@ describe('Storage Scan API', () => {
     });
 
     it('should return 404 for non-existent scan_id', async () => {
-      const res = await request(app).get('/api/v1/storage/status/scan:nonexistent');
+      const res = await request(app)
+        .get('/api/v1/storage/status/scan:nonexistent')
+        .set('x-api-key', TOOL_KEY);
 
       expect(res.statusCode).toBe(404);
       expect(res.body.status).toBe('error');
@@ -127,6 +135,7 @@ describe('Storage Scan API', () => {
       // Start a scan
       const startRes = await request(app)
         .post('/api/v1/storage/scan')
+        .set('x-api-key', TOOL_KEY)
         .send({
           roots: [tempDir],
           extensions: ['jpg', 'png', 'mkv'],
@@ -135,7 +144,9 @@ describe('Storage Scan API', () => {
       const scanId = startRes.body.data.scan_id;
 
       // Immediately try to stop it (might catch it running, might not)
-      const stopRes = await request(app).post(`/api/v1/storage/stop/${scanId}`);
+      const stopRes = await request(app)
+        .post(`/api/v1/storage/stop/${scanId}`)
+        .set('x-api-key', TOOL_KEY);
 
       // Either 200 (stopped successfully) or 404 (already completed)
       expect([200, 404]).toContain(stopRes.statusCode);
@@ -151,7 +162,9 @@ describe('Storage Scan API', () => {
     });
 
     it('should return 404 when trying to stop non-running scan', async () => {
-      const res = await request(app).post('/api/v1/storage/stop/nonexistent-scan-id');
+      const res = await request(app)
+        .post('/api/v1/storage/stop/nonexistent-scan-id')
+        .set('x-api-key', TOOL_KEY);
 
       expect(res.statusCode).toBe(404);
       expect(res.body.status).toBe('error');

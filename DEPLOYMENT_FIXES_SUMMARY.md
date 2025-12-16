@@ -207,7 +207,8 @@ After running the fixed deployment script:
 - [ ] SMB mounts working (if enabled)
 - [ ] Nginx proxy working (if enabled)
 - [ ] No errors in deployment logs
-- [ ] App accessible via browser
+- [ ] Health endpoint responds: `GET /health`
+- [ ] Tool endpoints require `x-api-key` (e.g. `/api/v1/*` returns 401 without the header)
 
 ---
 
@@ -218,5 +219,7 @@ For issues:
 2. Run `sudo ./scripts/preflight_check.sh` for diagnostics
 3. Review deployment logs: `sudo journalctl -xe`
 4. Check service status: `sudo systemctl status mongod mosquitto nginx`
-5. Check PM2 logs: `sudo -u dataapi pm2 logs`
+5. Check PM2 logs:
+   - One process list mode: `pm2 logs dataapi`
+   - Dedicated user mode: `sudo -u dataapi pm2 logs DataAPI`
 
