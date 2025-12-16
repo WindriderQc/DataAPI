@@ -11,10 +11,18 @@ jest.mock('../../utils/logger', () => ({
 
 jest.mock('../../utils/fetch-utils', () => ({
     fetchWithTimeoutAndRetry: jest.fn().mockResolvedValue({
-        json: jest.fn().mockResolvedValue({}),
+        json: jest.fn().mockResolvedValue({ message: 'success', iss_position: { latitude: 0, longitude: 0 } }),
         text: jest.fn().mockResolvedValue(''),
     }),
 }));
+
+// Mock LiveDataConfig model
+const mockLiveDataConfig = {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+};
+jest.mock('../../models/liveDataConfigModel', () => mockLiveDataConfig);
 
 describe('LiveData Configuration', () => {
     let liveData;
@@ -36,6 +44,9 @@ describe('LiveData Configuration', () => {
         config.api.iss.enabled = false;
         config.api.quakes.enabled = false;
         config.weather.api.enabled = false;
+
+        // Mock DB Find to return empty or disabled by default to test override logic
+        mockLiveDataConfig.find.mockResolvedValue([]);
     });
 
     afterEach(async () => {
@@ -44,50 +55,111 @@ describe('LiveData Configuration', () => {
     });
 
     it('should not start intervals when all disabled', async () => {
+        // We mock find to return disabled config
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: false },
+            { service: 'quakes', enabled: false },
+            { service: 'weather', enabled: false }
+        ]);
+
+        // Reload config to update internal state
+        await liveData.reloadConfig();
+
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).not.toHaveBeenCalled();
     });
 
     it('should start ISS interval when enabled', async () => {
-        config.api.iss.enabled = true;
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: true },
+            { service: 'quakes', enabled: false },
+            { service: 'weather', enabled: false }
+        ]);
+
+        await liveData.reloadConfig();
+
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).toHaveBeenCalledTimes(1);
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), config.api.iss.interval);
     });
 
     it('should start Quakes interval when enabled', async () => {
-        config.api.quakes.enabled = true;
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: false },
+            { service: 'quakes', enabled: true },
+            { service: 'weather', enabled: false }
+        ]);
+
+        await liveData.reloadConfig();
+
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).toHaveBeenCalledTimes(1);
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), config.api.quakes.interval);
     });
 
     it('should start Pressure interval when enabled', async () => {
-        config.weather.api.enabled = true;
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: false },
+            { service: 'quakes', enabled: false },
+            { service: 'weather', enabled: true }
+        ]);
+
+        await liveData.reloadConfig();
+
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).toHaveBeenCalledTimes(1);
         expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), config.weather.api.interval);
     });
 
     it('should start multiple intervals when multiple enabled', async () => {
-        config.api.iss.enabled = true;
-        config.weather.api.enabled = true;
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: true },
+            { service: 'quakes', enabled: false },
+            { service: 'weather', enabled: true }
+        ]);
+
+        await liveData.reloadConfig();
+
         await liveData.setAutoUpdate(false);
         expect(setIntervalSpy).toHaveBeenCalledTimes(2);
     });
 
     it('should not execute getISS when disabled even if called', async () => {
-        config.api.iss.enabled = false;
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: false },
+            { service: 'quakes', enabled: false },
+            { service: 'weather', enabled: false }
+        ]);
+
+        await liveData.reloadConfig();
         await liveData.setAutoUpdate(true);
         expect(fetchWithTimeoutAndRetry).not.toHaveBeenCalled();
     });
 
     it('should execute getISS when enabled and called via updateNow', async () => {
-        config.api.iss.enabled = true;
+        mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'iss', enabled: true },
+            { service: 'quakes', enabled: false },
+            { service: 'weather', enabled: false }
+        ]);
 
-        const mockDb = { collection: jest.fn() };
-        liveData.init(mockDb);
+        // Mock DB connection for init
+        const mockDb = {
+            collection: jest.fn().mockReturnValue({
+                countDocuments: jest.fn().mockResolvedValue(0),
+                insertOne: jest.fn().mockResolvedValue({}),
+                findOne: jest.fn().mockResolvedValue(null),
+                deleteOne: jest.fn().mockResolvedValue({})
+            })
+        };
 
+        // Need to stub syncConfig since init calls it
+        jest.mock('../../controllers/liveDataConfigController', () => ({
+            syncConfig: jest.fn().mockResolvedValue()
+        }));
+
+        await liveData.init(mockDb);
+        await liveData.reloadConfig();
         await liveData.setAutoUpdate(true);
 
         expect(fetchWithTimeoutAndRetry).toHaveBeenCalled();

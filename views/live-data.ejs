@@ -1,0 +1,177 @@
+<%- include('partials/mainHead', { title: 'Live Data' }) %>
+
+<style>
+    .mqtt-status {
+        transition: all 0.3s ease;
+        animation: pulse 2s infinite;
+    }
+    .mqtt-status.connected {
+        background-color: #28a745 !important;
+        box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+    }
+    .mqtt-status.connecting {
+        background-color: #ffc107 !important;
+        color: #000 !important;
+    }
+    .mqtt-status.disconnected {
+        background-color: #dc3545 !important;
+    }
+    .mqtt-status.error {
+        background-color: #ff6b6b !important;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    .mqtt-status.connected {
+        animation: none;
+    }
+</style>
+
+<body>
+    <%- include('partials/nav') %>
+
+    <div class="container-fluid pt-5 mt-5">
+        <% if (user) { %>
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <button class="btn btn-primary" type="button" id="configBtn" onclick="var el = document.getElementById('configCollapse'); el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';" aria-expanded="false" aria-controls="configCollapse">
+                    <i class="fas fa-cog me-2"></i> Configure Live Data
+                </button>
+                <div class="mt-3" id="configCollapse" style="display: none;">
+                    <div class="card card-body mx-auto" style="max-width: 600px;">
+                        <h5 class="card-title">Service Configuration</h5>
+                        <div class="d-flex justify-content-around">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="issSwitch" onchange="toggleService('iss', this.checked)">
+                                <label class="form-check-label" for="issSwitch">ISS Tracking</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="quakesSwitch" onchange="toggleService('quakes', this.checked)">
+                                <label class="form-check-label" for="quakesSwitch">Earthquakes</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="weatherSwitch" onchange="toggleService('weather', this.checked)">
+                                <label class="form-check-label" for="weatherSwitch">Weather/Pressure</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center">Live ISS Location</h1>
+               
+                 <div class="row justify-content-center">
+                    <div class="col-md-10 col-lg-8">
+                        <div id="iss-info" class="d-flex justify-content-around align-items-center bg-dark text-light rounded-3 p-3 mt-3 shadow">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-satellite me-2 text-success"></i>
+                                <span class="fw-bold me-2">Lat:</span>
+                                <span id="lat" class="badge bg-success">...</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-globe me-2 text-info"></i>
+                                <span class="fw-bold me-2">Lon:</span>
+                                <span id="lon" class="badge bg-info">...</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-wifi me-2"></i>
+                                <span class="fw-bold me-2">MQTT:</span>
+                                <span id="mqtt-status" class="badge mqtt-status disconnected">Disconnected</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-center">Visualizing the real-time location of the International Space Station, using live data from the NASA API, and broadcasted through MQTT from DataAPI.</p>
+                </div>
+                <div id="mapDiv" class="text-center mb-3"></div>
+            </div>
+        </div>
+    </div>
+
+  
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <h2 class="text-center">Live Barometric Pressure</h2>
+            <% if (user) { %>
+                <p class="text-center">Displaying real-time barometric pressure for your location.</p>
+            <% } else { %>
+                <p class="text-center">Displaying real-time barometric pressure for Quebec City. <a href="/login">Log in</a> to see data for your location.</p>
+            <% } %>
+            <div style="width: 80%; margin: auto;">
+                <canvas id="pressureChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div id="pressure-info" class="d-flex justify-content-center align-items-center bg-dark text-light rounded-3 p-3 mt-3 shadow">
+                <i class="fas fa-tachometer-alt me-3 text-warning fs-4"></i>
+                <span class="fw-bold me-2 fs-5">Pressure:</span>
+                <span id="pressure" class="badge bg-warning text-dark fs-6">...</span>
+            </div>
+        </div>
+    </div>
+  
+   
+     <!-- p5.js and MQTT.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script> const mqttConfig = <%- mqttConfig %>; </script>
+    <script src="/js/Tools.js"></script>
+    <script src="/js/live-data.js"></script>
+
+    <script>
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/v1/livedata/config');
+                const result = await response.json();
+                if (result.status === 'success') {
+                    const data = result.data;
+                    document.getElementById('issSwitch').checked = data.iss;
+                    document.getElementById('quakesSwitch').checked = data.quakes;
+                    document.getElementById('weatherSwitch').checked = data.weather;
+                }
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        }
+
+        async function toggleService(service, enabled) {
+            try {
+                const response = await fetch('/api/v1/livedata/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ service, enabled })
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    alert('Failed to update configuration: ' + result.message);
+                    // Revert switch state
+                    document.getElementById(service + 'Switch').checked = !enabled;
+                }
+            } catch (error) {
+                console.error('Failed to update config:', error);
+                alert('Failed to update configuration');
+            }
+        }
+
+        <% if (user) { %>
+            // Load config on page load
+            document.addEventListener('DOMContentLoaded', loadConfig);
+        <% } %>
+    </script>
+    
+    <%- include('partials/footer') %>
+</body>
+
+</html>
+
+
