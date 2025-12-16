@@ -16,5 +16,6 @@ module.exports.requireToolKey = (req, res, next) => {
     });
   }
 
+  res.locals.isToolAuthenticated = true;
   return next();
 };

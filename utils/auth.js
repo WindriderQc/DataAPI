@@ -59,6 +59,11 @@ const attachUser = async (req, res, next) => {
 function requireAuth(req, res, next) {
     log(`[DEBUG] requireAuth: Path: ${req.originalUrl}, Session ID: ${req && req.sessionID ? req.sessionID : 'none'}`);
 
+    // Allow tool-authenticated requests (e.g. from AgentX)
+    if (res.locals.isToolAuthenticated) {
+        return next();
+    }
+
     const wantsEventStream = req && req.headers && req.headers.accept && req.headers.accept.includes('text/event-stream');
     const isApiRequest = req && req.originalUrl && req.originalUrl.startsWith('/api');
 
