@@ -4,6 +4,7 @@ const liveDatas = require('../scripts/liveData');
 const mqttClient = require('../scripts/mqttClient');
 const fetchUtils = require('../utils/fetch-utils');
 const config = require('../config/config');
+const LiveDataConfig = require('../models/liveDataConfigModel');
 
 // Helper to wait until a predicate or timeout
 const waitFor = async (predicate, timeout = 3000, interval = 50) => {
@@ -44,8 +45,20 @@ describe('LiveData integration (DB write + MQTT publish)', () => {
       };
     });
 
+    // Create necessary configuration in the DB to enable services
+    // Since defaults are false, we must enable them for this test
+    await LiveDataConfig.deleteMany({});
+    await LiveDataConfig.create([
+      { service: 'iss', enabled: true },
+      { service: 'quakes', enabled: true },
+      { service: 'weather', enabled: true }
+    ]);
+
     // Initialize liveDatas with the global test DB handle
     await liveDatas.init(db.mainDb);
+
+    // Force reload config to ensure it picks up the DB values
+    await liveDatas.reloadConfig();
   });
 
   afterAll(async () => {

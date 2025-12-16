@@ -4,6 +4,7 @@ const mqttClient = require('./mqttClient.js');
 const config = require('../config/config');
 const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 const { log } = require('../utils/logger');
+const LiveDataConfig = require('../models/liveDataConfigModel');
 
 let mainDb; // The active database connection
 
@@ -12,10 +13,17 @@ const version = dataStore.version;
 let intervalIds = [];
 let initialized = false; // guard to prevent double initialization
 
+// Internal state for enabled services, defaulted to config but updated from DB
+let serviceState = {
+    iss: config.api.iss.enabled,
+    quakes: config.api.quakes.enabled,
+    weather: config.weather.api.enabled
+};
+
 // use shared fetchWithTimeoutAndRetry from utils/fetch-utils.js
 
 async function getISS() {
-    if (!config.api.iss.enabled) return;
+    if (!serviceState.iss) return;
     if (!mainDb) {
         log('[liveData] getISS: Database not initialized.', 'error');
         return;
@@ -71,7 +79,7 @@ async function getISS() {
 }
 
 async function getQuakes() {
-    if (!config.api.quakes.enabled) return;
+    if (!serviceState.quakes) return;
     if (!mainDb) {
         log('[liveData] getQuakes: Database not initialized.', 'error');
         return;
@@ -100,7 +108,35 @@ async function getQuakes() {
     }
 }
 
-function init(dbConnection) {
+// Function to reload configuration from DB
+// restartIntervals: boolean - whether to restart the intervals (default true)
+// set to false during init to avoid double interval creation
+async function reloadConfig(restartIntervals = true) {
+    try {
+        const configs = await LiveDataConfig.find({});
+        configs.forEach(cfg => {
+            if (serviceState.hasOwnProperty(cfg.service)) {
+                serviceState[cfg.service] = cfg.enabled;
+            }
+        });
+        log(`[liveData] Config reloaded: ${JSON.stringify(serviceState)}`);
+
+        if (restartIntervals) {
+            // Re-evaluate intervals based on new state
+            // We clear existing intervals and restart them if enabled
+            intervalIds.forEach(clearInterval);
+            intervalIds = [];
+            if (config.env !== 'test') {
+                 await setAutoUpdate(false); // don't trigger immediate update on reload, just schedule
+            }
+        }
+
+    } catch (e) {
+        log(`[liveData] Failed to reload config: ${e.message}`, 'error');
+    }
+}
+
+async function init(dbConnection) {
     if (initialized) {
         log('LiveData.init called but already initialized; ignoring duplicate call.', 'warn');
         return;
@@ -111,7 +147,17 @@ function init(dbConnection) {
 
     log(`LiveData initializing at ${new Date().toISOString()}`);
 
-    if (config.api.quakes.enabled) {
+    // Initial sync of config from DB
+    try {
+        await LiveDataConfig.syncDefaults();
+        // Load config without restarting intervals (init will do it)
+        await reloadConfig(false);
+    } catch (e) {
+        log(`[liveData] Error syncing config on init: ${e.message}`, 'warn');
+    }
+
+
+    if (serviceState.quakes) {
         if (!fs.existsSync(config.api.quakes.path)) {
             log(`No Earthquakes data file found. Will request from API now and update daily: ${config.api.quakes.path}`);
         } else {
@@ -138,27 +184,27 @@ async function setAutoUpdate(updateNow = false) {
 
     if (updateNow) {
         const tasks = [];
-        if (config.api.quakes.enabled) tasks.push(getQuakes());
-        if (config.api.iss.enabled) tasks.push(getISS());
-        if (config.weather.api.enabled) tasks.push(getPressure());
+        if (serviceState.quakes) tasks.push(getQuakes());
+        if (serviceState.iss) tasks.push(getISS());
+        if (serviceState.weather) tasks.push(getPressure());
         await Promise.all(tasks);
     }
 
-    if (config.api.quakes.enabled) {
+    if (serviceState.quakes) {
         intervalIds.push(setInterval(getQuakes, intervals.quakes));  //  quakes is actualized rarely, saving to mongodb
     }
-    if (config.api.iss.enabled) {
+    if (serviceState.iss) {
         intervalIds.push(setInterval(getISS, intervals.iss));   //  iss is actualized frequently, broadcasting to mqtt
     }
-    if (config.weather.api.enabled) {
+    if (serviceState.weather) {
         intervalIds.push(setInterval(getPressure, intervals.pressure));
     }
 
-    log(`LiveData configured - Intervals: ${JSON.stringify(intervals)} - Enabled: ISS=${config.api.iss.enabled}, Quakes=${config.api.quakes.enabled}, Pressure=${config.weather.api.enabled}`);
+    log(`LiveData configured - Intervals: ${JSON.stringify(intervals)} - Enabled: ISS=${serviceState.iss}, Quakes=${serviceState.quakes}, Pressure=${serviceState.weather}`);
 }
 
 async function getPressure() {
-    if (!config.weather.api.enabled) return;
+    if (!serviceState.weather) return;
     if (!mainDb) {
         log('[liveData] getPressure: Database not initialized.', 'error');
         return;
@@ -212,4 +258,5 @@ module.exports = {
         };
     },
     close,
+    reloadConfig
 };
