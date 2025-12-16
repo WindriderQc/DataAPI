@@ -1,5 +1,7 @@
 const request = require('supertest');
 
+const TOOL_KEY = process.env.DATAAPI_API_KEY;
+
 // app and db are global, from test-setup.js
 
 describe('Mew API Endpoints', () => {
@@ -12,6 +14,7 @@ describe('Mew API Endpoints', () => {
         it('should return welcome message', async () => {
             const response = await request(app)
                 .get('/api/v1/mew')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
             
             expect(response.body).toHaveProperty('message', 'Meower!');
@@ -27,6 +30,7 @@ describe('Mew API Endpoints', () => {
 
             const response = await request(app)
                 .post('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send(newMew)
                 .expect(201);
 
@@ -45,6 +49,7 @@ describe('Mew API Endpoints', () => {
 
             const response = await request(app)
                 .post('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send(invalidMew)
                 .expect(400);
 
@@ -58,6 +63,7 @@ describe('Mew API Endpoints', () => {
 
             const response = await request(app)
                 .post('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send(invalidMew)
                 .expect(400);
 
@@ -72,6 +78,7 @@ describe('Mew API Endpoints', () => {
 
             const response = await request(app)
                 .post('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send(invalidMew)
                 .expect(400);
 
@@ -86,6 +93,7 @@ describe('Mew API Endpoints', () => {
 
             const response = await request(app)
                 .post('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send(invalidMew)
                 .expect(400);
 
@@ -102,6 +110,7 @@ describe('Mew API Endpoints', () => {
 
             const response = await request(app)
                 .post('/api/v1/v2/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send(newMew)
                 .expect(201);
 
@@ -114,9 +123,11 @@ describe('Mew API Endpoints', () => {
         it('should return all mews as an array', async () => {
              await request(app)
                 .post('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .send({ name: 'Legacy Test', content: 'Legacy content' });
             const response = await request(app)
                 .get('/api/v1/mews')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
@@ -130,6 +141,7 @@ describe('Mew API Endpoints', () => {
             for (let i = 0; i < 7; i++) {
                 await request(app)
                     .post('/api/v1/mews')
+                    .set('x-api-key', TOOL_KEY)
                     .send({ 
                         name: `Test Cat ${i}`, 
                         content: `Test content ${i}` 
@@ -140,6 +152,7 @@ describe('Mew API Endpoints', () => {
         it('should return paginated mews with metadata', async () => {
             const response = await request(app)
                 .get('/api/v1/v2/mews')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(response.body).toHaveProperty('mews');
@@ -154,6 +167,7 @@ describe('Mew API Endpoints', () => {
         it('should respect skip and limit parameters', async () => {
             const response = await request(app)
                 .get('/api/v1/v2/mews?skip=2&limit=3')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(response.body.mews.length).toBeLessThanOrEqual(3);
@@ -164,6 +178,7 @@ describe('Mew API Endpoints', () => {
         it('should limit max results to 50', async () => {
             const response = await request(app)
                 .get('/api/v1/v2/mews?limit=100')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(response.body.meta.limit).toBe(50);
@@ -172,6 +187,7 @@ describe('Mew API Endpoints', () => {
         it('should enforce minimum limit of 1', async () => {
             const response = await request(app)
                 .get('/api/v1/v2/mews?limit=0')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(response.body.meta.limit).toBe(1);
@@ -180,6 +196,7 @@ describe('Mew API Endpoints', () => {
         it('should sort by desc (newest first) by default', async () => {
             const response = await request(app)
                 .get('/api/v1/v2/mews?limit=2')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(response.body.mews.length).toBeGreaterThan(0);
@@ -189,6 +206,7 @@ describe('Mew API Endpoints', () => {
         it('should sort by asc when requested', async () => {
             const response = await request(app)
                 .get('/api/v1/v2/mews?limit=2&sort=asc')
+                .set('x-api-key', TOOL_KEY)
                 .expect(200);
 
             expect(response.body.mews.length).toBeGreaterThan(0);

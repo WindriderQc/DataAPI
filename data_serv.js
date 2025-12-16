@@ -8,8 +8,6 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const mdb = require('./mongoDB.js');
 const liveDatas = require('./scripts/liveData.js');
-const session = require('express-session');
-const MongoDBStore = require('connect-mongodb-session')(session);
 const config = require('./config/config');
 const pjson = require('./package.json');
 
@@ -18,9 +16,8 @@ const { log } = require('./utils/logger');
 const { logEvent } = require('./utils/eventLogger');
 const { GeneralError } = require('./utils/errors');
 const createUserModel = require('./models/userModel');
-// auth middleware helpers
-const { attachUser, requireAuth } = require('./utils/auth');
 const createIntegrationsRouter = require('./routes/integrations');
+const { requireToolKey } = require('./middleware/toolAuth');
 
 const IN_PROD = config.env === 'production';
 
@@ -32,7 +29,8 @@ app.locals.appVersion = pjson.version;
 
 
 // Middlewares & routes
-app.use(express.static(path.join(__dirname, 'public')));
+// Tool server mode: do not serve the web UI/assets; only expose generated exports.
+app.use('/exports', express.static(path.join(__dirname, 'public', 'exports'), { index: false, dotfiles: 'deny' }));
 app.use(morgan('dev'));
 // Configure CORS to be more restrictive in production
 const corsOptions = {
@@ -67,12 +65,10 @@ const corsOptions = {
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true, // This is important for sessions/cookies.
+    credentials: false,
     optionsSuccessStatus: 200
 };
 // CORS middleware is now applied directly to API routes.
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -162,76 +158,17 @@ async function createApp() {
     // liveDatas may perform DB mutations (e.g., flushing the Quake collection),
     // so we initialize it only after the server has bound to the port.
 
-    const mongoStore = new MongoDBStore({
-        uri: dbConnection.getMongoUrl(), // Kept for reference, but client option takes precedence
-        databaseName: config.db.mainDb, // Explicitly use the main app database for sessions
-        collection: 'mySessions',
-        client: dbConnection.client,
-    });
-    mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
-
-    const sessionOptions = {
-        secret: config.session.secret,
-        store: mongoStore,
-        resave: false, // Don't save session if unmodified
-        saveUninitialized: false, // Don't create session until something stored
-        cookie: {
-            secure: IN_PROD,
-            httpOnly: true,
-            sameSite: IN_PROD ? 'none' : 'lax',  // 'none' allows cookies on SSE/CORS requests
-            maxAge: config.session.maxAge,
-        }
-    };
-    if (config.session.cookie_domain) {
-        // Only set an explicit cookie domain in production. Setting a domain like
-        // ".example.com" during local development causes the browser to not
-        // send the cookie for localhost requests which breaks login/session flows.
-        if (IN_PROD) {
-            sessionOptions.cookie.domain = config.session.cookie_domain;
-        } else {
-            log(`Session cookie domain '${config.session.cookie_domain}' present but ignored in non-production environment.`, 'warn');
-        }
-    }
-
-    // Apply session middleware globally, but skip it for n8n requests
-    app.use((req, res, next) => {
-        // Check if this is an n8n request (has the API key header)
-        const n8nApiKey = req.header('x-api-key');
-        const expectedN8nKey = process.env.N8N_API_KEY;
-        
-        // Skip session middleware for valid n8n requests
-        if (n8nApiKey && expectedN8nKey && n8nApiKey === expectedN8nKey) {
-            req.skipSession = true;
-            return next();
-        }
-        
-        // Apply session middleware for all other requests
-        session(sessionOptions)(req, res, next);
-    });
-    
-    // Attach user to res.locals for all routes (web pages need this for templates)
-    // Skip for n8n requests as they don't use sessions
-    app.use((req, res, next) => {
-        if (req.skipSession) {
-            return next();
-        }
-        attachUser(req, res, next);
-    });
-
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
     app.use('/api/', apiLimiter);
     
-    // n8n routes - must come before regular API routes to avoid session middleware issues
+    // n8n routes: keep separate auth (N8N_API_KEY) and mount before tool APIs.
     app.use('/api/v1', require("./routes/n8n.routes"));
-    
-    app.use('/api/v1', cors(corsOptions), require("./routes/api.routes"));
 
-    // Auth and web routes
-    app.use('/', require("./routes/auth.routes"));
-    app.use('/', require("./routes/web.routes"));
+    // Tool APIs: require DATAAPI_API_KEY via x-api-key
+    app.use('/api/v1', cors(corsOptions), requireToolKey, require("./routes/api.routes"));
 
-    // Integrations router
-    app.use("/integrations", createIntegrationsRouter(app.locals.dbs.mainDb));
+    // Integrations router (tool-only)
+    app.use("/integrations", requireToolKey, createIntegrationsRouter(app.locals.dbs.mainDb));
     app.get("/health", (req, res) => res.json({ ok: true, version: pjson.version, ts: Date.now() }));
 
     app.use((err, req, res, next) => {
@@ -278,7 +215,6 @@ async function createApp() {
         await dbConnection.close();
         await mdb.closeServer();
         await liveDatas.close();
-        mongoStore.client.close();
     };
 
     if (require.main === module) {
@@ -335,7 +271,7 @@ async function createApp() {
         startServer(config.server.port);
     }
 
-    return { app, dbConnection, mongoStore, close };
+    return { app, dbConnection, close };
 }
 
 if (require.main === module) {

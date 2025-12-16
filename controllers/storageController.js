@@ -41,8 +41,12 @@ const scan = async (req, res, next) => {
     // Auto-cleanup when scan completes
     scanner.on('done', async () => {
       runningScans.delete(scan_id);
-      
-      // Trigger n8n webhook when scan completes
+
+      // Trigger n8n webhook when scan completes (disabled in tests)
+      if (process.env.NODE_ENV === 'test') {
+        return;
+      }
+
       try {
         const scanDoc = await db.collection('nas_scans').findOne({ _id: scan_id });
         if (scanDoc) {
@@ -52,7 +56,7 @@ const scan = async (req, res, next) => {
             filesFound: scanDoc.counts?.files_seen || 0,
             upserts: scanDoc.counts?.upserts || 0,
             errors: scanDoc.counts?.errors || 0,
-            duration: scanDoc.finished_at && scanDoc.started_at 
+            duration: scanDoc.finished_at && scanDoc.started_at
               ? new Date(scanDoc.finished_at) - new Date(scanDoc.started_at)
               : null,
             roots: scanDoc.roots
