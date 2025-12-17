@@ -4,6 +4,7 @@ const { BadRequest } = require('../utils/errors');
 const { log } = require('../utils/logger');
 const config = require('../config/config');
 const { logEvent } = require('../utils/eventLogger');
+const { normalizeCountryData } = require('../utils/location-normalizer');
 
 exports.register = async (req, res, next) => {
     const { name, email, password, confirmPassword } = req.body;
@@ -96,6 +97,24 @@ exports.login = async (req, res, next) => {
         }
 
         log(`[AUTH] Login successful for user: ${user._id}.`);
+        
+        // Enrich user location with CountryName if not already cached
+        if ((user.lat !== undefined && user.lon !== undefined) && !user.CountryName) {
+            try {
+                const enriched = await normalizeCountryData(user, db, 'users', user._id);
+                if (enriched.CountryName) {
+                    await usersCollection.updateOne(
+                        { _id: user._id },
+                        { $set: { CountryName: enriched.CountryName } }
+                    );
+                    user.CountryName = enriched.CountryName;
+                    log(`[AUTH] Enriched user location: ${enriched.CountryName}`);
+                }
+            } catch (err) {
+                log(`[AUTH] Location enrichment failed: ${err.message}`, 'warn');
+            }
+        }
+        
         log(`[DEBUG] PRE-REGENERATE: Session ID: ${req.sessionID}, Session: ${JSON.stringify(req.session)}`);
         const returnTo = req.session.returnTo;
 
