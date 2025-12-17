@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <%- include('partials/mainHead', { title: 'DataAPI Dashboard' }) %>
+   
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/sbqc.css" />
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.css">
+
+</head>
+<body class="bg-light">
+<%- include('partials/nav') %>
+
+<div class="main pt-5">
+
+    <header class="container py-4">
+        <h5><b><i class="fas fa-tachometer-alt"></i> My Dashboard</b></h5>
+    </header>
+
+    <div class="container">
+        <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div id="card-scroll-container">
+                <div class="row">
+                    <%
+                    const dbColors = {
+                        'SBQC': 'green',
+                    'data': 'indigo',
+                    'default': 'grey'
+                    };
+                    const icons = {
+                        'users': 'fa-users',
+                        'userLogs': 'fa-eye',
+                        'mews': 'fa-comment',
+                        'devices': 'fa-share-alt',
+                        'default': 'fa-database'
+                    };
+                    %>
+                    <% collectionInfo.forEach(info => { %>
+                        <div class="col-12 mb-4">
+                            <div class="card summary-card <%= dbColors[info.db] || dbColors['default'] %> text-white shadow-lg p-3" data-collection="<%= info.collection %>" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div><i class="fa <%= icons[info.collection] || icons['default'] %> fa-2x"></i></div>
+                                    <div class="text-end">
+                                        <h5 class="mb-0"><%- info.count %></h5>
+                                        <small><%= info.collection.charAt(0).toUpperCase() + info.collection.slice(1) %></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">World <span id="worldMapTitle" class="text-primary fw-bold"></span></h5>
+                    <canvas id="worldMap" width="800" height="600"></canvas>
+                    <div id="worldMapLegend" class="custom-legend-container"></div>
+                </div>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="toggleMapDataFeed">
+                <label class="form-check-label" for="toggleMapDataFeed">
+                    Show Map Data Feed
+                </label>
+            </div>
+             <div class="card shadow-sm" id="mapDataFeedCard" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title">Map Data Feed</h5>
+                    <div id="mapDataFeed" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    <div class="row">
+        <%- include('partials/feed', { feedData: feedData }) %>
+    </div>
+    </div>
+
+    <div class="row">
+     </div>
+    
+   
+        <!-- The p5.js canvas and related scripts have been removed to resolve a rendering conflict with the Chart.js map. -->
+                 
+<%- include('partials/footer') %>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script>
+
+<!-- Load utility modules before dashboard -->
+<script src="/js/utils/api-utils.js" type="module"></script>
+<script src="/js/utils/sse.js" type="module"></script>
+
+<!-- Custom dashboard script -->
+<script src="/js/dashboard.js"></script>
+
+</body>
+</html>
