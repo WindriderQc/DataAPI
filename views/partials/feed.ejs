@@ -1,0 +1,27 @@
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">Feeds</h5>
+        <% if (typeof user !== 'undefined' && user) { %>
+            <div style="text-align:right; margin-bottom:6px;"><a href="/admin-feed" class="btn btn-sm btn-outline-secondary">View full admin feed</a></div>
+        <% } %>
+        <div class="feed-scroll-container">
+            <table class="table table-striped bg-white">
+                <tbody>
+                    <% if (feedData && feedData.length > 0) { %>
+                        <% feedData.forEach(item => { %>
+                            <tr>
+                                <td style="width: 40px;"><i class="fa <%= item.icon %> text-<%= item.color %> fa-lg"></i></td>
+                                <td><%= item.message %></td>
+                                <td style="width: 100px;"><i><%= item.timeAgo %></i></td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr class="no-items-row">
+                            <td colspan="3" class="text-center">No feed items available.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
