@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
             collection: selectedCollection ? selectedCollection : ""
         };
 
-        const url = `${DATA_API}/${params.collection}?skip=${params.skip}&limit=${params.limit}&sort=${params.sort}`;
+        const url = `/api/v1/collection/${params.collection}/items?skip=${params.skip}&limit=${params.limit}&sort=${params.sort}`;
         console.log(url);
 
         try {

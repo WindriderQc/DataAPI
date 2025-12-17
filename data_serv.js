@@ -21,6 +21,8 @@ const createUserModel = require('./models/userModel');
 const { attachUser, requireAuth } = require('./utils/auth');
 const createIntegrationsRouter = require('./routes/integrations');
 const { requireToolKey } = require('./middleware/toolAuth');
+const { requireEitherAuth } = require('./middleware/flexAuth');
+const { activityLogger } = require('./middleware/activityLogger');
 
 const IN_PROD = config.env === 'production';
 
@@ -232,6 +234,14 @@ async function createApp() {
         attachUser(req, res, next);
     });
 
+    // Activity logger: logs authenticated user page views with location data
+    app.use((req, res, next) => {
+        if (req.skipSession) {
+            return next();
+        }
+        activityLogger(req, res, next);
+    });
+
     // LiveData will be initialized after the server is successfully listening
     // to avoid performing DB mutations before the app has fully started.
     // Do not auto-start LiveData until the server is successfully listening.
@@ -319,8 +329,8 @@ async function createApp() {
     // Mount BEFORE tool APIs so session auth can work for user/profile endpoints
     app.use('/api/v1', requireAuth, require("./routes/user.routes"));
     
-    // Tool APIs: require DATAAPI_API_KEY via x-api-key
-    app.use('/api/v1', cors(corsOptions), requireToolKey, require("./routes/api.routes"));
+    // Tool APIs: accept EITHER session auth OR API key (for web UI and external tools)
+    app.use('/api/v1', cors(corsOptions), requireEitherAuth, require("./routes/api.routes"));
 
     // Web routes (session-based authentication)
     app.use('/', require("./routes/auth.routes"));
