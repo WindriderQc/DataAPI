@@ -69,6 +69,10 @@ async function activityLogger(req, res, next) {
             if (user.country) {
                 logEntry.country = user.country;
             }
+            // Use cached CountryName from user profile (enriched at login)
+            if (user.CountryName) {
+                logEntry.CountryName = user.CountryName;
+            }
             if (user.name) {
                 logEntry.userName = user.name;
             }
