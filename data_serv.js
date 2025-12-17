@@ -18,7 +18,7 @@ const { log } = require('./utils/logger');
 const { logEvent } = require('./utils/eventLogger');
 const { GeneralError } = require('./utils/errors');
 const createUserModel = require('./models/userModel');
-const { attachUser } = require('./utils/auth');
+const { attachUser, requireAuth } = require('./utils/auth');
 const createIntegrationsRouter = require('./routes/integrations');
 const { requireToolKey } = require('./middleware/toolAuth');
 
@@ -315,11 +315,12 @@ async function createApp() {
         }
     });
 
+    // User management API (session-based, available to authenticated users)
+    // Mount BEFORE tool APIs so session auth can work for user/profile endpoints
+    app.use('/api/v1', requireAuth, require("./routes/user.routes"));
+    
     // Tool APIs: require DATAAPI_API_KEY via x-api-key
     app.use('/api/v1', cors(corsOptions), requireToolKey, require("./routes/api.routes"));
-    
-    // User management API (session-based, available to authenticated users)
-    app.use('/api/v1', requireAuth, require("./routes/user.routes"));
 
     // Web routes (session-based authentication)
     app.use('/', require("./routes/auth.routes"));
