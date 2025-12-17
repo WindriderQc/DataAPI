@@ -2,6 +2,8 @@ const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first'); // Prioritize IPv4 to resolve connection timeout issues in some environments
 
 const express = require('express');
+const session = require('express-session');
+const MongoDBStore = require('connect-mongodb-session')(session);
 const morgan = require('morgan');
 const path = require('path');
 const cors = require('cors');
@@ -16,6 +18,7 @@ const { log } = require('./utils/logger');
 const { logEvent } = require('./utils/eventLogger');
 const { GeneralError } = require('./utils/errors');
 const createUserModel = require('./models/userModel');
+const { attachUser } = require('./utils/auth');
 const createIntegrationsRouter = require('./routes/integrations');
 const { requireToolKey } = require('./middleware/toolAuth');
 
@@ -29,7 +32,7 @@ app.locals.appVersion = pjson.version;
 
 
 // Middlewares & routes
-// Tool server mode: do not serve the web UI/assets; only expose generated exports.
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/exports', express.static(path.join(__dirname, 'public', 'exports'), { index: false, dotfiles: 'deny' }));
 app.use(morgan('dev'));
 // Configure CORS to be more restrictive in production
@@ -69,6 +72,8 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 // CORS middleware is now applied directly to API routes.
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -148,9 +153,84 @@ async function createApp() {
             log('Created default weather location for Quebec City.');
         }
 
+        // Initialize default profiles (Admin and User)
+        const profilesCollection = app.locals.dbs.mainDb.collection('profiles');
+        
+        // Create Admin profile if it doesn't exist
+        const adminProfile = await profilesCollection.findOne({ profileName: 'Admin' });
+        if (!adminProfile) {
+            await profilesCollection.insertOne({
+                profileName: 'Admin',
+                isAdmin: true,
+                config: []
+            });
+            log('Created default Admin profile.');
+        }
+        
+        // Create User profile if it doesn't exist
+        const userProfile = await profilesCollection.findOne({ profileName: 'User' });
+        if (!userProfile) {
+            await profilesCollection.insertOne({
+                profileName: 'User',
+                isAdmin: false,
+                config: []
+            });
+            log('Created default User profile.');
+        }
+
     } catch (e) {
         log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
     }
+
+    // Session setup
+    const mongoStore = new MongoDBStore({
+        uri: dbConnection.getMongoUrl(),
+        databaseName: config.db.mainDb,
+        collection: 'mySessions',
+        client: dbConnection.client,
+    });
+    mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
+
+    const sessionOptions = {
+        secret: config.session.secret,
+        store: mongoStore,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            secure: IN_PROD,
+            httpOnly: true,
+            sameSite: IN_PROD ? 'none' : 'lax',
+            maxAge: config.session.maxAge,
+        }
+    };
+    if (config.session.cookie_domain) {
+        if (IN_PROD) {
+            sessionOptions.cookie.domain = config.session.cookie_domain;
+        } else {
+            log(`Session cookie domain '${config.session.cookie_domain}' present but ignored in non-production environment.`, 'warn');
+        }
+    }
+
+    // Apply session middleware, but skip it for tool API requests (n8n, API key)
+    app.use((req, res, next) => {
+        // Skip session for requests with x-api-key header (n8n, tool APIs)
+        const apiKey = req.header('x-api-key');
+        if (apiKey) {
+            req.skipSession = true;
+            return next();
+        }
+        
+        // Apply session middleware for web/browser requests
+        session(sessionOptions)(req, res, next);
+    });
+    
+    // Attach user to res.locals for all routes (web pages need this for templates)
+    app.use((req, res, next) => {
+        if (req.skipSession) {
+            return next();
+        }
+        attachUser(req, res, next);
+    });
 
     // LiveData will be initialized after the server is successfully listening
     // to avoid performing DB mutations before the app has fully started.
@@ -164,8 +244,86 @@ async function createApp() {
     // n8n routes: keep separate auth (N8N_API_KEY) and mount before tool APIs.
     app.use('/api/v1', require("./routes/n8n.routes"));
 
+    // Session-based (browser) routes for database access (no API key required)
+    app.get('/databases/stats', (req, res) => {
+        const stats = app.locals.collectionInfo || [];
+        const collections = stats.map(s => ({ name: s.collection, count: s.count, db: s.db }));
+        res.json({
+            status: 'success',
+            data: {
+                collections: collections
+            }
+        });
+    });
+
+    app.get('/collection/:name/items', async (req, res, next) => {
+        try {
+            const { name } = req.params;
+            const db = app.locals.dbs?.mainDb;
+            
+            if (!db) {
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Database connection not found'
+                });
+            }
+            
+            // Validate collection name exists in collectionInfo
+            const allowedCollections = app.locals.collectionInfo || [];
+            const collectionExists = allowedCollections.some(c => 
+                (c.collection === name || c.name === name)
+            );
+            
+            if (!collectionExists) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: `Collection '${name}' not found`
+                });
+            }
+            
+            const collection = db.collection(name);
+            
+            // Parse pagination parameters
+            let { skip = 0, limit = 50, sort = 'desc' } = req.query;
+            skip = parseInt(skip) || 0;
+            limit = parseInt(limit) || 50;
+            skip = skip < 0 ? 0 : skip;
+            limit = Math.min(500, Math.max(1, limit)); // Clamp limit between 1 and 500
+            
+            const sortBy = sort === 'desc' ? -1 : 1;
+            
+            // Execute query with pagination
+            const [total, documents] = await Promise.all([
+                collection.countDocuments(),
+                collection.find({}).skip(skip).limit(limit).sort({ _id: sortBy }).toArray()
+            ]);
+            
+            res.json({
+                status: 'success',
+                message: 'Documents retrieved successfully',
+                data: documents,
+                meta: {
+                    total,
+                    skip,
+                    limit,
+                    sort,
+                    has_more: total - (skip + limit) > 0
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    });
+
     // Tool APIs: require DATAAPI_API_KEY via x-api-key
     app.use('/api/v1', cors(corsOptions), requireToolKey, require("./routes/api.routes"));
+    
+    // User management API (session-based, available to authenticated users)
+    app.use('/api/v1', requireAuth, require("./routes/user.routes"));
+
+    // Web routes (session-based authentication)
+    app.use('/', require("./routes/auth.routes"));
+    app.use('/', require("./routes/web.routes"));
 
     // Integrations router (tool-only)
     app.use("/integrations", requireToolKey, createIntegrationsRouter(app.locals.dbs.mainDb));

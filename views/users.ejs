@@ -35,9 +35,14 @@
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="password">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" autocomplete="new-password" required>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" autocomplete="new-password" minlength="6" required>
+                            </div>
+                            <div class="col-md-4 mb-3" id="createConfirmPasswordGroup" style="display:none;">
+                                <label for="confirmPassword">Confirm Password</label>
+                                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" placeholder="Confirm Password" minlength="6" autocomplete="new-password" required>
                             </div>
                         </div>
+                        <div id="createPasswordError" class="alert alert-danger" style="display:none;">Passwords do not match!</div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="lat">Latitude</label>
@@ -87,9 +92,14 @@
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="updatePassword">New Password (optional)</label>
-                                <input type="password" class="form-control" id="updatePassword" name="password" autocomplete="new-password" placeholder="Leave blank to keep current">
+                                <input type="password" class="form-control" id="updatePassword" name="password" autocomplete="new-password" placeholder="Leave blank to keep current" minlength="6">
+                            </div>
+                            <div class="col-md-4 mb-3" id="updateConfirmPasswordGroup" style="display:none;">
+                                <label for="updateConfirmPassword">Confirm New Password</label>
+                                <input type="password" class="form-control" id="updateConfirmPassword" name="confirmPassword" placeholder="Confirm if changing" minlength="6" autocomplete="new-password">
                             </div>
                         </div>
+                        <div id="updatePasswordError" class="alert alert-danger" style="display:none;">Passwords do not match!</div>
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="updateLat">Latitude</label>
@@ -234,8 +244,13 @@
                         </div>
                         <div class="mb-3">
                             <label for="editPassword">New Password (leave blank to keep current)</label>
-                            <input type="password" class="form-control" id="editPassword" name="password" autocomplete="new-password">
+                            <input type="password" class="form-control" id="editPassword" name="password" autocomplete="new-password" minlength="6">
                         </div>
+                        <div class="mb-3" id="editConfirmPasswordGroup" style="display:none;">
+                            <label for="editConfirmPassword">Confirm New Password</label>
+                            <input type="password" class="form-control" id="editConfirmPassword" name="confirmPassword" minlength="6" autocomplete="new-password">
+                        </div>
+                        <div id="editPasswordError" class="alert alert-danger" style="display:none;">Passwords do not match!</div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -249,9 +264,59 @@
     <%- include('partials/footer') %>
 
     <script>
+        // Password validation helpers
+        function validatePasswordMatch(password, confirmPassword, errorElementId, submitButton) {
+            const errorEl = document.getElementById(errorElementId);
+            if (password && confirmPassword) {
+                if (password !== confirmPassword) {
+                    errorEl.style.display = 'block';
+                    if (submitButton) submitButton.disabled = true;
+                    return false;
+                } else {
+                    errorEl.style.display = 'none';
+                    if (submitButton) submitButton.disabled = false;
+                    return true;
+                }
+            }
+            errorEl.style.display = 'none';
+            if (submitButton) submitButton.disabled = false;
+            return true;
+        }
+        
+        // Create user form validation
+        const createPassword = document.getElementById('password');
+        const createConfirmPassword = document.getElementById('confirmPassword');
+        const createConfirmPasswordGroup = document.getElementById('createConfirmPasswordGroup');
+        const createSubmitBtn = document.querySelector('#createUserForm button[type="submit"]');
+        
+        // Show/hide confirm password field based on password input
+        createPassword.addEventListener('focus', () => {
+            createConfirmPasswordGroup.style.display = 'block';
+        });
+        
+        createPassword.addEventListener('input', () => {
+            if (createPassword.value) {
+                createConfirmPasswordGroup.style.display = 'block';
+                validatePasswordMatch(createPassword.value, createConfirmPassword.value, 'createPasswordError', createSubmitBtn);
+            } else {
+                createConfirmPasswordGroup.style.display = 'none';
+                createConfirmPassword.value = '';
+                document.getElementById('createPasswordError').style.display = 'none';
+                createSubmitBtn.disabled = false;
+            }
+        });
+        createConfirmPassword.addEventListener('input', () => {
+            validatePasswordMatch(createPassword.value, createConfirmPassword.value, 'createPasswordError', createSubmitBtn);
+        });
+        
         // Create user form
         document.getElementById('createUserForm').addEventListener('submit', async (event) => {
             event.preventDefault();
+            
+            // Validate passwords match
+            if (!validatePasswordMatch(createPassword.value, createConfirmPassword.value, 'createPasswordError', createSubmitBtn)) {
+                return;
+            }
 
             const form = event.target;
             const formData = new FormData(form);
@@ -299,6 +364,8 @@
             document.getElementById('updateCreationDate').value = user.creationDate ? new Date(user.creationDate).toLocaleString() : '';
             document.getElementById('updateLastConnect').value = user.lastConnectDate ? new Date(user.lastConnectDate).toLocaleString() : '';
             document.getElementById('updatePassword').value = '';
+            document.getElementById('updateConfirmPassword').value = '';
+            document.getElementById('updateConfirmPasswordGroup').style.display = 'none';
             
             document.getElementById('updateUserForm').style.display = 'block';
         });
@@ -309,18 +376,56 @@
             document.getElementById('userSelectDropdown').value = '';
         });
 
+        // Update user form validation
+        const updatePassword = document.getElementById('updatePassword');
+        const updateConfirmPassword = document.getElementById('updateConfirmPassword');
+        const updateConfirmPasswordGroup = document.getElementById('updateConfirmPasswordGroup');
+        const updateSubmitBtn = document.querySelector('#updateUserForm button[type="submit"]');
+        
+        // Show/hide confirm password field based on password input
+        updatePassword.addEventListener('focus', () => {
+            updateConfirmPasswordGroup.style.display = 'block';
+        });
+        
+        updatePassword.addEventListener('input', () => {
+            if (updatePassword.value) {
+                updateConfirmPasswordGroup.style.display = 'block';
+                validatePasswordMatch(updatePassword.value, updateConfirmPassword.value, 'updatePasswordError', updateSubmitBtn);
+            } else {
+                updateConfirmPasswordGroup.style.display = 'none';
+                updateConfirmPassword.value = '';
+                document.getElementById('updatePasswordError').style.display = 'none';
+                updateSubmitBtn.disabled = false;
+            }
+        });
+        updateConfirmPassword.addEventListener('input', () => {
+            if (updatePassword.value) {
+                validatePasswordMatch(updatePassword.value, updateConfirmPassword.value, 'updatePasswordError', updateSubmitBtn);
+            }
+        });
+        
         // Update user form
         document.getElementById('updateUserForm').addEventListener('submit', async (event) => {
             event.preventDefault();
+            
+            // Validate passwords match if changing password
+            const updatePw = updatePassword.value;
+            const updateConfirmPw = updateConfirmPassword.value;
+            if (updatePw || updateConfirmPw) {
+                if (!validatePasswordMatch(updatePw, updateConfirmPw, 'updatePasswordError', updateSubmitBtn)) {
+                    return;
+                }
+            }
 
             const userId = document.getElementById('updateUserId').value;
             const form = event.target;
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
             
-            // Remove password if empty
+            // Remove password fields if empty
             if (!data.password) {
                 delete data.password;
+                delete data.confirmPassword;
             }
             
             // Convert lat/lon to numbers if provided
@@ -481,21 +586,62 @@
                 document.getElementById('editLat').value = userLat;
                 document.getElementById('editLon').value = userLon;
                 document.getElementById('editPassword').value = '';
+                document.getElementById('editConfirmPassword').value = '';
+                document.getElementById('editConfirmPasswordGroup').style.display = 'none';
                 
                 const modal = new mdb.Modal(document.getElementById('editUserModal'));
                 modal.show();
             });
 
+            // Modal edit form validation
+            const editPassword = document.getElementById('editPassword');
+            const editConfirmPassword = document.getElementById('editConfirmPassword');
+            const editConfirmPasswordGroup = document.getElementById('editConfirmPasswordGroup');
+            const saveUserBtn = document.getElementById('saveUserBtn');
+            
+            // Show/hide confirm password field based on password input
+            editPassword.addEventListener('focus', () => {
+                editConfirmPasswordGroup.style.display = 'block';
+            });
+            
+            editPassword.addEventListener('input', () => {
+                if (editPassword.value) {
+                    editConfirmPasswordGroup.style.display = 'block';
+                    validatePasswordMatch(editPassword.value, editConfirmPassword.value, 'editPasswordError', saveUserBtn);
+                } else {
+                    editConfirmPasswordGroup.style.display = 'none';
+                    editConfirmPassword.value = '';
+                    document.getElementById('editPasswordError').style.display = 'none';
+                    saveUserBtn.disabled = false;
+                }
+            });
+            editConfirmPassword.addEventListener('input', () => {
+                if (editPassword.value) {
+                    validatePasswordMatch(editPassword.value, editConfirmPassword.value, 'editPasswordError', saveUserBtn);
+                }
+            });
+            
             // Save edited user
             document.getElementById('saveUserBtn').addEventListener('click', async () => {
+                const editPw = editPassword.value;
+                const editConfirmPw = editConfirmPassword.value;
+                
+                // Validate passwords match if changing password
+                if (editPw || editConfirmPw) {
+                    if (!validatePasswordMatch(editPw, editConfirmPw, 'editPasswordError', saveUserBtn)) {
+                        return;
+                    }
+                }
+                
                 const userId = document.getElementById('editUserId').value;
                 const form = document.getElementById('editUserForm');
                 const formData = new FormData(form);
                 const data = Object.fromEntries(formData.entries());
                 
-                // Remove password if empty
+                // Remove password fields if empty
                 if (!data.password) {
                     delete data.password;
+                    delete data.confirmPassword;
                 }
                 
                 // Convert lat/lon to numbers if provided
