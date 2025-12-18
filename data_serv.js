@@ -35,6 +35,7 @@ app.locals.appVersion = pjson.version;
 
 // Middlewares & routes
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/data', express.static(path.join(__dirname, 'data'), { index: false, dotfiles: 'deny' }));
 app.use('/exports', express.static(path.join(__dirname, 'public', 'exports'), { index: false, dotfiles: 'deny' }));
 app.use(morgan('dev'));
 // Configure CORS to be more restrictive in production
