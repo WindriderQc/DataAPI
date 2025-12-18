@@ -252,9 +252,6 @@ async function createApp() {
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
     app.use('/api/', apiLimiter);
     
-    // n8n routes: keep separate auth (N8N_API_KEY) and mount before tool APIs.
-    app.use('/api/v1', require("./routes/n8n.routes"));
-
     // Session-based (browser) routes for database access (no API key required)
     app.get('/databases/stats', (req, res) => {
         const stats = app.locals.collectionInfo || [];
