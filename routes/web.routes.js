@@ -120,25 +120,8 @@ router.get('/file-browser', requireAuth, (req, res) => {
     });
 });
 
-// n8n Webhook Test Page
-router.get('/n8n-test', requireAuth, (req, res) => {
-    const title = "n8n Webhook Tester";
-    res.render('n8n-test', {
-        title,
-        user: res.locals.user,
-        env: config.env
-    });
-});
-
-// AI Control Board
-router.get('/ai-control', requireAuth, (req, res) => {
-    res.render('ai-control', {
-        title: "AI Control Board",
-        menuId: 'ai-control',
-        user: res.locals.user,
-        appVersion: require('../package.json').version
-    });
-});
+// NOTE: n8n integration and AI Control Board have been moved to AgentX.
+// If you need these features, access them via AgentX at http://localhost:3080/ai-control.html
 
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
