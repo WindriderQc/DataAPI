@@ -71,9 +71,9 @@ exports.getDatabasesPage = async (req, res, next) => {
     try {
         await client.connect();
 
-        // Get handles for both databases
-        const prodDb = client.db('datas');
-        const devDb = client.db('devdatas');
+        // Get handles for both databases using configured names
+        const prodDb = client.db(config.db.mainDb);
+        const devDb = client.db(config.db.devDb);
 
         // Fetch stats in parallel
         const [prodDbInfo, devDbInfo] = await Promise.all([
@@ -115,10 +115,24 @@ exports.copyProdToDev = async (req, res) => {
     (async () => {
         try {
             await client.connect();
-            const sourceDb = client.db('datas');
-            const destDb = client.db('devdatas');
+            const sourceDb = client.db(config.db.mainDb);
+            const destDb = client.db(config.db.devDb);
 
-            log('Starting database copy from PROD (datas) to DEV (devdatas)...');
+            // Create destination database if it doesn't exist by creating a dummy collection
+            // MongoDB creates databases on first write operation
+            const dbList = await client.db().admin().listDatabases();
+            const destDbExists = dbList.databases.some(db => db.name === config.db.devDb);
+            
+            if (!destDbExists) {
+                log(`Development database '${config.db.devDb}' does not exist. Creating it...`);
+                // Create a temporary collection to initialize the database
+                await destDb.createCollection('_init');
+                await destDb.collection('_init').insertOne({ created: new Date(), note: 'Database initialized for copy operation' });
+                await destDb.collection('_init').drop();
+                log(`Development database '${config.db.devDb}' created successfully.`);
+            }
+
+            log(`Starting database copy from ${config.db.mainDb} to ${config.db.devDb}...`);
 
             const sourceCollections = await sourceDb.listCollections().toArray();
             // enrich collections with document counts for per-collection progress
