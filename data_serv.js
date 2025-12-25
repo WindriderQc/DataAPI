@@ -12,6 +12,7 @@ const mdb = require('./mongoDB.js');
 const liveDatas = require('./scripts/liveData.js');
 const config = require('./config/config');
 const pjson = require('./package.json');
+const seedData = require('./scripts/bootstrap');
 
 // add missing imports used in this file
 const { log } = require('./utils/logger');
@@ -147,39 +148,8 @@ async function createApp() {
         };
         log("Models initialized and attached to app.locals.");
 
-        // Ensure default location is configured for weather tracking
-        const weatherLocationsCollection = app.locals.dbs.mainDb.collection('weatherLocations');
-        const defaultLocation = { lat: 46.8138, lon: -71.208 };
-        const existingLocation = await weatherLocationsCollection.findOne(defaultLocation);
-        if (!existingLocation) {
-            await weatherLocationsCollection.insertOne(defaultLocation);
-            log('Created default weather location for Quebec City.');
-        }
-
-        // Initialize default profiles (Admin and User)
-        const profilesCollection = app.locals.dbs.mainDb.collection('profiles');
-        
-        // Create Admin profile if it doesn't exist
-        const adminProfile = await profilesCollection.findOne({ profileName: 'Admin' });
-        if (!adminProfile) {
-            await profilesCollection.insertOne({
-                profileName: 'Admin',
-                isAdmin: true,
-                config: []
-            });
-            log('Created default Admin profile.');
-        }
-        
-        // Create User profile if it doesn't exist
-        const userProfile = await profilesCollection.findOne({ profileName: 'User' });
-        if (!userProfile) {
-            await profilesCollection.insertOne({
-                profileName: 'User',
-                isAdmin: false,
-                config: []
-            });
-            log('Created default User profile.');
-        }
+        // Run bootstrap/seed logic
+        await seedData(app);
 
     } catch (e) {
         log(`Could not initialize dbs on startup: ${e.message}`, 'warn');
@@ -264,71 +234,12 @@ async function createApp() {
         });
     });
 
-    app.get('/collection/:name/items', async (req, res, next) => {
-        try {
-            const { name } = req.params;
-            const db = app.locals.dbs?.mainDb;
-            
-            if (!db) {
-                return res.status(500).json({
-                    status: 'error',
-                    message: 'Database connection not found'
-                });
-            }
-            
-            // Validate collection name exists in collectionInfo
-            const allowedCollections = app.locals.collectionInfo || [];
-            const collectionExists = allowedCollections.some(c => 
-                (c.collection === name || c.name === name)
-            );
-            
-            if (!collectionExists) {
-                return res.status(404).json({
-                    status: 'error',
-                    message: `Collection '${name}' not found`
-                });
-            }
-            
-            const collection = db.collection(name);
-            
-            // Parse pagination parameters
-            let { skip = 0, limit = 50, sort = 'desc' } = req.query;
-            skip = parseInt(skip) || 0;
-            limit = parseInt(limit) || 50;
-            skip = skip < 0 ? 0 : skip;
-            limit = Math.min(500, Math.max(1, limit)); // Clamp limit between 1 and 500
-            
-            const sortBy = sort === 'desc' ? -1 : 1;
-            
-            // Execute query with pagination
-            const [total, documents] = await Promise.all([
-                collection.countDocuments(),
-                collection.find({}).skip(skip).limit(limit).sort({ _id: sortBy }).toArray()
-            ]);
-            
-            res.json({
-                status: 'success',
-                message: 'Documents retrieved successfully',
-                data: documents,
-                meta: {
-                    total,
-                    skip,
-                    limit,
-                    sort,
-                    has_more: total - (skip + limit) > 0
-                }
-            });
-        } catch (error) {
-            next(error);
-        }
-    });
+    // Tool APIs: accept EITHER session auth OR API key (for web UI and external tools)
+    // Mount BEFORE user routes so API key auth can be processed first
+    app.use('/api/v1', cors(corsOptions), requireEitherAuth, require("./routes/api.routes"));
 
     // User management API (session-based, available to authenticated users)
-    // Mount BEFORE tool APIs so session auth can work for user/profile endpoints
     app.use('/api/v1', requireAuth, require("./routes/user.routes"));
-    
-    // Tool APIs: accept EITHER session auth OR API key (for web UI and external tools)
-    app.use('/api/v1', cors(corsOptions), requireEitherAuth, require("./routes/api.routes"));
 
     // Web routes (session-based authentication)
     app.use('/', require("./routes/auth.routes"));

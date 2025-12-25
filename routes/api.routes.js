@@ -10,7 +10,6 @@ const liveDatasController = require('../controllers/liveDataController');
 const feedController = require('../controllers/feedController');
 const storageController = require('../controllers/storageController');
 const fileBrowserController = require('../controllers/fileBrowserController');
-const FileBrowserControllerNew = require('../controllers/fileBrowserControllerNew');
 const fileExportController = require('../controllers/fileExportController');
 const { generateOptimizedReport } = require('../controllers/fileExportControllerOptimized');
 const externalApiController = require('../controllers/externalApiController');
@@ -84,12 +83,12 @@ router.post('/storage/stop/:scan_id', storageController.stopScan);
 router.get('/storage/directory-count', storageController.getDirectoryCount);
 
 // File browser routes
-router.get('/files/browse', FileBrowserControllerNew.browseFiles);
-router.get('/files/search', fileBrowserController.search);
-router.get('/files/stats', FileBrowserControllerNew.getStats);
-router.get('/files/tree', FileBrowserControllerNew.getDirectoryTree);
-router.get('/files/duplicates', FileBrowserControllerNew.findDuplicates);
-router.get('/files/cleanup-recommendations', FileBrowserControllerNew.getCleanupRecommendations);
+router.get('/files/browse', fileBrowserController.browseFiles);
+// router.get('/files/search', fileBrowserController.search); // Consolidating, 'browseFiles' supports search
+router.get('/files/stats', fileBrowserController.getStats);
+router.get('/files/tree', fileBrowserController.getDirectoryTree);
+router.get('/files/duplicates', fileBrowserController.findDuplicates);
+router.get('/files/cleanup-recommendations', fileBrowserController.getCleanupRecommendations);
 
 // File exports
 router.post('/files/export', fileExportController.generateReport);
