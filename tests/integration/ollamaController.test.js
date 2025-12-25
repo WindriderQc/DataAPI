@@ -1,7 +1,7 @@
-const ollamaController = require('../controllers/ollamaController');
-const fetchUtils = require('../utils/fetch-utils');
+const ollamaController = require('../../controllers/ollamaController');
+const fetchUtils = require('../../utils/fetch-utils');
 
-jest.mock('../utils/fetch-utils');
+jest.mock('../../utils/fetch-utils');
 
 describe.skip('Ollama Controller', () => {
     let req, res;

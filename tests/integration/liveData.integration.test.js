@@ -1,10 +1,10 @@
 jest.setTimeout(30000);
 
-const liveDatas = require('../scripts/liveData');
-const mqttClient = require('../scripts/mqttClient');
-const fetchUtils = require('../utils/fetch-utils');
-const config = require('../config/config');
-const LiveDataConfig = require('../models/liveDataConfigModel');
+const liveDatas = require('../../scripts/liveData');
+const mqttClient = require('../../scripts/mqttClient');
+const fetchUtils = require('../../utils/fetch-utils');
+const config = require('../../config/config');
+const LiveDataConfig = require('../../models/liveDataConfigModel');
 
 // Helper to wait until a predicate or timeout
 const waitFor = async (predicate, timeout = 3000, interval = 50) => {
