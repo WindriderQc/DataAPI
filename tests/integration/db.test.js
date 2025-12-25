@@ -1,4 +1,4 @@
-const config = require('../config/config');
+const config = require('../../config/config');
 
 describe('DB runtime shape', () => {
   // No beforeAll/afterAll needed, handled by global setup
