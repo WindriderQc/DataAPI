@@ -88,6 +88,30 @@ const config = {
             timeout: 10000,
             retries: 2,
         }
+    },
+    tides: {
+        api: {
+            url: 'https://marine-api.open-meteo.com/v1/marine',
+            interval: 3600000, // 1 hour
+            timeout: 10000,
+            retries: 2,
+        }
+    },
+    tle: {
+        api: {
+            url: 'https://celestrak.org/NORAD/elements/gp.php',
+            interval: 86400000, // 24 hours
+            timeout: 15000,
+            retries: 2,
+        }
+    },
+    ecWeather: {
+        api: {
+            url: 'https://api.weather.gc.ca/collections/swob-realtime/items',
+            interval: 60000,
+            timeout: 10000,
+            retries: 2,
+        }
     }
 };
 
