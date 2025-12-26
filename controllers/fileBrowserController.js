@@ -185,14 +185,73 @@ class FileBrowserController {
   }
 
   /**
-   * Find duplicate files (by size and filename)
+   * Find duplicate files (by SHA256 hash, falling back to size+filename)
+   * Query params:
+   *   - method: 'hash' (default if hashes exist) or 'fuzzy' (size+name)
+   *   - limit: max results (default 100)
    */
   static async findDuplicates(req, res, next) {
     try {
       const db = req.app.locals.dbs.mainDb;
       const files = db.collection('nas_files');
-
-      const duplicates = await files.aggregate([
+      
+      const limit = parseInt(req.query.limit) || 100;
+      const method = req.query.method || 'auto';
+      
+      // Check if we have any hashed files
+      let useHashMethod = false;
+      if (method === 'hash' || method === 'auto') {
+        const hashCount = await files.countDocuments({ sha256: { $exists: true, $ne: null } });
+        useHashMethod = hashCount > 0 && method !== 'fuzzy';
+      }
+      
+      let duplicates;
+      
+      if (useHashMethod) {
+        // Hash-based deduplication (accurate - identical content)
+        duplicates = await files.aggregate([
+          { $match: { sha256: { $exists: true, $ne: null } } },
+          {
+            $group: {
+              _id: '$sha256',
+              count: { $sum: 1 },
+              files: { $push: { path: '$path', dirname: '$dirname', filename: '$filename', mtime: '$mtime' } },
+              totalSize: { $first: '$size' }
+            }
+          },
+          { $match: { count: { $gt: 1 } } },
+          { $sort: { totalSize: -1 } },
+          { $limit: limit }
+        ], { allowDiskUse: true }).toArray();
+        
+        const formatted = duplicates.map(dup => ({
+          sha256: dup._id,
+          size: dup.totalSize,
+          sizeFormatted: formatFileSize(dup.totalSize),
+          count: dup.count,
+          wastedSpace: dup.totalSize * (dup.count - 1),
+          wastedSpaceFormatted: formatFileSize(dup.totalSize * (dup.count - 1)),
+          locations: dup.files
+        }));
+        
+        const totalWasted = formatted.reduce((sum, dup) => sum + dup.wastedSpace, 0);
+        
+        return res.json({
+          status: 'success',
+          data: {
+            method: 'sha256',
+            duplicates: formatted,
+            summary: {
+              totalDuplicateGroups: formatted.length,
+              totalWastedSpace: totalWasted,
+              totalWastedSpaceFormatted: formatFileSize(totalWasted)
+            }
+          }
+        });
+      }
+      
+      // Fuzzy deduplication (fallback - same name and size)
+      duplicates = await files.aggregate([
         {
           $group: {
             _id: { filename: '$filename', size: '$size' },
@@ -203,7 +262,7 @@ class FileBrowserController {
         },
         { $match: { count: { $gt: 1 } } },
         { $sort: { totalSize: -1 } },
-        { $limit: 100 }
+        { $limit: limit }
       ], { allowDiskUse: true }).toArray();
 
       const formatted = duplicates.map(dup => ({
@@ -221,6 +280,8 @@ class FileBrowserController {
       res.json({
         status: 'success',
         data: {
+          method: 'fuzzy',
+          note: 'Run a scan with compute_hashes=true for accurate hash-based deduplication',
           duplicates: formatted,
           summary: {
             totalDuplicateGroups: formatted.length,
@@ -319,6 +380,247 @@ class FileBrowserController {
     const boundaries = [0, 1024, 10240, 102400, 1048576, 10485760, 104857600];
     const index = boundaries.indexOf(boundary);
     return labels[index] || 'other';
+  }
+
+  // ==========================================
+  // Datalake Janitor Methods
+  // ==========================================
+
+  /**
+   * Suggest files for deletion based on duplicate analysis
+   * Uses a strategy to keep the "best" copy (oldest mtime = original)
+   * Body params:
+   *   - sha256: specific hash to analyze (optional)
+   *   - strategy: 'keep_oldest' (default) or 'keep_newest'
+   *   - minSize: minimum file size to consider (default 0)
+   */
+  static async suggestDeletions(req, res, next) {
+    try {
+      const db = req.app.locals.dbs.mainDb;
+      const files = db.collection('nas_files');
+      
+      const { sha256, strategy = 'keep_oldest', minSize = 0 } = req.body;
+      
+      let matchStage = { sha256: { $exists: true, $ne: null } };
+      if (sha256) matchStage.sha256 = sha256;
+      if (minSize > 0) matchStage.size = { $gte: minSize };
+      
+      const duplicates = await files.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: '$sha256',
+            count: { $sum: 1 },
+            files: { 
+              $push: { 
+                _id: '$_id',
+                path: '$path', 
+                dirname: '$dirname', 
+                filename: '$filename', 
+                mtime: '$mtime',
+                size: '$size'
+              } 
+            },
+            totalSize: { $first: '$size' }
+          }
+        },
+        { $match: { count: { $gt: 1 } } },
+        { $sort: { totalSize: -1 } },
+        { $limit: 50 }
+      ], { allowDiskUse: true }).toArray();
+      
+      const suggestions = duplicates.map(dup => {
+        // Sort files by mtime to find oldest/newest
+        const sorted = [...dup.files].sort((a, b) => a.mtime - b.mtime);
+        const keep = strategy === 'keep_newest' ? sorted[sorted.length - 1] : sorted[0];
+        const toDelete = sorted.filter(f => f._id.toString() !== keep._id.toString());
+        
+        return {
+          sha256: dup._id,
+          size: dup.totalSize,
+          sizeFormatted: formatFileSize(dup.totalSize),
+          keep: {
+            path: keep.path,
+            mtime: new Date(keep.mtime * 1000).toISOString(),
+            reason: strategy === 'keep_newest' ? 'Newest copy' : 'Oldest copy (likely original)'
+          },
+          suggestDelete: toDelete.map(f => ({
+            fileId: f._id,
+            path: f.path,
+            mtime: new Date(f.mtime * 1000).toISOString()
+          })),
+          potentialSavings: dup.totalSize * toDelete.length,
+          potentialSavingsFormatted: formatFileSize(dup.totalSize * toDelete.length)
+        };
+      });
+      
+      const totalSavings = suggestions.reduce((sum, s) => sum + s.potentialSavings, 0);
+      
+      res.json({
+        status: 'success',
+        data: {
+          strategy,
+          suggestions,
+          summary: {
+            duplicateGroups: suggestions.length,
+            totalFilesToDelete: suggestions.reduce((sum, s) => sum + s.suggestDelete.length, 0),
+            totalPotentialSavings: totalSavings,
+            totalPotentialSavingsFormatted: formatFileSize(totalSavings)
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Mark files for deletion (soft delete - just flags them)
+   * Body: { files: [{ fileId, path, reason }] }
+   */
+  static async markForDeletion(req, res, next) {
+    try {
+      const db = req.app.locals.dbs.mainDb;
+      const deletions = db.collection('nas_pending_deletions');
+      const { files } = req.body;
+      
+      if (!Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'files array is required'
+        });
+      }
+      
+      const docs = files.map(f => ({
+        file_id: f.fileId,
+        path: f.path,
+        reason: f.reason || 'duplicate',
+        marked_at: new Date(),
+        marked_by: res.locals.user?.name || 'api',
+        status: 'pending'
+      }));
+      
+      const result = await deletions.insertMany(docs);
+      
+      res.json({
+        status: 'success',
+        message: `${result.insertedCount} files marked for deletion`,
+        data: {
+          insertedCount: result.insertedCount,
+          ids: Object.values(result.insertedIds)
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get pending deletions
+   */
+  static async getPendingDeletions(req, res, next) {
+    try {
+      const db = req.app.locals.dbs.mainDb;
+      const deletions = db.collection('nas_pending_deletions');
+      
+      const pending = await deletions.find({ status: 'pending' })
+        .sort({ marked_at: -1 })
+        .limit(100)
+        .toArray();
+      
+      res.json({
+        status: 'success',
+        data: {
+          count: pending.length,
+          pending
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Confirm and execute deletion (requires explicit confirmation)
+   * This is a DESTRUCTIVE operation - actually deletes the file from disk
+   * Params: id (pending deletion record ID)
+   * Body: { confirm: true } - must be explicitly set
+   */
+  static async confirmDeletion(req, res, next) {
+    try {
+      const db = req.app.locals.dbs.mainDb;
+      const deletions = db.collection('nas_pending_deletions');
+      const files = db.collection('nas_files');
+      const { ObjectId } = require('mongodb');
+      const fs = require('fs/promises');
+      
+      const { id } = req.params;
+      const { confirm } = req.body;
+      
+      if (confirm !== true) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Explicit confirmation required: { "confirm": true }'
+        });
+      }
+      
+      const record = await deletions.findOne({ _id: new ObjectId(id), status: 'pending' });
+      
+      if (!record) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Pending deletion not found or already processed'
+        });
+      }
+      
+      try {
+        // Actually delete the file from disk
+        await fs.unlink(record.path);
+        
+        // Update the pending deletion record
+        await deletions.updateOne(
+          { _id: record._id },
+          { 
+            $set: { 
+              status: 'completed',
+              deleted_at: new Date(),
+              deleted_by: res.locals.user?.name || 'api'
+            }
+          }
+        );
+        
+        // Remove from nas_files collection
+        await files.deleteOne({ path: record.path });
+        
+        res.json({
+          status: 'success',
+          message: 'File deleted successfully',
+          data: {
+            path: record.path,
+            deleted_at: new Date().toISOString()
+          }
+        });
+      } catch (deleteErr) {
+        // Mark as failed if file deletion fails
+        await deletions.updateOne(
+          { _id: record._id },
+          { 
+            $set: { 
+              status: 'failed',
+              error: deleteErr.message
+            }
+          }
+        );
+        
+        return res.status(500).json({
+          status: 'error',
+          message: `Failed to delete file: ${deleteErr.message}`,
+          data: { path: record.path }
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
   }
 }
 

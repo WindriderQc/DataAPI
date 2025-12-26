@@ -93,6 +93,12 @@ router.get('/files/tree', requireEitherAuth, fileBrowserController.getDirectoryT
 router.get('/files/duplicates', requireEitherAuth, fileBrowserController.findDuplicates);
 router.get('/files/cleanup-recommendations', requireEitherAuth, fileBrowserController.getCleanupRecommendations);
 
+// Datalake Janitor endpoints (for deduplication workflows)
+router.post('/janitor/suggest-deletions', requireEitherAuth, fileBrowserController.suggestDeletions);
+router.post('/janitor/mark-for-deletion', requireEitherAuth, fileBrowserController.markForDeletion);
+router.get('/janitor/pending-deletions', requireEitherAuth, fileBrowserController.getPendingDeletions);
+router.delete('/janitor/confirm-deletion/:id', requireEitherAuth, fileBrowserController.confirmDeletion);
+
 // File exports (protected - editor/admin only, accepts API key or session)
 router.post('/files/export', requireEitherAuth, fileExportController.generateReport);
 router.get('/files/exports', requireEitherAuth, fileExportController.listExports);
