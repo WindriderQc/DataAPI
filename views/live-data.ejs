@@ -32,6 +32,64 @@
     <%- include('partials/nav') %>
 
     <div class="container-fluid pt-5 mt-5">
+        <!-- Live Data Configuration Section (Admin Only) -->
+        <% if (user && user.role === 'admin') { %>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>
+                            Live Data Configuration
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Enable or disable live data services. Changes take effect immediately.</p>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                                    <div>
+                                        <i class="fas fa-satellite text-primary me-2"></i>
+                                        <strong>ISS Tracking</strong>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="toggleISS" data-service="iss">
+                                        <label class="form-check-label" for="toggleISS"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                                    <div>
+                                        <i class="fas fa-house-crack text-danger me-2"></i>
+                                        <strong>Earthquakes</strong>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="toggleQuakes" data-service="quakes">
+                                        <label class="form-check-label" for="toggleQuakes"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                                    <div>
+                                        <i class="fas fa-cloud-sun text-warning me-2"></i>
+                                        <strong>Weather/Pressure</strong>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="toggleWeather" data-service="weather">
+                                        <label class="form-check-label" for="toggleWeather"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="configStatus" class="mt-3 alert d-none" role="alert"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+        
         <div class="row">
             <div class="col-12">
                 <h1 class="text-center">Live ISS Location</h1>
@@ -96,7 +154,92 @@
     
     <script> const mqttConfig = <%- mqttConfig %>; </script>
     <script src="/js/Tools.js"></script>
-    <script src="/js/live-data.js"></script>  
+    <script src="/js/live-data.js"></script>
+    
+    <% if (user && user.role === 'admin') { %>
+    <script>
+        // Live Data Configuration Management
+        document.addEventListener('DOMContentLoaded', async () => {
+            const toggleISS = document.getElementById('toggleISS');
+            const toggleQuakes = document.getElementById('toggleQuakes');
+            const toggleWeather = document.getElementById('toggleWeather');
+            const statusDiv = document.getElementById('configStatus');
+
+            // Load current configuration
+            async function loadConfig() {
+                try {
+                    const response = await fetch('/api/v1/livedata/config', {
+                        credentials: 'include'
+                    });
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        toggleISS.checked = data.data.iss || false;
+                        toggleQuakes.checked = data.data.quakes || false;
+                        toggleWeather.checked = data.data.weather || false;
+                    }
+                } catch (error) {
+                    console.error('Failed to load config:', error);
+                    showStatus('Failed to load configuration', 'danger');
+                }
+            }
+
+            // Update configuration
+            async function updateConfig(service, enabled) {
+                try {
+                    const response = await fetch('/api/v1/livedata/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ service, enabled })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        showStatus(`${service.toUpperCase()} service ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                    } else {
+                        showStatus('Failed to update configuration', 'danger');
+                        await loadConfig(); // Reload to reset UI state
+                    }
+                } catch (error) {
+                    console.error('Failed to update config:', error);
+                    showStatus('Failed to update configuration', 'danger');
+                    await loadConfig(); // Reload to reset UI state
+                }
+            }
+
+            // Show status message
+            function showStatus(message, type) {
+                statusDiv.className = `mt-3 alert alert-${type}`;
+                statusDiv.textContent = message;
+                statusDiv.classList.remove('d-none');
+                
+                setTimeout(() => {
+                    statusDiv.classList.add('d-none');
+                }, 3000);
+            }
+
+            // Attach event listeners
+            toggleISS.addEventListener('change', (e) => {
+                updateConfig('iss', e.target.checked);
+            });
+
+            toggleQuakes.addEventListener('change', (e) => {
+                updateConfig('quakes', e.target.checked);
+            });
+
+            toggleWeather.addEventListener('change', (e) => {
+                updateConfig('weather', e.target.checked);
+            });
+
+            // Load initial configuration
+            await loadConfig();
+        });
+    </script>
+    <% } %>
     
     <%- include('partials/footer') %>
 </body>
