@@ -12,6 +12,83 @@ Health check:
 
 - `GET /health` returns `{ ok: true, version, ts }`
 
+---
+
+## n8n Integration Guide
+
+DataAPI is designed to work with n8n workflows. Here's how to properly configure HTTP Request nodes.
+
+### Key Endpoints for n8n
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (no auth) |
+| `/api/v1/storage/scan` | POST | Start a file scan |
+| `/api/v1/storage/status/:id` | GET | Get scan status |
+| `/api/v1/storage/scans` | GET | List recent scans |
+| `/api/v1/files/browse` | GET | Query files |
+| `/api/v1/files/stats` | GET | File statistics |
+| `/api/v1/files/duplicates` | GET | Find duplicate files |
+| `/api/v1/janitor/suggest-deletions` | POST | Get deletion suggestions |
+| `/api/v1/system/health` | GET | Aggregated system health |
+| `/integrations/events/n8n` | POST | Event sink (n8n → DataAPI) |
+
+### HTTP Request Node Configuration
+
+```
+Method: POST (or GET)
+URL: http://192.168.2.33:3003/api/v1/storage/scan
+Authentication: Header Auth
+  - Header Name: x-api-key
+  - Header Value: <your-api-key>
+Body Content Type: JSON
+Specify Body: Using JSON
+```
+
+### ⚠️ Common n8n Pitfall: Array Injection
+
+When injecting arrays from expressions, **do NOT quote the expression**:
+
+```json
+// ❌ WRONG - results in string "=mp4,mkv,avi"
+{
+  "roots": ["{{ $json.path }}"],
+  "extensions": "{{ $json.extensions }}"
+}
+
+// ✅ CORRECT - preserves array type
+{
+  "roots": ["{{ $json.path }}"],
+  "extensions": {{ $json.extensions }}
+}
+```
+
+### Example: Storage Scan Request
+
+```json
+{
+  "roots": ["/mnt/smb/Media"],
+  "extensions": ["mp4", "mkv", "avi", "jpg", "png"],
+  "compute_hashes": true,
+  "metadata": {
+    "initiator": "n8n-workflow",
+    "workflow": "datalake-scan"
+  }
+}
+```
+
+### Scan Options
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `roots` | string[] | required | Directories to scan |
+| `extensions` | string[] | required | File extensions to include |
+| `batch_size` | number | 1000 | DB write batch size |
+| `compute_hashes` | boolean | false | Compute SHA256 hashes |
+| `hash_max_size` | number | 104857600 | Skip hashing files > this size (bytes) |
+
+---
+
 ## Automated Deployment (Recommended)
 
 For automated deployment on Linux Mint / Ubuntu (especially TrueNAS SCALE VMs):
