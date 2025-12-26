@@ -29,6 +29,14 @@ const cleanupStaleScans = cleanupStaleScansFn;
 
 const scan = async (req, res, next) => {
   try {
+    // DEBUG: Trace what n8n is actually sending
+    console.log("=== SCAN DEBUG ===");
+    console.log("SCAN CT:", req.headers["content-type"]);
+    console.log("SCAN RAW BODY:", req.body);
+    console.log("SCAN KEYS:", req.body && Object.keys(req.body));
+    console.log("SCAN BODY TYPE:", typeof req.body);
+    console.log("==================");
+
     const { roots, extensions, batch_size, compute_hashes, hash_max_size } = req.body;
 
     if (!roots || !extensions) {
