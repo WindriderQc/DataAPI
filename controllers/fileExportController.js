@@ -180,6 +180,46 @@ class OptimizedExportController {
     }
 
     /**
+     * Generate large files report (files > 100MB)
+     */
+    async generateOptimizedLargeFilesReport() {
+        console.log('🚀 Generating large files report...');
+
+        const minSize = 100 * 1024 * 1024; // 100MB in bytes
+        const largeFiles = [];
+        const cursor = this.nasFiles.find({
+            size: { $gte: minSize }
+        }).sort({ size: -1 });
+
+        while (await cursor.hasNext()) {
+            const file = await cursor.next();
+
+            largeFiles.push({
+                path: (file.dirname || '') + '/' + (file.filename || ''),
+                filename: file.filename,
+                dirname: file.dirname,
+                ext: file.ext,
+                size: file.size,
+                sizeFormatted: formatFileSize(file.size),
+                mtime: file.mtime,
+                mtimeFormatted: file.mtime ? new Date(file.mtime * 1000).toISOString() : null
+            });
+        }
+
+        console.log(`✅ Large files report: ${largeFiles.length} files`);
+
+        return {
+            reportType: 'large_files_optimized',
+            generatedAt: new Date().toISOString(),
+            optimization: 'Files larger than 100MB',
+            minSizeBytes: minSize,
+            minSizeFormatted: formatFileSize(minSize),
+            totalLargeFiles: largeFiles.length,
+            files: largeFiles
+        };
+    }
+
+    /**
      * Generate statistics report
      */
     async generateOptimizedStatsReport() {
@@ -264,6 +304,8 @@ async function generateOptimizedReport(db, reportType) {
             return await controller.generateOptimizedSummary();
         case 'media':
             return await controller.generateOptimizedMediaReport();
+        case 'large':
+            return await controller.generateOptimizedLargeFilesReport();
         case 'stats':
             return await controller.generateOptimizedStatsReport();
         default:

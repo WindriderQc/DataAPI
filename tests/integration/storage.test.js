@@ -111,7 +111,7 @@ describe('Storage Scan API', () => {
 
       expect(statusRes.statusCode).toBe(200);
       expect(statusRes.body.status).toBe('success');
-      expect(statusRes.body.data).toHaveProperty('scan_id', scanId);
+      expect(statusRes.body.data).toHaveProperty('_id', scanId);
       expect(statusRes.body.data).toHaveProperty('status');
       expect(statusRes.body.data).toHaveProperty('counts');
       expect(statusRes.body.data).toHaveProperty('live');

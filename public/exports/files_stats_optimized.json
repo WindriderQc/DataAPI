@@ -1,0 +1,93 @@
+{
+  "reportType": "statistics_optimized",
+  "generatedAt": "2025-12-26T03:12:51.425Z",
+  "optimization": "Pre-calculated aggregations, no path duplication",
+  "overview": {
+    "totalFiles": 82362,
+    "totalSize": 74881198936,
+    "totalSizeFormatted": "69.74 GB",
+    "uniqueDirectories": 0,
+    "averageFilesPerDirectory": 0,
+    "averageFileSize": 909172
+  },
+  "extensionStats": [
+    {
+      "extension": "jpg",
+      "fileCount": 29388,
+      "totalSize": 71700905243,
+      "totalSizeFormatted": "66.78 GB",
+      "averageSize": 2439802,
+      "averageSizeFormatted": "2.33 MB",
+      "maxSize": 25749482,
+      "maxSizeFormatted": "24.56 MB",
+      "percentageOfTotal": 95.75
+    },
+    {
+      "extension": "png",
+      "fileCount": 8536,
+      "totalSize": 2580236779,
+      "totalSizeFormatted": "2.4 GB",
+      "averageSize": 302277,
+      "averageSizeFormatted": "295.19 KB",
+      "maxSize": 79019042,
+      "maxSizeFormatted": "75.36 MB",
+      "percentageOfTotal": 3.45
+    },
+    {
+      "extension": "js",
+      "fileCount": 36263,
+      "totalSize": 420634197,
+      "totalSizeFormatted": "401.15 MB",
+      "averageSize": 11600,
+      "averageSizeFormatted": "11.33 KB",
+      "maxSize": 10120164,
+      "maxSizeFormatted": "9.65 MB",
+      "percentageOfTotal": 0.56
+    },
+    {
+      "extension": "json",
+      "fileCount": 4634,
+      "totalSize": 65791463,
+      "totalSizeFormatted": "62.74 MB",
+      "averageSize": 14198,
+      "averageSizeFormatted": "13.87 KB",
+      "maxSize": 32323449,
+      "maxSizeFormatted": "30.83 MB",
+      "percentageOfTotal": 0.09
+    },
+    {
+      "extension": "csv",
+      "fileCount": 55,
+      "totalSize": 59382225,
+      "totalSizeFormatted": "56.63 MB",
+      "averageSize": 1079677,
+      "averageSizeFormatted": "1.03 MB",
+      "maxSize": 23724572,
+      "maxSizeFormatted": "22.63 MB",
+      "percentageOfTotal": 0.08
+    },
+    {
+      "extension": "html",
+      "fileCount": 2893,
+      "totalSize": 46631511,
+      "totalSizeFormatted": "44.47 MB",
+      "averageSize": 16119,
+      "averageSizeFormatted": "15.74 KB",
+      "maxSize": 4279748,
+      "maxSizeFormatted": "4.08 MB",
+      "percentageOfTotal": 0.06
+    },
+    {
+      "extension": "css",
+      "fileCount": 593,
+      "totalSize": 7617518,
+      "totalSizeFormatted": "7.26 MB",
+      "averageSize": 12846,
+      "averageSizeFormatted": "12.54 KB",
+      "maxSize": 242273,
+      "maxSizeFormatted": "236.59 KB",
+      "percentageOfTotal": 0.01
+    }
+  ],
+  "topDirectories": []
+}

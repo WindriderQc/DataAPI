@@ -17,16 +17,26 @@ class Scanner extends EventEmitter {
     const start = new Date();
     const includeExt = new Set((opts.includeExt || []).map(s => s.toLowerCase()));
     const batchSize = Number(opts.batchSize || 1000);
-    let counts = { files_seen: 0, upserts: 0, skipped: 0, errors: 0 };
+    let counts = { files_seen: 0, upserts: 0, skipped: 0, errors: 0, batches: 0 };
     let batch = [];
 
     const updateScan = (patch) =>
       scansCol.updateOne({ _id: opts.scanId }, { $set: patch }, { upsert: true });
 
-    await updateScan({ status: 'running', started_at: start, counts, roots: opts.roots });
+    await updateScan({ 
+      status: 'running', 
+      started_at: start, 
+      counts, 
+      config: {
+        roots: opts.roots,
+        extensions: opts.includeExt || [],
+        batch_size: batchSize
+      }
+    });
 
     async function flush() {
       if (!batch.length) return;
+      counts.batches++; // Increment batch counter
       try {
         const res = await filesCol.bulkWrite(batch, { ordered: false });
         counts.upserts += (res.upsertedCount || 0) + (res.modifiedCount || 0);

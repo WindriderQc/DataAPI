@@ -4,6 +4,29 @@ const { ObjectId } = require('mongodb');
 // Track running scans so they can be stopped
 const runningScans = new Map();
 
+// Cleanup stale "running" scans on module load (server restart)
+async function cleanupStaleScansFn(db) {
+  try {
+    const result = await db.collection('nas_scans').updateMany(
+      { status: 'running' },
+      { 
+        $set: { 
+          status: 'stopped',
+          finished_at: new Date()
+        } 
+      }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[Storage] Cleaned up ${result.modifiedCount} stale running scan(s) from previous session`);
+    }
+  } catch (error) {
+    console.error('[Storage] Error cleaning up stale scans:', error);
+  }
+}
+
+// Export cleanup function to be called during app initialization
+const cleanupStaleScans = cleanupStaleScansFn;
+
 const scan = async (req, res, next) => {
   try {
     const { roots, extensions, batch_size } = req.body;
@@ -98,11 +121,15 @@ const getStatus = async (req, res, next) => {
     res.json({
       status: 'success',
       data: {
-        scan_id: scanDoc._id,
+        _id: scanDoc._id,
         status: scanDoc.status,
         live: runningScans.has(scan_id), // Indicate if scan is actively running
         counts: scanDoc.counts,
-        roots: scanDoc.roots,
+        config: scanDoc.config || {
+          roots: scanDoc.roots || [],
+          extensions: [],
+          batch_size: null
+        },
         started_at: scanDoc.started_at,
         finished_at: scanDoc.finished_at,
         last_error: scanDoc.last_error
@@ -218,5 +245,6 @@ module.exports = {
   getStatus,
   stopScan,
   listScans,
-  getDirectoryCount
+  getDirectoryCount,
+  cleanupStaleScans
 };
