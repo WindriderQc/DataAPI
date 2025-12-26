@@ -29,7 +29,7 @@ const cleanupStaleScans = cleanupStaleScansFn;
 
 const scan = async (req, res, next) => {
   try {
-    const { roots, extensions, batch_size } = req.body;
+    const { roots, extensions, batch_size, compute_hashes, hash_max_size } = req.body;
 
     if (!roots || !extensions) {
       return res.status(400).json({
@@ -74,7 +74,10 @@ const scan = async (req, res, next) => {
       roots, 
       includeExt: extensions,
       batchSize: batch_size || 1000,
-      scanId: scan_id
+      scanId: scan_id,
+      // Hashing options for Datalake Janitor deduplication
+      computeHashes: compute_hashes === true,
+      hashMaxSize: hash_max_size || 100 * 1024 * 1024 // Default: 100MB
     });
 
     res.json({
@@ -84,7 +87,9 @@ const scan = async (req, res, next) => {
         scan_id,
         roots,
         extensions,
-        batch_size: batch_size || 1000
+        batch_size: batch_size || 1000,
+        compute_hashes: compute_hashes === true,
+        hash_max_size: hash_max_size || 100 * 1024 * 1024
       }
     });
   } catch (error) {

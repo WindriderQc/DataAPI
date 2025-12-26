@@ -1,6 +1,24 @@
 const fs = require('fs/promises');
+const { createReadStream } = require('fs');
+const { createHash } = require('crypto');
 const path = require('path');
 const EventEmitter = require('events');
+
+/**
+ * Compute SHA256 hash of a file using streaming (memory-efficient)
+ * @param {string} filePath - Path to file
+ * @returns {Promise<string>} - Hex-encoded SHA256 hash
+ */
+async function computeFileHash(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = createReadStream(filePath);
+    
+    stream.on('data', (data) => hash.update(data));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', reject);
+  });
+}
 
 class Scanner extends EventEmitter {
   constructor(db) {
@@ -17,7 +35,12 @@ class Scanner extends EventEmitter {
     const start = new Date();
     const includeExt = new Set((opts.includeExt || []).map(s => s.toLowerCase()));
     const batchSize = Number(opts.batchSize || 1000);
-    let counts = { files_seen: 0, upserts: 0, skipped: 0, errors: 0, batches: 0 };
+    
+    // Hashing options (for Datalake Janitor deduplication)
+    const computeHashes = opts.computeHashes === true;
+    const hashMaxSize = Number(opts.hashMaxSize || 100 * 1024 * 1024); // Default: skip files > 100MB
+    
+    let counts = { files_seen: 0, upserts: 0, skipped: 0, errors: 0, batches: 0, hashed: 0 };
     let batch = [];
 
     const updateScan = (patch) =>
@@ -30,10 +53,13 @@ class Scanner extends EventEmitter {
       config: {
         roots: opts.roots,
         extensions: opts.includeExt || [],
-        batch_size: batchSize
+        batch_size: batchSize,
+        compute_hashes: computeHashes,
+        hash_max_size: hashMaxSize
       }
     });
 
+    const self = this;
     async function flush() {
       if (!batch.length) return;
       counts.batches++; // Increment batch counter
@@ -81,6 +107,17 @@ class Scanner extends EventEmitter {
           mtime: Math.floor(st.mtimeMs / 1000),
           scan_seen_at: new Date()
         };
+
+        // Compute SHA256 hash if enabled and file is under size limit
+        if (computeHashes && st.size <= hashMaxSize) {
+          try {
+            d.sha256 = await computeFileHash(p);
+            counts.hashed++;
+          } catch (hashErr) {
+            // Log hash error but continue - don't fail the scan
+            d.hash_error = String(hashErr.message || hashErr);
+          }
+        }
 
         batch.push({
           updateOne: {
