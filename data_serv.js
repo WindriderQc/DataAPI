@@ -13,12 +13,12 @@ const liveDatas = require('./scripts/liveData.js');
 const config = require('./config/config');
 const pjson = require('./package.json');
 const seedData = require('./scripts/bootstrap');
+const setupAppContext = require('./utils/appContext');
 
 // add missing imports used in this file
 const { log } = require('./utils/logger');
 const { logEvent } = require('./utils/eventLogger');
 const { GeneralError } = require('./utils/errors');
-const createUserModel = require('./models/userModel');
 const { attachUser, requireAuth } = require('./utils/auth');
 const createIntegrationsRouter = require('./routes/integrations');
 const { requireToolKey } = require('./middleware/toolAuth');
@@ -89,30 +89,11 @@ async function createApp() {
     const dbConnection = await mdb.init();
 
     try {
-        log("Assigning dbs to app.locals...");
-        // The dbs object now contains main and data properties for direct access
-        app.locals.dbs = dbConnection.dbs;
-
-        // Expose the underlying Mongo client for accessing auxiliary databases.
-        app.locals.mongoClient = dbConnection.client;
-
-        // Provide a convenient handle to the SBQC database when available. The
-        // database will be lazily created by MongoDB if it doesn't already
-        // exist, so this is safe even in development environments.
-        if (app.locals.mongoClient) {
-            app.locals.dbs.sbqcDb = app.locals.mongoClient.db('SBQC');
-        }
-
-        log("DB assigned: mainDb");
-        try {
-            const activeName = app.locals.dbs.mainDb && app.locals.dbs.mainDb.databaseName ? app.locals.dbs.mainDb.databaseName : config.db.mainDb;
-            log(`Active database name: ${activeName}`);
-        } catch (e) {
-            // ignore logging errors
-        }
+        // Setup app context (DB handles, models, collections)
+        await setupAppContext(app, dbConnection);
 
         // Insert boot log into the main application database
-            if (config.env !== 'test') {
+        if (config.env !== 'test') {
             const userLogsCollection = app.locals.dbs.mainDb.collection('userLogs');
             await userLogsCollection.insertOne({
                 logType: 'boot',
@@ -126,27 +107,6 @@ async function createApp() {
             });
             log("Boot log inserted.");
         }
-
-        // Fetch and log collection info for all dbs
-        app.locals.collectionInfo = [];
-        for (const dbName in app.locals.dbs) {
-            const db = app.locals.dbs[dbName];
-            if (db) {
-                const collections = await db.listCollections().toArray();
-                for (const coll of collections) {
-                    const count = await db.collection(coll.name).countDocuments();
-                    const resolvedName = db.databaseName || dbName;
-                    app.locals.collectionInfo.push({ db: resolvedName, collection: coll.name, count: count });
-                }
-            }
-        }
-        log(`Collection Info for all dbs has been gathered.`);
-
-        // Initialize and attach models to app.locals
-        app.locals.models = {
-            User: createUserModel(dbConnection.mongooseConnection)
-        };
-        log("Models initialized and attached to app.locals.");
 
         // Run bootstrap/seed logic
         await seedData(app);

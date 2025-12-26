@@ -195,7 +195,11 @@ router.get('/databases/copy-progress/:jobId', (req, res) => {
     });
 });
 
-router.post('/weather/register-location', requireAuth, weatherController.registerLocation);
+router.post('/weather/register-location', [
+    requireAuth,
+    body('lat').optional().isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+    body('lon').optional().isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180')
+], weatherController.registerLocation);
 
 // LiveData Configuration
 router.get('/livedata/config', requireAuth, liveDataConfigController.getConfigs);
