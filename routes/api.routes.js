@@ -222,6 +222,131 @@ router.post('/janitor/mark-for-deletion', requireEitherAuth, fileBrowserControll
 router.get('/janitor/pending-deletions', requireEitherAuth, fileBrowserController.getPendingDeletions);
 router.delete('/janitor/confirm-deletion/:id', requireEitherAuth, fileBrowserController.confirmDeletion);
 
+// RAG-ready file metadata endpoints (for embedding and semantic search)
+router.get('/rag/file-metadata', requireEitherAuth, async (req, res) => {
+  try {
+    const db = req.app.locals.dbs.mainDb;
+    const files = db.collection('nas_files');
+    
+    const { limit = 100, skip = 0, extensions } = req.query;
+    
+    const filter = {};
+    if (extensions) {
+      const extArray = extensions.split(',').map(e => e.trim().toLowerCase());
+      filter.ext = { $in: extArray };
+    }
+    
+    const results = await files
+      .find(filter)
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
+      .project({
+        _id: 1,
+        path: { $concat: ['$dirname', '$filename'] },
+        filename: 1,
+        dirname: 1,
+        ext: 1,
+        size: 1,
+        mtime: 1,
+        sha256: 1
+      })
+      .toArray();
+    
+    // Format for RAG embedding
+    const embeddingReady = results.map(file => ({
+      id: file._id.toString(),
+      path: file.path,
+      filename: file.filename,
+      directory: file.dirname,
+      extension: file.ext,
+      size: file.size,
+      modified: new Date(file.mtime * 1000).toISOString(),
+      hash: file.sha256 || null,
+      // Construct text representation for embedding
+      text: `File: ${file.filename} (${file.ext}) in ${file.dirname}. Size: ${file.size} bytes. Modified: ${new Date(file.mtime * 1000).toISOString()}`
+    }));
+    
+    res.json({
+      status: 'success',
+      data: {
+        files: embeddingReady,
+        count: embeddingReady.length,
+        hasMore: embeddingReady.length === parseInt(limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+});
+
+router.post('/rag/file-metadata/batch', requireEitherAuth, async (req, res) => {
+  try {
+    const db = req.app.locals.dbs.mainDb;
+    const files = db.collection('nas_files');
+    
+    const { file_ids } = req.body;
+    
+    if (!Array.isArray(file_ids)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'file_ids must be an array of ObjectIds'
+      });
+    }
+    
+    const { ObjectId } = require('mongodb');
+    const objectIds = file_ids.map(id => {
+      try {
+        return new ObjectId(id);
+      } catch (e) {
+        return null;
+      }
+    }).filter(id => id !== null);
+    
+    const results = await files
+      .find({ _id: { $in: objectIds } })
+      .project({
+        _id: 1,
+        path: { $concat: ['$dirname', '$filename'] },
+        filename: 1,
+        dirname: 1,
+        ext: 1,
+        size: 1,
+        mtime: 1,
+        sha256: 1
+      })
+      .toArray();
+    
+    const embeddingReady = results.map(file => ({
+      id: file._id.toString(),
+      path: file.path,
+      filename: file.filename,
+      directory: file.dirname,
+      extension: file.ext,
+      size: file.size,
+      modified: new Date(file.mtime * 1000).toISOString(),
+      hash: file.sha256 || null,
+      text: `File: ${file.filename} (${file.ext}) in ${file.dirname}. Size: ${file.size} bytes. Modified: ${new Date(file.mtime * 1000).toISOString()}`
+    }));
+    
+    res.json({
+      status: 'success',
+      data: {
+        files: embeddingReady,
+        requested: file_ids.length,
+        found: embeddingReady.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+});
+
 // File exports (protected - editor/admin only, accepts API key or session)
 router.post('/files/export', requireEitherAuth, fileExportController.generateReport);
 router.get('/files/exports', requireEitherAuth, fileExportController.listExports);
