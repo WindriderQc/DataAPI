@@ -114,34 +114,38 @@ exports.update = async (req, res, next) => {
     const { User } = req.app.locals.models;
     try {
         const updateData = { ...req.body };
-        
+
+        const user = await User.findById(req.params.id);
+        if (!user) return next(new NotFoundError('User not found'));
+
         // Handle password update with confirmation
         if (updateData.password) {
             // Validate password length
             if (updateData.password.length < 6) {
                 return next(new BadRequest('Password must be at least 6 characters long.'));
             }
-            
+
             // Validate password confirmation
             if (updateData.password !== updateData.confirmPassword) {
                 return next(new BadRequest('Passwords do not match.'));
             }
-            
-            // Password will be hashed by the User model's pre-save hook
+
+            user.password = updateData.password;
             // Remove confirmPassword as it's not a model field
-            delete updateData.confirmPassword;
-        } else {
-            // If no password provided, remove both fields
-            delete updateData.password;
-            delete updateData.confirmPassword;
         }
-        
-        const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true });
-        if (!user) return next(new NotFoundError('User not found'));
-        
+
+        // Remove password fields from updateData before applying other updates
+        delete updateData.password;
+        delete updateData.confirmPassword;
+
+        // Apply other updates
+        Object.assign(user, updateData);
+
+        await user.save();
+
         const userResponse = user.toObject();
         delete userResponse.password;
-        
+
         res.json({
             status: 'success',
             message: 'User updated successfully',

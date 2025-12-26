@@ -108,6 +108,28 @@ async function createApp() {
             log("Boot log inserted.");
         }
 
+        // Fetch and log collection info for all dbs
+        app.locals.collectionInfo = [];
+        for (const dbName in app.locals.dbs) {
+            const db = app.locals.dbs[dbName];
+            if (db) {
+                const collections = await db.listCollections().toArray();
+                for (const coll of collections) {
+                    const count = await db.collection(coll.name).countDocuments();
+                    const resolvedName = db.databaseName || dbName;
+                    app.locals.collectionInfo.push({ db: resolvedName, collection: coll.name, count: count });
+                }
+            }
+        }
+        log(`Collection Info for all dbs has been gathered.`);
+
+        // Initialize and attach models to app.locals
+        app.locals.models = {
+            User: createUserModel(dbConnection.mongooseConnection),
+            Profile: require('./models/profileModel')
+        };
+        log("Models initialized and attached to app.locals.");
+
         // Run bootstrap/seed logic
         await seedData(app);
 
@@ -152,11 +174,11 @@ async function createApp() {
             req.skipSession = true;
             return next();
         }
-        
+
         // Apply session middleware for web/browser requests
         session(sessionOptions)(req, res, next);
     });
-    
+
     // Attach user to res.locals for all routes (web pages need this for templates)
     app.use((req, res, next) => {
         if (req.skipSession) {
@@ -181,7 +203,7 @@ async function createApp() {
 
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
     app.use('/api/', apiLimiter);
-    
+
     // Session-based (browser) routes for database access (no API key required)
     app.get('/databases/stats', (req, res) => {
         const stats = app.locals.collectionInfo || [];
@@ -226,7 +248,7 @@ async function createApp() {
         // For unhandled errors, log them as critical events for the feed.
         // Emit a concise message to the feed (so public subscribers see a short description),
         // and keep the full stack in the server logs for debugging.
-        const shortMsg = err && err.message ? `Internal server error: ${String(err.message).split('\n')[0].slice(0,200)}` : 'An internal server error occurred.';
+        const shortMsg = err && err.message ? `Internal server error: ${String(err.message).split('\n')[0].slice(0, 200)}` : 'An internal server error occurred.';
         try {
             const stack = err && err.stack ? String(err.stack) : undefined;
             const meta = { path: req && req.originalUrl ? req.originalUrl : undefined };
@@ -295,14 +317,14 @@ async function createApp() {
         };
         process.on('uncaughtException', async (err) => {
             log(`Uncaught exception: ${err && err.stack ? err.stack : err}`, 'error');
-            try { await close(); } catch (e) {}
+            try { await close(); } catch (e) { }
             // allow process to exit with non-zero after cleanup
             setTimeout(() => process.exit(1), 50);
         });
 
         process.on('unhandledRejection', async (reason) => {
             log(`Unhandled rejection: ${reason}`, 'error');
-            try { await close(); } catch (e) {}
+            try { await close(); } catch (e) { }
             setTimeout(() => process.exit(1), 50);
         });
 

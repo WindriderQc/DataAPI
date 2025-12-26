@@ -101,33 +101,28 @@ exports.assignProfileToUser = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { profileId } = req.body;
+        const { User } = req.app.locals.models;
+        const { mainDb } = req.app.locals.dbs; // Keep for profile check if needed, or use model
 
-        const db = req.app.locals.dbs.mainDb;
-        const normalizedProfileId = normalizeObjectId(profileId, 'profileId');
-        const normalizedUserId = normalizeObjectId(id, 'id');
+        // Validate Profile Existence (could also use Profile model if exposed in locals, or import it)
+        const profile = await Profiles.findById(profileId);
+        if (!profile) return next(new NotFoundError('Profile not found'));
 
-        const prof = await db.collection('profiles').findOne({ _id: normalizedProfileId });
-        if (!prof) return next(new NotFoundError('Profile not found'));
-
-        const updateResult = await db.collection('users').updateOne(
-            { _id: normalizedUserId },
-            { $set: { profileId: normalizedProfileId } }
+        // Update User
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { profileId: profileId },
+            { new: true }
         );
 
-        if (!updateResult.matchedCount) {
+        if (!updatedUser) {
             return next(new NotFoundError('User not found'));
         }
 
-        const updatedDoc = await db.collection('users').findOne({ _id: normalizedUserId });
+        const userObj = updatedUser.toObject();
+        delete userObj.password;
 
-        const updatedUser = {
-            ...updatedDoc,
-            _id: updatedDoc && updatedDoc._id ? updatedDoc._id.toString() : updatedDoc && updatedDoc._id,
-            profileId:
-                updatedDoc && updatedDoc.profileId ? updatedDoc.profileId.toString() : updatedDoc && updatedDoc.profileId
-        };
-
-        res.json({ status: 'success', message: 'Profile assigned', data: updatedUser });
+        res.json({ status: 'success', message: 'Profile assigned', data: userObj });
     } catch (err) {
         next(err);
     }

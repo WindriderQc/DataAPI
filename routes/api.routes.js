@@ -11,12 +11,14 @@ const feedController = require('../controllers/feedController');
 const storageController = require('../controllers/storageController');
 const fileBrowserController = require('../controllers/fileBrowserController');
 const fileExportController = require('../controllers/fileExportController');
-const { generateOptimizedReport } = require('../controllers/fileExportControllerOptimized');
+const { generateOptimizedReport } = require('../controllers/fileExportController');
+// const externalApiController = require('../controllers/externalApiController'); // Keeping this as is per file content check
 const externalApiController = require('../controllers/externalApiController');
 
 // New imports from PR
 const databasesController = require('../controllers/databasesController');
 const { requireAuth } = require('../utils/auth');
+const { requireRole } = require('../middleware/rbac');
 const chatkitController = require('../controllers/chatkitController');
 const weatherController = require('../controllers/weatherController');
 const ollamaController = require('../controllers/ollamaController');
@@ -24,27 +26,27 @@ const liveDataConfigController = require('../controllers/liveDataConfigControlle
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'DataAPI tool server is running'
-  });
+    res.json({
+        status: 'success',
+        message: 'DataAPI tool server is running'
+    });
 });
 
 // Deterministic geolocation response for tests; real fetch in non-test env.
 router.get('/geolocation', async (req, res) => {
-  if (process.env.NODE_ENV === 'test') {
-    return res.json({ country: 'TestCountry' });
-  }
+    if (process.env.NODE_ENV === 'test') {
+        return res.json({ country: 'TestCountry' });
+    }
 
-  try {
-    const ipifyResponse = await fetchWithTimeoutAndRetry('https://api64.ipify.org?format=json', { timeout: 4000, retries: 1, name: 'ipify' });
-    const { ip: publicIp } = await ipifyResponse.json();
-    const geoResponse = await fetchWithTimeoutAndRetry(`http://ip-api.com/json/${publicIp}`, { timeout: 4000, retries: 1, name: 'ip-api.com' });
-    const geo = await geoResponse.json();
-    return res.json(geo);
-  } catch (error) {
-    return res.status(500).json({ error: 'Error fetching geolocation', details: error && error.message ? error.message : String(error) });
-  }
+    try {
+        const ipifyResponse = await fetchWithTimeoutAndRetry('https://api64.ipify.org?format=json', { timeout: 4000, retries: 1, name: 'ipify' });
+        const { ip: publicIp } = await ipifyResponse.json();
+        const geoResponse = await fetchWithTimeoutAndRetry(`http://ip-api.com/json/${publicIp}`, { timeout: 4000, retries: 1, name: 'ip-api.com' });
+        const geo = await geoResponse.json();
+        return res.json(geo);
+    } catch (error) {
+        return res.status(500).json({ error: 'Error fetching geolocation', details: error && error.message ? error.message : String(error) });
+    }
 });
 
 // Mew endpoints (legacy + v2)
@@ -57,13 +59,13 @@ router.post('/v2/mews', [body('name').trim().escape(), body('content').trim().es
 // Scoped generic CRUD for specific collections (replaces the dangerous catch-all)
 const alarmsController = genericController('alarms');
 router.route('/alarms')
-  .get((req, res, next) => alarmsController.getAll(req, res, next))
-  .post((req, res, next) => alarmsController.create(req, res, next));
+    .get((req, res, next) => alarmsController.getAll(req, res, next))
+    .post((req, res, next) => alarmsController.create(req, res, next));
 
 const checkinsController = genericController('checkins');
 router.route('/checkins')
-  .get((req, res, next) => checkinsController.getAll(req, res, next))
-  .post((req, res, next) => checkinsController.create(req, res, next));
+    .get((req, res, next) => checkinsController.getAll(req, res, next))
+    .post((req, res, next) => checkinsController.create(req, res, next));
 
 // Logs (used by tooling/tests)
 router.get('/logs/user', logController.getUserLogs);
@@ -75,62 +77,62 @@ router.post('/logs/server', [body('*').escape()], logController.createServerLog)
 router.get('/v2/logs', logController.getLogsForSource);
 router.get('/v2/logs/countries', logController.getCountryCounts);
 
-// Storage scan routes
-router.get('/storage/scans', storageController.listScans);
-router.post('/storage/scan', storageController.scan);
-router.get('/storage/status/:scan_id', storageController.getStatus);
-router.post('/storage/stop/:scan_id', storageController.stopScan);
-router.get('/storage/directory-count', storageController.getDirectoryCount);
+// Storage scan routes (protected - editor/admin only)
+router.get('/storage/scans', requireAuth, requireRole('editor', 'admin'), storageController.listScans);
+router.post('/storage/scan', requireAuth, requireRole('editor', 'admin'), storageController.scan);
+router.get('/storage/status/:scan_id', requireAuth, requireRole('editor', 'admin'), storageController.getStatus);
+router.post('/storage/stop/:scan_id', requireAuth, requireRole('editor', 'admin'), storageController.stopScan);
+router.get('/storage/directory-count', requireAuth, requireRole('editor', 'admin'), storageController.getDirectoryCount);
 
-// File browser routes
-router.get('/files/browse', fileBrowserController.browseFiles);
+// File browser routes (protected - user/editor/admin)
+router.get('/files/browse', requireAuth, requireRole('user', 'editor', 'admin'), fileBrowserController.browseFiles);
 // router.get('/files/search', fileBrowserController.search); // Consolidating, 'browseFiles' supports search
-router.get('/files/stats', fileBrowserController.getStats);
-router.get('/files/tree', fileBrowserController.getDirectoryTree);
-router.get('/files/duplicates', fileBrowserController.findDuplicates);
-router.get('/files/cleanup-recommendations', fileBrowserController.getCleanupRecommendations);
+router.get('/files/stats', requireAuth, requireRole('user', 'editor', 'admin'), fileBrowserController.getStats);
+router.get('/files/tree', requireAuth, requireRole('user', 'editor', 'admin'), fileBrowserController.getDirectoryTree);
+router.get('/files/duplicates', requireAuth, requireRole('editor', 'admin'), fileBrowserController.findDuplicates);
+router.get('/files/cleanup-recommendations', requireAuth, requireRole('editor', 'admin'), fileBrowserController.getCleanupRecommendations);
 
-// File exports
-router.post('/files/export', fileExportController.generateReport);
-router.get('/files/exports', fileExportController.listExports);
-router.delete('/files/exports/:filename', fileExportController.deleteExport);
+// File exports (protected - editor/admin only)
+router.post('/files/export', requireAuth, requireRole('editor', 'admin'), fileExportController.generateReport);
+router.get('/files/exports', requireAuth, requireRole('editor', 'admin'), fileExportController.listExports);
+router.delete('/files/exports/:filename', requireAuth, requireRole('admin'), fileExportController.deleteExport);
 
-// Optimized exports (fixes 20MB issue)
-router.get('/files/export-optimized/:type', async (req, res) => {
-  try {
-    const { type } = req.params;
-    const validTypes = ['full', 'summary', 'media', 'stats'];
+// Optimized exports (fixes 20MB issue) - protected
+router.get('/files/export-optimized/:type', requireAuth, requireRole('editor', 'admin'), async (req, res) => {
+    try {
+        const { type } = req.params;
+        const validTypes = ['full', 'summary', 'media', 'stats'];
 
-    if (!validTypes.includes(type)) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Invalid report type. Must be one of: ${validTypes.join(', ')}`
-      });
+        if (!validTypes.includes(type)) {
+            return res.status(400).json({
+                status: 'error',
+                message: `Invalid report type. Must be one of: ${validTypes.join(', ')}`
+            });
+        }
+
+        const startTime = Date.now();
+        const report = await generateOptimizedReport(req.app.locals.dbs.mainDb, type);
+        const generationTime = Date.now() - startTime;
+
+        report.metadata = {
+            generationTimeMs: generationTime,
+            optimized: true,
+            timestamp: new Date().toISOString()
+        };
+
+        res.json({
+            status: 'success',
+            message: `Optimized ${type} report generated successfully`,
+            data: report
+        });
+    } catch (error) {
+        console.error('Optimized export error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to generate optimized report',
+            error: error.message
+        });
     }
-
-    const startTime = Date.now();
-    const report = await generateOptimizedReport(req.app.locals.dbs.mainDb, type);
-    const generationTime = Date.now() - startTime;
-
-    report.metadata = {
-      generationTimeMs: generationTime,
-      optimized: true,
-      timestamp: new Date().toISOString()
-    };
-
-    res.json({
-      status: 'success',
-      message: `Optimized ${type} report generated successfully`,
-      data: report
-    });
-  } catch (error) {
-    console.error('Optimized export error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to generate optimized report',
-      error: error.message
-    });
-  }
 });
 
 // Live data
@@ -149,8 +151,8 @@ router.post('/chatkit/message', requireAuth, chatkitController.sendChatMessage);
 // Create realtime voice session for admin chat
 router.post('/chatkit/realtime-session', requireAuth, chatkitController.createRealtimeSession);
 
-// Database management routes
-router.post('/databases/copy-prod-to-dev', databasesController.copyProdToDev);
+// Database management routes (admin only)
+router.post('/databases/copy-prod-to-dev', requireAuth, requireRole('admin'), databasesController.copyProdToDev);
 
 // Server-Sent Events endpoint for copy progress
 router.get('/databases/copy-progress/:jobId', (req, res) => {
@@ -242,7 +244,7 @@ router.get('/collection/:name/items', async (req, res, next) => {
     try {
         const { name } = req.params;
         const db = req.app.locals.dbs?.mainDb;
-        
+
         if (!db) {
             return res.status(500).json({
                 status: 'error',
@@ -262,34 +264,34 @@ router.get('/collection/:name/items', async (req, res, next) => {
 
         // Validate collection name exists in collectionInfo
         const allowedCollections = req.app.locals.collectionInfo || [];
-        const collectionExists = allowedCollections.some(c => 
+        const collectionExists = allowedCollections.some(c =>
             (c.collection === name || c.name === name)
         );
-        
+
         if (!collectionExists) {
             return res.status(404).json({
                 status: 'error',
                 message: `Collection '${name}' not found`
             });
         }
-        
+
         const collection = db.collection(name);
-        
+
         // Parse pagination parameters
         let { skip = 0, limit = 50, sort = 'desc' } = req.query;
         skip = parseInt(skip) || 0;
         limit = parseInt(limit) || 50;
         skip = skip < 0 ? 0 : skip;
         limit = Math.min(500, Math.max(1, limit)); // Clamp limit between 1 and 500
-        
+
         const sortBy = sort === 'desc' ? -1 : 1;
-        
+
         // Execute query with pagination
         const [total, documents] = await Promise.all([
             collection.countDocuments(),
             collection.find({}).skip(skip).limit(limit).sort({ _id: sortBy }).toArray()
         ]);
-        
+
         res.json({
             status: 'success',
             message: 'Documents retrieved successfully',

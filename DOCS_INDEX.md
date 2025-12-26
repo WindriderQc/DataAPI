@@ -34,9 +34,18 @@ Quick navigation for DataAPI documentation.
 
 - **[AGENTS.md](AGENTS.md)** - Guidelines for AI agents working on this codebase
 
+## 🔐 Security & Access Control
+
+- **[RBAC_MATRIX.md](RBAC_MATRIX.md)** - Role-based access control documentation
+  - Role definitions (admin, editor, user, guest)
+  - Permission matrix
+  - Protected endpoints reference
+  - Usage examples
+
 ## 📖 General
 
 - **[README.md](README.md)** - Project overview and features
+- **[CODEBASE_REVIEW.md](CODEBASE_REVIEW.md)** - Architecture review and refactoring report
 
 ---
 
