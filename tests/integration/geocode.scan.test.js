@@ -1,4 +1,4 @@
-const { scanAndEnqueue } = require('../scripts/geocodeWorker');
+const { scanAndEnqueue } = require('../../scripts/geocodeWorker');
 
 // No beforeAll/afterAll needed, handled by global setup
 

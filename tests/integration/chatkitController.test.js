@@ -34,7 +34,7 @@ describe.skip('chatkitController.createSessionToken', () => {
 
     it('returns 400 when no agent id is provided', async () => {
         jest.resetModules();
-        const { createSessionToken } = require('../controllers/chatkitController');
+        const { createSessionToken } = require('../../controllers/chatkitController');
         const { req, res } = createReqRes();
 
         await createSessionToken(req, res);
@@ -49,7 +49,7 @@ describe.skip('chatkitController.createSessionToken', () => {
     it('returns 500 when API key is missing', async () => {
         process.env.CHATKIT_AGENT_ID = 'agent-123';
         jest.resetModules();
-        const { createSessionToken } = require('../controllers/chatkitController');
+        const { createSessionToken } = require('../../controllers/chatkitController');
         const { req, res } = createReqRes();
 
         await createSessionToken(req, res);
@@ -80,7 +80,7 @@ describe.skip('chatkitController.createSessionToken', () => {
         });
 
         jest.resetModules();
-        const { createSessionToken } = require('../controllers/chatkitController');
+        const { createSessionToken } = require('../../controllers/chatkitController');
         const { req, res } = createReqRes({ agentId }, { userId: 'user-1' }, { email: 'admin@example.com' });
 
         await createSessionToken(req, res);
@@ -115,7 +115,7 @@ describe.skip('chatkitController.createSessionToken', () => {
         });
 
         jest.resetModules();
-        const { createSessionToken } = require('../controllers/chatkitController');
+        const { createSessionToken } = require('../../controllers/chatkitController');
         const { req, res } = createReqRes({ agentId });
 
         await createSessionToken(req, res);
