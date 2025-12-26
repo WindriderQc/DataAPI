@@ -9,8 +9,17 @@ async function seedData(app) {
     const db = app.locals.dbs.mainDb;
 
     try {
-        // Ensure default location is configured for weather tracking
+        // Create Indexes
+        const nasFilesCollection = db.collection('nas_files');
+        await nasFilesCollection.createIndex({ dirname: 1, filename: 1 });
+        await nasFilesCollection.createIndex({ size: 1 });
+        await nasFilesCollection.createIndex({ mtime: 1 });
+        log('Indexes created for nas_files.');
+
         const weatherLocationsCollection = db.collection('weatherLocations');
+        await weatherLocationsCollection.createIndex({ lat: 1, lon: 1 }, { unique: true });
+
+        // Ensure default location is configured for weather tracking
         const defaultLocation = { lat: 46.8138, lon: -71.208 };
         const existingLocation = await weatherLocationsCollection.findOne(defaultLocation);
         if (!existingLocation) {

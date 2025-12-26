@@ -19,7 +19,8 @@ describe('Weather Controller', () => {
                         }
                     }
                 }
-            }
+            },
+            body: {} // Initialize body
         };
         res = {
             locals: {
@@ -41,6 +42,18 @@ describe('Weather Controller', () => {
         expect(mockCollection.insertOne).toHaveBeenCalledWith({ lat: 45.5, lon: -73.5 });
         expect(res.status).toHaveBeenCalledWith(201);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
+    });
+
+    it('should register a provided location from body', async () => {
+        req.body = { lat: 10.0, lon: 20.0 };
+        mockCollection.findOne.mockResolvedValue(null);
+        mockCollection.insertOne.mockResolvedValue({});
+
+        await weatherController.registerLocation(req, res, next);
+
+        expect(mockCollection.findOne).toHaveBeenCalledWith({ lat: 10.0, lon: 20.0 });
+        expect(mockCollection.insertOne).toHaveBeenCalledWith({ lat: 10.0, lon: 20.0 });
+        expect(res.status).toHaveBeenCalledWith(201);
     });
 
     it('should not register if location already exists', async () => {

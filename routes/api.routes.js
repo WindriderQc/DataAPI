@@ -195,7 +195,11 @@ router.get('/databases/copy-progress/:jobId', (req, res) => {
     });
 });
 
-router.post('/weather/register-location', requireAuth, weatherController.registerLocation);
+router.post('/weather/register-location', [
+    requireAuth,
+    body('lat').optional().isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+    body('lon').optional().isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180')
+], weatherController.registerLocation);
 
 // LiveData Configuration
 router.get('/livedata/config', requireAuth, liveDataConfigController.getConfigs);
@@ -233,7 +237,7 @@ router.get('/databases/stats', (req, res) => {
     });
 });
 
-// Generic collection query endpoint - allows fetching items from any collection
+// Generic collection query endpoint - allows fetching items from specific allowed collections
 router.get('/collection/:name/items', async (req, res, next) => {
     try {
         const { name } = req.params;
@@ -246,6 +250,16 @@ router.get('/collection/:name/items', async (req, res, next) => {
             });
         }
         
+        // Explicit allowed list of public collections
+        const allowedList = ['nas_files', 'mews', 'userLogs', 'serverLogs', 'checkins', 'alarms', 'weatherLocations', 'pressures', 'isses', 'quakes'];
+
+        if (!allowedList.includes(name)) {
+             return res.status(403).json({
+                status: 'error',
+                message: `Access to collection '${name}' is restricted`
+            });
+        }
+
         // Validate collection name exists in collectionInfo
         const allowedCollections = req.app.locals.collectionInfo || [];
         const collectionExists = allowedCollections.some(c => 

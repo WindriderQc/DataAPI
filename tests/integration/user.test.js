@@ -1,5 +1,5 @@
 const request = require('supertest');
-const createUserModel = require('../models/userModel');
+const createUserModel = require('../../models/userModel');
 
 describe.skip('User API', () => {
   let User; // This will hold the test-specific User model
