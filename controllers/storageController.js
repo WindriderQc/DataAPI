@@ -245,11 +245,192 @@ const getDirectoryCount = async (req, res, next) => {
   }
 };
 
+/**
+ * Batch insert files for a specific scan
+ * Used by n8n N2.1 workflow to send file batches
+ * POST /api/v1/storage/scan/:scan_id/batch
+ */
+const insertBatch = async (req, res, next) => {
+  try {
+    const { scan_id } = req.params;
+    const { files, meta } = req.body;
+
+    if (!scan_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameter: scan_id'
+      });
+    }
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'files must be a non-empty array'
+      });
+    }
+
+    const db = req.app.locals.dbs.mainDb;
+    
+    // Verify scan exists
+    const scanDoc = await db.collection('nas_scans').findOne({ _id: scan_id });
+    if (!scanDoc) {
+      return res.status(404).json({
+        status: 'error',
+        message: `Scan not found: ${scan_id}`
+      });
+    }
+
+    // Process files: normalize and upsert
+    const filesCollection = db.collection('nas_files');
+    const now = new Date();
+    
+    const bulkOps = files.map(file => {
+      // Normalize path (remove trailing slashes, etc.)
+      const normalizedPath = file.path?.replace(/\/+$/, '').trim();
+      
+      // Extract filename and extension
+      const pathParts = normalizedPath?.split('/') || [];
+      const filename = pathParts.pop() || '';
+      const dirname = pathParts.join('/') || '';
+      const dotIdx = filename.lastIndexOf('.');
+      const extension = dotIdx >= 0 ? filename.slice(dotIdx + 1).toLowerCase() : '';
+
+      return {
+        updateOne: {
+          filter: { path: normalizedPath },
+          update: {
+            $set: {
+              path: normalizedPath,
+              dirname,
+              filename,
+              extension,
+              size: file.size || 0,
+              modified: file.mtime ? new Date(file.mtime * 1000) : file.modified ? new Date(file.modified) : now,
+              scan_id,
+              updated_at: now
+            },
+            $setOnInsert: {
+              created_at: now
+            }
+          },
+          upsert: true
+        }
+      };
+    });
+
+    const result = await filesCollection.bulkWrite(bulkOps, { ordered: false });
+
+    // Update scan stats
+    await db.collection('nas_scans').updateOne(
+      { _id: scan_id },
+      {
+        $inc: {
+          'counts.files_processed': files.length,
+          'counts.inserted': result.upsertedCount || 0,
+          'counts.updated': result.modifiedCount || 0
+        },
+        $set: {
+          last_batch_at: now
+        }
+      }
+    );
+
+    res.json({
+      status: 'success',
+      message: `Processed ${files.length} files`,
+      data: {
+        scan_id,
+        batch: {
+          received: files.length,
+          inserted: result.upsertedCount || 0,
+          updated: result.modifiedCount || 0
+        },
+        meta: meta || {}
+      }
+    });
+  } catch (error) {
+    console.error('Failed to insert batch:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to insert file batch',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update scan status (used by n8n to mark complete)
+ * PATCH /api/v1/storage/scan/:scan_id
+ */
+const updateScan = async (req, res, next) => {
+  try {
+    const { scan_id } = req.params;
+    const { status, stats, completedAt } = req.body;
+
+    if (!scan_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameter: scan_id'
+      });
+    }
+
+    const db = req.app.locals.dbs.mainDb;
+    
+    // Build update object
+    const updateFields = {};
+    
+    if (status) {
+      updateFields.status = status;
+    }
+    
+    if (status === 'completed' || completedAt) {
+      updateFields.finished_at = completedAt ? new Date(completedAt) : new Date();
+    }
+    
+    if (stats) {
+      // Merge stats into counts
+      Object.entries(stats).forEach(([key, value]) => {
+        updateFields[`counts.${key}`] = value;
+      });
+    }
+
+    const result = await db.collection('nas_scans').updateOne(
+      { _id: scan_id },
+      { $set: updateFields }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: `Scan not found: ${scan_id}`
+      });
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Scan updated',
+      data: {
+        scan_id,
+        updated: updateFields
+      }
+    });
+  } catch (error) {
+    console.error('Failed to update scan:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to update scan',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scan,
   getStatus,
   stopScan,
   listScans,
   getDirectoryCount,
+  insertBatch,
+  updateScan,
   cleanupStaleScans
 };
