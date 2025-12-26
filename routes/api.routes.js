@@ -85,6 +85,11 @@ router.get('/storage/status/:scan_id', requireEitherAuth, storageController.getS
 router.post('/storage/stop/:scan_id', requireEitherAuth, storageController.stopScan);
 router.get('/storage/directory-count', requireEitherAuth, storageController.getDirectoryCount);
 
+// n8n batch operations for scans (used by N2.1 workflow)
+router.post('/storage/scan/:scan_id/batch', requireEitherAuth, storageController.insertBatch);
+router.patch('/storage/scan/:scan_id', requireEitherAuth, storageController.updateScan);
+router.get('/storage/scan/:scan_id', requireEitherAuth, storageController.getStatus); // Alias for status
+
 // Storage summary for SBQC Ops Agent
 router.get('/storage/summary', requireEitherAuth, async (req, res, next) => {
     try {

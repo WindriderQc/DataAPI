@@ -262,6 +262,7 @@ module.exports = {
             pressure: config.weather.api.interval,
         };
     },
+    getServiceState: () => ({ ...serviceState }),
     close,
     reloadConfig
 };

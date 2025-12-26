@@ -5,6 +5,7 @@ const { log } = require('../utils/logger');
 const config = require('../config/config');
 const databasesController = require('../controllers/databasesController');
 const feedController = require('../controllers/feedController');
+const liveData = require('../scripts/liveData');
 
 const normalizeBsonForView = (value) => {
     if (value === null || value === undefined) {
@@ -164,6 +165,9 @@ router.get('/dashboard', async (req, res) => {
 */
 
 router.get('/live-data', (req, res) => {
+    // Get current service state from liveData script
+    const serviceState = liveData.getServiceState();
+    
     // Normalize broker URL so frontend receives a ws:// or wss:// URL regardless of env var scheme
     let brokerUrl = config.mqtt.brokerUrl || '';
     brokerUrl = brokerUrl.trim();
@@ -173,19 +177,25 @@ router.get('/live-data', (req, res) => {
         .replace(/^http:\/\//i, 'ws://')
         .replace(/^https:\/\//i, 'wss://');
 
+    // Only provide broker URL if at least one MQTT-dependent service is enabled
+    const mqttNeeded = serviceState.iss || serviceState.weather;
+
     const mqttConfig = {
-        brokerUrl,
-        issTopic: config.mqtt.issTopic,
+        brokerUrl: mqttNeeded ? brokerUrl : null,
+        issTopic: serviceState.iss ? config.mqtt.issTopic : null,
         username: config.mqtt.username,
         password: config.mqtt.password,
-        pressureTopic: null
+        pressureTopic: null,
+        serviceState // Include service state so frontend knows what's enabled
     };
 
-    if (res.locals.user && res.locals.user.lat && res.locals.user.lon) {
-        mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/${res.locals.user.lat},${res.locals.user.lon}`;
-    } else {
-        // Default to Quebec City for non-logged-in users
-        mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/46.8138,-71.208`;
+    if (serviceState.weather) {
+        if (res.locals.user && res.locals.user.lat && res.locals.user.lon) {
+            mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/${res.locals.user.lat},${res.locals.user.lon}`;
+        } else {
+            // Default to Quebec City for non-logged-in users
+            mqttConfig.pressureTopic = `${config.mqtt.pressureTopic}/46.8138,-71.208`;
+        }
     }
 
     res.render('live-data', {
