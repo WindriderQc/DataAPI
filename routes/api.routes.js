@@ -85,6 +85,129 @@ router.get('/storage/status/:scan_id', requireEitherAuth, storageController.getS
 router.post('/storage/stop/:scan_id', requireEitherAuth, storageController.stopScan);
 router.get('/storage/directory-count', requireEitherAuth, storageController.getDirectoryCount);
 
+// Storage summary for SBQC Ops Agent
+router.get('/storage/summary', requireEitherAuth, async (req, res, next) => {
+    try {
+        const db = req.app.locals.dbs.mainDb;
+        const files = db.collection('nas_files');
+        const scans = db.collection('nas_scans');
+        
+        const [fileStats, lastScan, duplicateCount] = await Promise.all([
+            files.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalFiles: { $sum: 1 },
+                        totalSize: { $sum: '$size' },
+                        hashedFiles: { $sum: { $cond: [{ $ifNull: ['$sha256', false] }, 1, 0] } }
+                    }
+                }
+            ]).toArray(),
+            scans.findOne({}, { sort: { started_at: -1 } }),
+            files.aggregate([
+                { $match: { sha256: { $exists: true, $ne: null } } },
+                { $group: { _id: '$sha256', count: { $sum: 1 }, size: { $first: '$size' } } },
+                { $match: { count: { $gt: 1 } } },
+                { $group: { _id: null, groups: { $sum: 1 }, wasted: { $sum: { $multiply: ['$size', { $subtract: ['$count', 1] }] } } } }
+            ]).toArray()
+        ]);
+        
+        const stats = fileStats[0] || { totalFiles: 0, totalSize: 0, hashedFiles: 0 };
+        const dupes = duplicateCount[0] || { groups: 0, wasted: 0 };
+        
+        const formatBytes = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+        
+        res.json({
+            status: 'success',
+            data: {
+                totalFiles: stats.totalFiles,
+                totalSize: stats.totalSize,
+                totalSizeFormatted: formatBytes(stats.totalSize),
+                hashedFiles: stats.hashedFiles,
+                lastScan: lastScan ? {
+                    id: lastScan._id,
+                    status: lastScan.status,
+                    started_at: lastScan.started_at,
+                    finished_at: lastScan.finished_at,
+                    counts: lastScan.counts
+                } : null,
+                duplicates: {
+                    groups: dupes.groups,
+                    potentialSavings: dupes.wasted,
+                    potentialSavingsFormatted: formatBytes(dupes.wasted)
+                }
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// System health aggregation for SBQC Ops Agent
+router.get('/system/health', requireEitherAuth, async (req, res, next) => {
+    try {
+        const results = {
+            dataapi: { status: 'ok', timestamp: new Date().toISOString() },
+            mongodb: { status: 'unknown' },
+            ollama_ugfrank: { status: 'unknown', host: '192.168.2.99:11434' },
+            ollama_ugbrutal: { status: 'unknown', host: '192.168.2.12:11434' }
+        };
+        
+        // Check MongoDB
+        try {
+            await req.app.locals.dbs.mainDb.command({ ping: 1 });
+            results.mongodb = { status: 'connected' };
+        } catch (e) {
+            results.mongodb = { status: 'error', message: e.message };
+        }
+        
+        // Check Ollama hosts with timeout
+        const checkOllama = async (host) => {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
+                const response = await fetch(`http://${host}/api/tags`, { signal: controller.signal });
+                clearTimeout(timeout);
+                if (response.ok) {
+                    const data = await response.json();
+                    return { status: 'ok', models: data.models?.length || 0 };
+                }
+                return { status: 'error', message: `HTTP ${response.status}` };
+            } catch (e) {
+                return { status: 'unreachable', message: e.message };
+            }
+        };
+        
+        const [ugfrank, ugbrutal] = await Promise.all([
+            checkOllama('192.168.2.99:11434'),
+            checkOllama('192.168.2.12:11434')
+        ]);
+        
+        results.ollama_ugfrank = { ...results.ollama_ugfrank, ...ugfrank };
+        results.ollama_ugbrutal = { ...results.ollama_ugbrutal, ...ugbrutal };
+        
+        // Overall status
+        const allOk = results.mongodb.status === 'connected' && 
+                      (results.ollama_ugfrank.status === 'ok' || results.ollama_ugbrutal.status === 'ok');
+        
+        res.json({
+            status: 'success',
+            data: {
+                overall: allOk ? 'healthy' : 'degraded',
+                services: results
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // File browser routes (protected - user/editor/admin, accepts API key or session)
 router.get('/files/browse', requireEitherAuth, fileBrowserController.browseFiles);
 // router.get('/files/search', fileBrowserController.search); // Consolidating, 'browseFiles' supports search
