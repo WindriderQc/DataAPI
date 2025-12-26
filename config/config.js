@@ -76,7 +76,8 @@ const config = {
         },
     },
     mqtt: {
-        brokerUrl: process.env.MQTT_BROKER_URL || 'mqtt://broker.hivemq.com',
+        // No default - MQTT must be explicitly configured via MQTT_BROKER_URL
+        brokerUrl: process.env.MQTT_BROKER_URL || null,
         username: process.env.MQTT_USERNAME,
         password: process.env.MQTT_PASSWORD,
         issTopic: process.env.MQTT_ISS_TOPIC || 'liveData/iss',

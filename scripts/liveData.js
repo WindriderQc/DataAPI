@@ -165,7 +165,12 @@ async function init(dbConnection) {
         }
     }
 
-    mqttClient.init();
+    // Only initialize MQTT if ISS service is enabled AND broker URL is configured
+    if (serviceState.iss && process.env.MQTT_BROKER_URL) {
+        mqttClient.init();
+    } else if (serviceState.iss && !process.env.MQTT_BROKER_URL) {
+        log('[liveData] ISS enabled but MQTT_BROKER_URL not configured - skipping MQTT init', 'warn');
+    }
 
     // Do not run intervals in the test environment
     if (config.env !== 'test') {

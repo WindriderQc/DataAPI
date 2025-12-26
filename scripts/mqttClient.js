@@ -11,6 +11,12 @@ function init(options = {}) {
     return;
   }
 
+  // Do not initialize if no broker URL is configured
+  if (!brokerUrl) {
+    console.log('[MQTT] No MQTT_BROKER_URL configured - skipping initialization');
+    return;
+  }
+
   const connectOptions = {
     username: process.env.MQTT_USERNAME,
     password: process.env.MQTT_PASSWORD,
