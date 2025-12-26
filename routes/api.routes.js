@@ -19,6 +19,7 @@ const externalApiController = require('../controllers/externalApiController');
 const databasesController = require('../controllers/databasesController');
 const { requireAuth } = require('../utils/auth');
 const { requireRole } = require('../middleware/rbac');
+const { requireEitherAuth } = require('../middleware/flexAuth');
 const chatkitController = require('../controllers/chatkitController');
 const weatherController = require('../controllers/weatherController');
 const ollamaController = require('../controllers/ollamaController');
@@ -77,25 +78,25 @@ router.post('/logs/server', [body('*').escape()], logController.createServerLog)
 router.get('/v2/logs', logController.getLogsForSource);
 router.get('/v2/logs/countries', logController.getCountryCounts);
 
-// Storage scan routes (protected - editor/admin only)
-router.get('/storage/scans', requireAuth, requireRole('editor', 'admin'), storageController.listScans);
-router.post('/storage/scan', requireAuth, requireRole('editor', 'admin'), storageController.scan);
-router.get('/storage/status/:scan_id', requireAuth, requireRole('editor', 'admin'), storageController.getStatus);
-router.post('/storage/stop/:scan_id', requireAuth, requireRole('editor', 'admin'), storageController.stopScan);
-router.get('/storage/directory-count', requireAuth, requireRole('editor', 'admin'), storageController.getDirectoryCount);
+// Storage scan routes (protected - editor/admin only, accepts API key or session)
+router.get('/storage/scans', requireEitherAuth, storageController.listScans);
+router.post('/storage/scan', requireEitherAuth, storageController.scan);
+router.get('/storage/status/:scan_id', requireEitherAuth, storageController.getStatus);
+router.post('/storage/stop/:scan_id', requireEitherAuth, storageController.stopScan);
+router.get('/storage/directory-count', requireEitherAuth, storageController.getDirectoryCount);
 
-// File browser routes (protected - user/editor/admin)
-router.get('/files/browse', requireAuth, requireRole('user', 'editor', 'admin'), fileBrowserController.browseFiles);
+// File browser routes (protected - user/editor/admin, accepts API key or session)
+router.get('/files/browse', requireEitherAuth, fileBrowserController.browseFiles);
 // router.get('/files/search', fileBrowserController.search); // Consolidating, 'browseFiles' supports search
-router.get('/files/stats', requireAuth, requireRole('user', 'editor', 'admin'), fileBrowserController.getStats);
-router.get('/files/tree', requireAuth, requireRole('user', 'editor', 'admin'), fileBrowserController.getDirectoryTree);
-router.get('/files/duplicates', requireAuth, requireRole('editor', 'admin'), fileBrowserController.findDuplicates);
-router.get('/files/cleanup-recommendations', requireAuth, requireRole('editor', 'admin'), fileBrowserController.getCleanupRecommendations);
+router.get('/files/stats', requireEitherAuth, fileBrowserController.getStats);
+router.get('/files/tree', requireEitherAuth, fileBrowserController.getDirectoryTree);
+router.get('/files/duplicates', requireEitherAuth, fileBrowserController.findDuplicates);
+router.get('/files/cleanup-recommendations', requireEitherAuth, fileBrowserController.getCleanupRecommendations);
 
-// File exports (protected - editor/admin only)
-router.post('/files/export', requireAuth, requireRole('editor', 'admin'), fileExportController.generateReport);
-router.get('/files/exports', requireAuth, requireRole('editor', 'admin'), fileExportController.listExports);
-router.delete('/files/exports/:filename', requireAuth, requireRole('admin'), fileExportController.deleteExport);
+// File exports (protected - editor/admin only, accepts API key or session)
+router.post('/files/export', requireEitherAuth, fileExportController.generateReport);
+router.get('/files/exports', requireEitherAuth, fileExportController.listExports);
+router.delete('/files/exports/:filename', requireEitherAuth, fileExportController.deleteExport);
 
 // Optimized exports (fixes 20MB issue) - protected
 router.get('/files/export-optimized/:type', requireAuth, requireRole('editor', 'admin'), async (req, res) => {

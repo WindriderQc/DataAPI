@@ -130,6 +130,10 @@ async function createApp() {
         };
         log("Models initialized and attached to app.locals.");
 
+        // Cleanup stale "running" scans from previous server session
+        const storageController = require('./controllers/storageController');
+        await storageController.cleanupStaleScans(app.locals.dbs.mainDb);
+
         // Run bootstrap/seed logic
         await seedData(app);
 
@@ -202,7 +206,13 @@ async function createApp() {
     // so we initialize it only after the server has bound to the port.
 
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
-    app.use('/api/', apiLimiter);
+    // Exempt storage status endpoint from rate limiting (needs frequent polling)
+    app.use('/api/', (req, res, next) => {
+        if (req.path.startsWith('/v1/storage/status/')) {
+            return next();
+        }
+        return apiLimiter(req, res, next);
+    });
 
     // Session-based (browser) routes for database access (no API key required)
     app.get('/databases/stats', (req, res) => {

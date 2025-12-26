@@ -39,6 +39,7 @@ async function startScan() {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({
                 roots,
                 extensions,
@@ -80,7 +81,8 @@ async function stopCurrentScan() {
 
     try {
         const response = await fetch(`/api/v1/storage/stop/${currentScanId}`, {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -102,8 +104,8 @@ function startPolling() {
         clearInterval(pollInterval);
     }
     
-    // Poll every 2 seconds
-    pollInterval = setInterval(updateScanStatus, 2000);
+    // Poll every 5 seconds (avoid rate limiting)
+    pollInterval = setInterval(updateScanStatus, 5000);
     
     // Update immediately
     updateScanStatus();
@@ -122,7 +124,9 @@ async function updateScanStatus() {
     if (!currentScanId) return;
 
     try {
-        const response = await fetch(`/api/v1/storage/status/${currentScanId}`);
+        const response = await fetch(`/api/v1/storage/status/${currentScanId}`, {
+            credentials: 'include'
+        });
         const data = await response.json();
 
         if (data.status === 'success') {
@@ -213,11 +217,28 @@ function showCompletionNotification(scan) {
 
 // Load recent scans
 async function loadRecentScans() {
+    const tbody = document.getElementById('recentScansBody');
+    const refreshBtn = document.querySelector('button[onclick="loadRecentScans()"]');
+    
+    // Show loading state
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Loading...';
+    }
+    
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="8" class="text-center">
+                <i class="fa fa-spinner fa-spin"></i> Loading recent scans...
+            </td>
+        </tr>
+    `;
+    
     try {
-        const response = await fetch('/api/v1/storage/scans?limit=20');
+        const response = await fetch('/api/v1/storage/scans?limit=20', {
+            credentials: 'include'
+        });
         const data = await response.json();
-        
-        const tbody = document.getElementById('recentScansBody');
         
         if (data.status === 'success' && data.data.scans.length > 0) {
             tbody.innerHTML = data.data.scans.map(scan => {
@@ -249,6 +270,7 @@ async function loadRecentScans() {
                     </tr>
                 `;
             }).join('');
+            showNotification('Recent scans refreshed', 'success');
         } else {
             tbody.innerHTML = `
                 <tr>
@@ -260,7 +282,6 @@ async function loadRecentScans() {
         }
     } catch (error) {
         console.error('Error loading recent scans:', error);
-        const tbody = document.getElementById('recentScansBody');
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" class="text-center text-danger">
@@ -268,12 +289,185 @@ async function loadRecentScans() {
                 </td>
             </tr>
         `;
+        showNotification('Failed to refresh scans', 'danger');
+    } finally {
+        // Restore button state
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fa fa-refresh"></i> Refresh';
+        }
     }
 }
 
-// View scan details (placeholder for future enhancement)
-function viewScanDetails(scanId) {
-    alert(`View details for scan: ${scanId}\n\nThis will show:\n- Full scan configuration\n- Detailed file list\n- Error details\n- Performance metrics`);
+// View scan details in modal
+async function viewScanDetails(scanId) {
+    const modal = new bootstrap.Modal(document.getElementById('scanDetailsModal'));
+    const content = document.getElementById('scanDetailsContent');
+    
+    // Show modal with loading state
+    modal.show();
+    content.innerHTML = `
+        <div class="text-center py-5">
+            <i class="fa fa-spinner fa-spin fa-3x text-primary"></i>
+            <p class="mt-3">Loading scan details...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`/api/v1/storage/status/${scanId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const scan = data.data;
+            
+            // Calculate duration
+            let duration = '-';
+            if (scan.started_at) {
+                const start = new Date(scan.started_at);
+                const end = scan.finished_at ? new Date(scan.finished_at) : new Date();
+                duration = ((end - start) / 1000).toFixed(2) + 's';
+            }
+            
+            // Format timestamps
+            const startedAt = scan.started_at ? new Date(scan.started_at).toLocaleString() : '-';
+            const finishedAt = scan.finished_at ? new Date(scan.finished_at).toLocaleString() : '-';
+            
+            // Status badge color
+            const statusClass = scan.status === 'complete' ? 'success' 
+                              : scan.status === 'running' ? 'primary'
+                              : scan.status === 'stopped' ? 'warning'
+                              : 'secondary';
+            
+            content.innerHTML = `
+                <div class="container-fluid">
+                    <!-- Status Overview -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">Scan Overview</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>Scan ID:</strong> <code>${scan._id}</code></p>
+                                            <p><strong>Status:</strong> 
+                                                <span class="badge bg-${statusClass}">${scan.status}</span>
+                                                ${scan.live ? '<span class="badge bg-success ms-1"><i class="fa fa-circle"></i> Live</span>' : ''}
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>Started:</strong> ${startedAt}</p>
+                                            <p><strong>Finished:</strong> ${finishedAt}</p>
+                                            <p><strong>Duration:</strong> ${duration}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <i class="fa fa-file fa-2x text-primary mb-2"></i>
+                                    <h4 class="mb-0">${scan.counts?.files_seen || 0}</h4>
+                                    <small class="text-muted">Files Scanned</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <i class="fa fa-check fa-2x text-success mb-2"></i>
+                                    <h4 class="mb-0">${scan.counts?.upserts || 0}</h4>
+                                    <small class="text-muted">Upserted</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <i class="fa fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                                    <h4 class="mb-0">${scan.counts?.errors || 0}</h4>
+                                    <small class="text-muted">Errors</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <i class="fa fa-database fa-2x text-info mb-2"></i>
+                                    <h4 class="mb-0">${scan.counts?.batches || 0}</h4>
+                                    <small class="text-muted">Batches</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuration -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">Scan Configuration</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p><strong>Root Directories:</strong></p>
+                                            <ul class="small">
+                                                ${scan.config?.roots?.map(r => `<li><code>${r}</code></li>`).join('') || '<li>None specified</li>'}
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>File Extensions:</strong></p>
+                                            <p class="small">
+                                                ${scan.config?.extensions?.map(e => `<span class="badge bg-secondary me-1">${e}</span>`).join('') || 'None specified'}
+                                            </p>
+                                            <p><strong>Batch Size:</strong> ${scan.config?.batch_size || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Errors (if any) -->
+                    ${scan.counts?.errors > 0 ? `
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card border-warning">
+                                <div class="card-body">
+                                    <h6 class="card-title text-warning mb-3">
+                                        <i class="fa fa-exclamation-triangle"></i> Errors Encountered
+                                    </h6>
+                                    <div class="alert alert-warning small mb-0">
+                                        This scan encountered ${scan.counts.errors} error(s). 
+                                        Check the server logs for detailed error information.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fa fa-exclamation-triangle"></i> Failed to load scan details: ${data.message}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error fetching scan details:', error);
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fa fa-exclamation-triangle"></i> Error loading scan details: ${error.message}
+            </div>
+        `;
+    }
 }
 
 // Show notification (simple implementation)
@@ -318,6 +512,7 @@ async function generateExport() {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include', // Include session cookies
             body: JSON.stringify({
                 type,
                 format
@@ -351,7 +546,9 @@ async function loadExportList() {
     const tbody = document.getElementById('exportsListBody');
     
     try {
-        const response = await fetch('/api/v1/files/exports');
+        const response = await fetch('/api/v1/files/exports', {
+            credentials: 'include'
+        });
         const data = await response.json();
 
         if (data.status === 'success' && data.data.length > 0) {
@@ -402,7 +599,8 @@ async function deleteExport(filename) {
 
     try {
         const response = await fetch(`/api/v1/files/exports/${filename}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -434,5 +632,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export functions to global scope for onclick handlers
 window.startScan = startScan;
 window.stopCurrentScan = stopCurrentScan;
-window.generateReport = generateReport;
+window.generateExport = generateExport;
+window.viewScanDetails = viewScanDetails;
 window.deleteExport = deleteExport;
+window.loadRecentScans = loadRecentScans;
+window.loadExportList = loadExportList;
