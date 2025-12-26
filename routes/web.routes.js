@@ -36,39 +36,39 @@ const normalizeBsonForView = (value) => {
 // Middleware to load common data for dashboard-like pages
 const loadDashboardData = async (req, res, next) => {
     try {
-    const dbs = req.app.locals.dbs;
-    // Access collections from their respective databases
-    res.locals.users = await dbs.mainDb.collection('users').find().toArray();
-    res.locals.devices = await dbs.mainDb.collection('devices').find().toArray();
-    res.locals.feedData = await feedController.getFeedData();
-    res.locals.latestEmailStat = null;
+        const dbs = req.app.locals.dbs;
+        // Access collections from their respective databases
+        res.locals.users = await dbs.mainDb.collection('users').find().toArray();
+        res.locals.devices = await dbs.mainDb.collection('devices').find().toArray();
+        res.locals.feedData = await feedController.getFeedData();
+        res.locals.latestEmailStat = null;
 
-    const sbqcDb = dbs.sbqcDb || (req.app.locals.mongoClient ? req.app.locals.mongoClient.db('SBQC') : null);
-    if (res.locals.user && res.locals.user.isAdmin && sbqcDb) {
-        try {
-            const latestEmail = await sbqcDb
-                .collection('emailStats')
-                .find()
-                .sort({ createdAt: -1, updatedAt: -1, timestamp: -1, _id: -1 })
-                .limit(1)
-                .toArray();
-            res.locals.latestEmailStat = latestEmail[0] ? normalizeBsonForView(latestEmail[0]) : null;
-        } catch (emailErr) {
-            console.warn('Failed to load email stats for tools view:', emailErr && emailErr.message ? emailErr.message : emailErr);
-            res.locals.latestEmailStat = null;
+        const sbqcDb = dbs.sbqcDb || (req.app.locals.mongoClient ? req.app.locals.mongoClient.db('SBQC') : null);
+        if (res.locals.user && res.locals.user.isAdmin && sbqcDb) {
+            try {
+                const latestEmail = await sbqcDb
+                    .collection('emailStats')
+                    .find()
+                    .sort({ createdAt: -1, updatedAt: -1, timestamp: -1, _id: -1 })
+                    .limit(1)
+                    .toArray();
+                res.locals.latestEmailStat = latestEmail[0] ? normalizeBsonForView(latestEmail[0]) : null;
+            } catch (emailErr) {
+                console.warn('Failed to load email stats for tools view:', emailErr && emailErr.message ? emailErr.message : emailErr);
+                res.locals.latestEmailStat = null;
+            }
         }
-    }
-    // If the user is authenticated, provide the raw feed (full AppEvent objects)
-    // so the dashboard can show stacks/extra info for admin debugging.
-    if (res.locals.user) {
-        try {
-            res.locals.rawFeed = await feedController.getRawFeedData();
-        } catch (e) {
-            // don't break the dashboard if raw feed fails
-            res.locals.rawFeed = [];
-            console.warn('Failed to load raw feed for dashboard:', e && e.message ? e.message : e);
+        // If the user is authenticated, provide the raw feed (full AppEvent objects)
+        // so the dashboard can show stacks/extra info for admin debugging.
+        if (res.locals.user) {
+            try {
+                res.locals.rawFeed = await feedController.getRawFeedData();
+            } catch (e) {
+                // don't break the dashboard if raw feed fails
+                res.locals.rawFeed = [];
+                console.warn('Failed to load raw feed for dashboard:', e && e.message ? e.message : e);
+            }
         }
-    }
         next();
     } catch (err) {
         next(err); // Pass errors to the global error handler
@@ -126,8 +126,8 @@ router.get('/file-browser', requireAuth, (req, res) => {
 router.get('/users', requireAuth, async (req, res, next) => {
     log('[ROUTES] GET /users: Handling request.');
     try {
-    // Use the main application database connection directly
-    const db = req.app.locals.dbs.mainDb;
+        // Use the main application database connection directly
+        const db = req.app.locals.dbs.mainDb;
         let users = await db.collection('users').find().toArray();
         // Normalize IDs to strings for safe client-side usage in templates
         users = users.map(u => {
@@ -163,15 +163,15 @@ router.get('/dashboard', async (req, res) => {
 })
 */
 
-router.get('/live-data',  (req, res) => {
+router.get('/live-data', (req, res) => {
     // Normalize broker URL so frontend receives a ws:// or wss:// URL regardless of env var scheme
     let brokerUrl = config.mqtt.brokerUrl || '';
     brokerUrl = brokerUrl.trim();
     // Convert mqtt:// -> ws://, mqtts:// -> wss://, http:// -> ws://, https:// -> wss://
     brokerUrl = brokerUrl.replace(/^mqtt:\/\//i, 'ws://')
-                       .replace(/^mqtts:\/\//i, 'wss://')
-                       .replace(/^http:\/\//i, 'ws://')
-                       .replace(/^https:\/\//i, 'wss://');
+        .replace(/^mqtts:\/\//i, 'wss://')
+        .replace(/^http:\/\//i, 'ws://')
+        .replace(/^https:\/\//i, 'wss://');
 
     const mqttConfig = {
         brokerUrl,
@@ -196,10 +196,8 @@ router.get('/live-data',  (req, res) => {
     });
 });
 
-// Admin-only full feed view (shows raw AppEvent objects including stacks).
-// For now, any authenticated user is considered admin. This will be refined
-// when profiles/roles are implemented.
-router.get('/admin-feed', requireAuth, async (req, res, next) => {
+// Admin-only full feed view.
+router.get('/admin-feed', requireAuth, requireAdmin, async (req, res, next) => {
     try {
         const rawFeed = await feedController.getRawFeedData();
         res.render('admin-feed', {

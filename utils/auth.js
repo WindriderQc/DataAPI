@@ -1,60 +1,61 @@
-const { ObjectId } = require('mongodb');
 const { log } = require('./logger');
-const config = require('../config/config');
+const Profile = require('../models/profileModel');
 
 const attachUser = async (req, res, next) => {
-    log(`[MIDDLEWARE] attachUser: Req for [${req.originalUrl}] from origin [${req.headers.origin}] - Checking session with ID: ${req.sessionID}`);
-    log(`[MIDDLEWARE] attachUser: Full session object: ${JSON.stringify(req.session)}`);
+    // log(`[MIDDLEWARE] attachUser: Checking session...`); 
+    // Logging reduced to avoid noise, uncomment if debugging
     res.locals.user = null;
     if (req.session && req.session.userId) {
-        log(`[MIDDLEWARE] attachUser: Session found with userId: ${req.session.userId}`);
         try {
-            const dbs = req.app.locals.dbs;
-            const modelDbName = config.db.mainDb; // main application DB
-            if (!dbs || !dbs.mainDb) {
-                log(`[MIDDLEWARE] attachUser: Database 'mainDb' not available.`, 'error');
+            const { User } = req.app.locals.models;
+            if (!User) {
+                // If models not yet loaded (e.g. very early boot), skip
                 return next();
             }
-            const usersCollection = dbs.mainDb.collection('users');
-            if (!ObjectId.isValid(req.session.userId)) {
-                log(`[MIDDLEWARE] attachUser: Invalid userId format: ${req.session.userId}`, 'error');
-                return next();
-            }
-            const user = await usersCollection.findOne(
-                { _id: new ObjectId(req.session.userId) },
-                { projection: { password: 0 } }
-            );
+
+            const user = await User.findById(req.session.userId);
+
             if (user) {
-                log(`[MIDDLEWARE] attachUser: User ${user.email} attached to res.locals.`);
-                res.locals.user = user;
-                // attempt to load profile to determine admin flag
-                try {
-                    if (user.profileId) {
-                        const profilesColl = dbs.mainDb.collection('profiles');
-                        const profile = await profilesColl.findOne({ _id: new ObjectId(user.profileId) });
-                        if (profile && profile.isAdmin) {
-                            res.locals.user.isAdmin = true;
+                // Attach as POJO for views
+                res.locals.user = user.toObject();
+                // delete password if present (toObject might keep it depending on schema options)
+                delete res.locals.user.password;
+
+                // Load Profile for RBAC (role, permissions, isAdmin)
+                if (user.profileId) {
+                    try {
+                        const profile = await Profile.findById(user.profileId);
+                        if (profile) {
+                            // Attach role and permissions for RBAC middleware
+                            res.locals.user.role = profile.role || 'user';
+                            res.locals.user.permissions = profile.permissions || [];
+                            // Legacy isAdmin support
+                            res.locals.user.isAdmin = profile.isAdmin || profile.role === 'admin';
                         } else {
+                            res.locals.user.role = 'user';
+                            res.locals.user.permissions = [];
                             res.locals.user.isAdmin = false;
                         }
-                    } else {
+                    } catch (e) {
+                        // profileId might be invalid format
+                        log(`[MIDDLEWARE] attachUser: Profile lookup error: ${e.message}`, 'warn');
+                        res.locals.user.role = 'user';
+                        res.locals.user.permissions = [];
                         res.locals.user.isAdmin = false;
                     }
-                } catch (e) {
-                    log(`[MIDDLEWARE] attachUser: Error loading profile: ${e}`, 'warn');
+                } else {
+                    res.locals.user.role = 'user';
+                    res.locals.user.permissions = [];
                     res.locals.user.isAdmin = false;
                 }
-            } else {
-                log(`[MIDDLEWARE] attachUser: User with ID ${req.session.userId} not found.`);
             }
         } catch (err) {
-            log(`[MIDDLEWARE] attachUser: Error attaching user: ${err}`, 'error');
+            log(`[MIDDLEWARE] attachUser: Error: ${err}`, 'error');
         }
-    } else {
-        log('[MIDDLEWARE] attachUser: No session or userId found.');
     }
     next();
 };
+
 
 function requireAuth(req, res, next) {
     log(`[DEBUG] requireAuth: Path: ${req.originalUrl}, Session ID: ${req && req.sessionID ? req.sessionID : 'none'}`);
