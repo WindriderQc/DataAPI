@@ -82,9 +82,16 @@ set -a; source deploy.env; set +a; sudo -E ./deploy_dataapi_mint.sh
 ```bash
 NODE_ENV=development
 PORT=3003
-# Cloud or Local MongoDB URL
+
+# Option A: Local MongoDB
 MONGO_URL=mongodb://localhost:27017/
 MONGO_DB_NAME=data
+
+# Option B: Cloud MongoDB (e.g., Atlas)
+# MONGO_URL=mongodb+srv://user:password@cluster0.example.net/
+# MONGO_DB_NAME=data
+# MONGO_OPTIONS=?retryWrites=true&w=majority
+
 DATAAPI_API_KEY=change-me-long-random
 ```
 
@@ -108,20 +115,3 @@ The application is designed to be database-agnostic regarding location. It can c
 *   **Cloud MongoDB**: Fully supported via connection string configuration (e.g., MongoDB Atlas).
 
 Configuration is handled in `config/config.js` and controlled via environment variables (`MONGO_URL`, `MONGO_DB_NAME`, `MONGO_OPTIONS`).
-
----
-
-## Manual Installation (Legacy)
-
-*Note: For the most up-to-date deployment method, please use the Automated Deployment scripts.*
-
-On a fresh linux install:
-
-```bash
-sudo apt install -y openssh-server nodejs npm git
-# Install MongoDB (refer to official docs for your distro)
-git clone https://github.com/WindriderQc/DataAPI.git
-cd DataAPI
-npm install
-npm run agent
-```
