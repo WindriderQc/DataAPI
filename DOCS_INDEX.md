@@ -19,11 +19,15 @@ Quick navigation for DataAPI documentation.
 ## 📡 Integration Guides
 
 ### n8n Automation
-- **[N8N_QUICKSTART.md](N8N_QUICKSTART.md)** - Quick setup guide
-- **[N8N_INTEGRATION.md](N8N_INTEGRATION.md)** - Complete integration documentation
-- **[N8N_WEBHOOK_INTEGRATION.md](N8N_WEBHOOK_INTEGRATION.md)** - Webhook setup
-- **[N8N_NODE_SETUP.md](N8N_NODE_SETUP.md)** - Custom node configuration
-- **[N8N_IMPLEMENTATION_SUMMARY.md](N8N_IMPLEMENTATION_SUMMARY.md)** - Technical summary
+
+> **⚠️ IMPORTANT:** n8n trigger routes have been **migrated to AgentX** at `/api/n8n/*`.
+> DataAPI only provides the event sink endpoint for receiving events FROM n8n.
+
+- **[docs/N8N_WORKFLOWS_REQUIREMENTS.md](docs/N8N_WORKFLOWS_REQUIREMENTS.md)** - Current n8n requirements
+- DataAPI endpoint: `POST /integrations/events/n8n` - Event sink (receives FROM n8n)
+- For n8n triggers, see **AgentX** `/api/n8n/*` routes
+
+**Archived (legacy):** See [docs/archive/n8n-legacy/](docs/archive/n8n-legacy/) for old docs
 
 ### Real-time Features
 - **[SSE_PROXY_CONFIG.md](SSE_PROXY_CONFIG.md)** - Server-Sent Events with Nginx
@@ -57,8 +61,9 @@ Quick navigation for DataAPI documentation.
 3. Use `deploy.sh` script
 
 ### "I need to configure n8n integration"
-1. Read [N8N_QUICKSTART.md](N8N_QUICKSTART.md)
-2. Follow [N8N_INTEGRATION.md](N8N_INTEGRATION.md)
+1. DataAPI only receives events at `POST /integrations/events/n8n`
+2. For n8n triggers, configure AgentX `/api/n8n/*` routes
+3. See [docs/N8N_WORKFLOWS_REQUIREMENTS.md](docs/N8N_WORKFLOWS_REQUIREMENTS.md)
 
 ### "Deployment failed, now what?"
 1. Run `sudo ./scripts/preflight_check.sh`
