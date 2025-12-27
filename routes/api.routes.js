@@ -215,6 +215,7 @@ router.get('/system/health', requireEitherAuth, async (req, res, next) => {
 
 // File browser routes (protected - user/editor/admin, accepts API key or session)
 router.get('/files/browse', requireEitherAuth, fileBrowserController.browseFiles);
+router.patch('/files/:id', requireEitherAuth, fileBrowserController.updateFile);
 // router.get('/files/search', fileBrowserController.search); // Consolidating, 'browseFiles' supports search
 router.get('/files/stats', requireEitherAuth, fileBrowserController.getStats);
 router.get('/files/tree', requireEitherAuth, fileBrowserController.getDirectoryTree);

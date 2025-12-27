@@ -15,6 +15,8 @@ class FileBrowserController {
         search = '',
         ext = '',
         dirname = '',
+        scan_id = '',
+        hasHash = '',
         minSize = 0,
         maxSize = Infinity,
         sortBy = 'mtime',
@@ -36,6 +38,19 @@ class FileBrowserController {
 
       if (dirname) {
         filter.dirname = { $regex: `^${dirname}`, $options: 'i' };
+      }
+
+      if (scan_id) {
+        filter.scan_id = scan_id;
+      }
+
+      if (hasHash === 'true') {
+        filter.sha256 = { $exists: true, $ne: null };
+      } else if (hasHash === 'false') {
+        filter.$or = [
+          { sha256: { $exists: false } },
+          { sha256: null }
+        ];
       }
 
       if (minSize > 0 || maxSize < Infinity) {
@@ -618,6 +633,71 @@ class FileBrowserController {
           data: { path: record.path }
         });
       }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update file metadata (e.g., hash)
+   * PATCH /api/v1/files/:id
+   */
+  static async updateFile(req, res, next) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const db = req.app.locals.dbs.mainDb;
+      const files = db.collection('nas_files');
+
+      if (!id) {
+        return res.status(400).json({ status: 'error', message: 'Missing file ID' });
+      }
+
+      // Remove protected fields
+      delete updates._id;
+      delete updates.path;
+      delete updates.created_at;
+
+      const result = await files.findOneAndUpdate(
+        { _id: id },
+        { 
+          $set: { 
+            ...updates,
+            updated_at: new Date()
+          } 
+        },
+        { returnDocument: 'after' }
+      );
+
+      if (!result.value) {
+        // Try by path if ID not found (sometimes n8n uses path as ID)
+        const resultByPath = await files.findOneAndUpdate(
+          { path: id },
+          { 
+            $set: { 
+              ...updates,
+              updated_at: new Date()
+            } 
+          },
+          { returnDocument: 'after' }
+        );
+
+        if (!resultByPath.value) {
+          return res.status(404).json({ status: 'error', message: `File not found: ${id}` });
+        }
+
+        return res.json({
+          status: 'success',
+          message: 'File updated successfully',
+          data: resultByPath.value
+        });
+      }
+
+      res.json({
+        status: 'success',
+        message: 'File updated successfully',
+        data: result.value
+      });
     } catch (error) {
       next(error);
     }
