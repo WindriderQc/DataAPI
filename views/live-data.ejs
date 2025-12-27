@@ -200,6 +200,10 @@
                     
                     if (data.status === 'success') {
                         showStatus(`${service.toUpperCase()} service ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                        // Update local config state so frontend logic (like fallback guards) responds immediately
+                        if (typeof mqttConfig !== 'undefined' && mqttConfig.serviceState) {
+                            mqttConfig.serviceState[service] = enabled;
+                        }
                     } else {
                         showStatus('Failed to update configuration', 'danger');
                         await loadConfig(); // Reload to reset UI state

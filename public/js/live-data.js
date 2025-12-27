@@ -121,6 +121,11 @@ function getISS_location()
     return;
   }
 
+  // Avoid spamming public API if the service is explicitly disabled in our config
+  if (typeof mqttConfig !== 'undefined' && mqttConfig.serviceState && mqttConfig.serviceState.iss === false) {
+    return;
+  }
+
   console.log('Fetching ISS location from public API...')
   // Fallback: fetch from public API once
   const url = 'https://api.wheretheiss.at/v1/satellites/25544'
