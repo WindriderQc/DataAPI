@@ -1,5 +1,6 @@
 const { Scanner } = require('../src/jobs/scanner/scan');
 const { ObjectId } = require('mongodb');
+const AppEvent = require('../models/appEventModel');
 
 // Track running scans so they can be stopped
 const runningScans = new Map();
@@ -79,6 +80,13 @@ const scan = async (req, res, next) => {
       computeHashes: compute_hashes === true,
       hashMaxSize: hash_max_size || 100 * 1024 * 1024 // Default: 100MB
     });
+
+    // Log event for dashboard
+    await AppEvent.create({
+      message: `NAS Scan started: ${roots.join(', ')}`,
+      type: 'info',
+      meta: { scan_id, roots }
+    }).catch(err => console.error('[Storage] Failed to log scan start event:', err));
 
     res.json({
       status: 'success',
@@ -404,6 +412,27 @@ const updateScan = async (req, res, next) => {
         status: 'error',
         message: `Scan not found: ${scan_id}`
       });
+    }
+
+    // Trigger n8n webhook if scan completed
+    if (status === 'completed' && process.env.N8N_WEBHOOK_URL) {
+      const fetch = require('node-fetch');
+      fetch(process.env.N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'scan_complete',
+          scan_id,
+          stats: stats || {}
+        })
+      }).catch(err => console.error('[Storage] Failed to trigger n8n webhook:', err.message));
+
+      // Log event for dashboard
+      await AppEvent.create({
+        message: `NAS Scan completed: ${scan_id}`,
+        type: 'success',
+        meta: { scan_id, stats }
+      }).catch(err => console.error('[Storage] Failed to log scan complete event:', err));
     }
 
     res.json({
