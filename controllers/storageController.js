@@ -28,9 +28,22 @@ async function cleanupStaleScansFn(db) {
 const cleanupStaleScans = cleanupStaleScansFn;
 
 const scan = async (req, res, next) => {
-  console.log('[Storage] Scan request received:', req.body);
+  console.log('[Storage] Scan request received:', JSON.stringify(req.body));
   try {
     const { roots, extensions, batch_size, compute_hashes, hash_max_size } = req.body;
+    
+    console.log('[Storage] Checking app.locals.dbs...');
+    if (!req.app.locals.dbs) {
+      console.error('[Storage] req.app.locals.dbs is UNDEFINED');
+      throw new Error('Database configuration missing in app.locals');
+    }
+    
+    const db = req.app.locals.dbs.mainDb;
+    if (!db) {
+      console.error('[Storage] req.app.locals.dbs.mainDb is UNDEFINED');
+      throw new Error('Main database handle missing');
+    }
+    console.log('[Storage] DB handle acquired:', db.databaseName || 'unknown');
 
     if (!roots || !extensions) {
       return res.status(400).json({
@@ -53,7 +66,6 @@ const scan = async (req, res, next) => {
       });
     }
 
-    const db = req.app.locals.dbs.mainDb;
     const scan_id = new ObjectId().toHexString();
 
     const scanner = new Scanner(db);
