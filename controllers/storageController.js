@@ -1,131 +1,471 @@
-const fs = require('fs');
-const path = require('path');
-const { getDb } = require('../config/db');
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
+const { Scanner } = require('../src/jobs/scanner/scan');
+const { ObjectId } = require('mongodb');
 
-/**
- * Trigger a storage scan
- * POST /api/v1/storage/scan
- */
+// Track running scans so they can be stopped
+const runningScans = new Map();
+
+// Cleanup stale "running" scans on module load (server restart)
+async function cleanupStaleScansFn(db) {
+  try {
+    const result = await db.collection('nas_scans').updateMany(
+      { status: 'running' },
+      { 
+        $set: { 
+          status: 'stopped',
+          finished_at: new Date()
+        } 
+      }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[Storage] Cleaned up ${result.modifiedCount} stale running scan(s) from previous session`);
+    }
+  } catch (error) {
+    console.error('[Storage] Error cleaning up stale scans:', error);
+  }
+}
+
+// Export cleanup function to be called during app initialization
+const cleanupStaleScans = cleanupStaleScansFn;
+
 const scan = async (req, res, next) => {
   console.log('[Storage] Scan request received:', req.body);
   try {
-    const { path: scanPath = '/mnt/datalake', recursive = true } = req.body;
+    const { roots, extensions, batch_size, compute_hashes, hash_max_size } = req.body;
 
-    // Log the event using raw MongoDB to avoid Mongoose issues during scan
-    try {
-      const db = getDb();
-      await db.collection('appevents').insertOne({
-        type: 'STORAGE_SCAN_STARTED',
-        message: `Manual scan triggered for ${scanPath}`,
-        metadata: { scanPath, recursive },
-        timestamp: new Date(),
-        severity: 'info'
-      });
-    } catch (logError) {
-      console.error('[Storage] Failed to log scan start:', logError.message);
-      // Continue anyway
-    }
-
-    // In a real implementation, this would trigger a background worker
-    // For now, we'll simulate it or run a simple find command if the path exists
-    if (!fs.existsSync(scanPath)) {
+    if (!roots || !extensions) {
       return res.status(400).json({
         status: 'error',
-        message: `Path does not exist: ${scanPath}`
+        message: 'Missing required fields: roots, extensions'
       });
     }
 
-    // Respond immediately that scan has started
-    res.status(202).json({
-      status: 'success',
-      message: 'Scan initiated',
-      data: {
-        path: scanPath,
-        recursive
-      }
+    if (!Array.isArray(roots) || roots.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'roots must be a non-empty array'
+      });
+    }
+
+    if (!Array.isArray(extensions) || extensions.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'extensions must be a non-empty array'
+      });
+    }
+
+    const db = req.app.locals.dbs.mainDb;
+    const scan_id = new ObjectId().toHexString();
+
+    const scanner = new Scanner(db);
+    
+    // Track the running scan
+    runningScans.set(scan_id, scanner);
+    
+    // Auto-cleanup when scan completes
+    scanner.on('done', async () => {
+      runningScans.delete(scan_id);
+    });
+    
+    // Start the scan (fire and forget)
+    scanner.run({ 
+      roots, 
+      includeExt: extensions,
+      batchSize: batch_size || 1000,
+      scanId: scan_id,
+      // Hashing options for Datalake Janitor deduplication
+      computeHashes: compute_hashes === true,
+      hashMaxSize: hash_max_size || 100 * 1024 * 1024 // Default: 100MB
     });
 
-    // Run scan in background
-    setTimeout(async () => {
-      try {
-        console.log(`[Storage] Starting background scan of ${scanPath}...`);
-        // Simulate scan work
-        const startTime = Date.now();
-        
-        // Trigger n8n webhook if configured
-        if (process.env.N8N_WEBHOOK_URL) {
-          // We'll implement the actual scan logic here later
-          // For now, just log completion
-        }
+    // Log event for dashboard
+    try {
+      await db.collection('appevents').insertOne({
+        message: `NAS Scan started: ${roots.join(', ')}`,
+        type: 'info',
+        meta: { scan_id, roots },
+        timestamp: new Date()
+      });
+    } catch (err) {
+      console.error('[Storage] Failed to log scan start event:', err);
+    }
 
-        const db = getDb();
-        await db.collection('appevents').insertOne({
-          type: 'STORAGE_SCAN_COMPLETED',
-          message: `Scan of ${scanPath} completed`,
-          metadata: { 
-            scanPath, 
-            durationMs: Date.now() - startTime 
-          },
-          timestamp: new Date(),
-          severity: 'success'
-        });
-
-      } catch (err) {
-        console.error('[Storage] Background scan error:', err);
+    res.json({
+      status: 'success',
+      message: 'Scan started successfully',
+      data: {
+        scan_id,
+        roots,
+        extensions,
+        batch_size: batch_size || 1000,
+        compute_hashes: compute_hashes === true,
+        hash_max_size: hash_max_size || 100 * 1024 * 1024
       }
-    }, 1000);
-
+    });
   } catch (error) {
-    console.error('[Storage] Scan trigger error:', error);
+    console.error('Error starting scan:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to start scan',
+      error: error.message
+    });
+  }
+};
+
+const getStatus = async (req, res, next) => {
+  try {
+    const { scan_id } = req.params;
+
+    if (!scan_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameter: scan_id'
+      });
+    }
+
+    const db = req.app.locals.dbs.mainDb;
+    const scanDoc = await db.collection('nas_scans').findOne({ _id: scan_id });
+
+    if (!scanDoc) {
+      return res.status(404).json({
+        status: 'error',
+        message: `Scan not found: ${scan_id}`
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        _id: scanDoc._id,
+        status: scanDoc.status,
+        live: runningScans.has(scan_id), // Indicate if scan is actively running
+        counts: scanDoc.counts,
+        config: scanDoc.config || {
+          roots: scanDoc.roots || [],
+          extensions: [],
+          batch_size: null
+        },
+        started_at: scanDoc.started_at,
+        finished_at: scanDoc.finished_at,
+        last_error: scanDoc.last_error
+      }
+    });
+  } catch (error) {
+    console.error('Failed to get scan status:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve scan status',
+      error: error.message
+    });
+  }
+};
+
+const stopScan = async (req, res, next) => {
+  try {
+    const { scan_id } = req.params;
+
+    if (!scan_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameter: scan_id'
+      });
+    }
+
+    const scanner = runningScans.get(scan_id);
+    
+    if (!scanner) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Scan not running or already completed'
+      });
+    }
+
+    scanner.stop();
+    
+    res.json({
+      status: 'success',
+      message: 'Stop request sent to scan',
+      data: {
+        scan_id
+      }
+    });
+  } catch (error) {
+    console.error('Failed to stop scan:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to stop scan',
+      error: error.message
+    });
+  }
+};
+
+const listScans = async (req, res, next) => {
+  try {
+    const { limit = 10, skip = 0 } = req.query;
+    const db = req.app.locals.dbs.mainDb;
+    
+    const scans = await db.collection('nas_scans')
+      .find({})
+      .sort({ started_at: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
+      .toArray();
+    
+    // Add live indicator to each scan
+    const scansWithLive = scans.map(scan => ({
+      ...scan,
+      live: runningScans.has(scan._id),
+      duration: scan.finished_at && scan.started_at 
+        ? Math.round((new Date(scan.finished_at) - new Date(scan.started_at)) / 1000)
+        : null
+    }));
+    
+    res.json({
+      status: 'success',
+      data: {
+        scans: scansWithLive,
+        count: scansWithLive.length
+      }
+    });
+  } catch (error) {
+    console.error('Failed to list scans:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve scans list',
+      error: error.message
+    });
+  }
+};
+
+const getDirectoryCount = async (req, res, next) => {
+  try {
+    const db = req.app.locals.dbs.mainDb;
+    const directories = db.collection('nas_directories');
+    
+    const count = await directories.countDocuments();
+    
+    res.json({
+      status: 'success',
+      data: {
+        count
+      }
+    });
+  } catch (error) {
     next(error);
   }
 };
 
 /**
- * Get storage stats
- * GET /api/v1/storage/stats
+ * Batch insert files for a specific scan
+ * Used by n8n N2.1 workflow to send file batches
+ * POST /api/v1/storage/scan/:scan_id/batch
  */
-const getStats = async (req, res, next) => {
+const insertBatch = async (req, res, next) => {
   try {
-    const rootPath = '/mnt/datalake';
-    
-    // Check if path exists
-    if (!fs.existsSync(rootPath)) {
-      return res.json({
-        status: 'success',
-        data: {
-          path: rootPath,
-          exists: false,
-          message: 'Storage path not mounted'
-        }
+    const { scan_id } = req.params;
+    const { files, meta } = req.body;
+
+    if (!scan_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameter: scan_id'
       });
     }
 
-    // Get disk usage using df
-    const { stdout } = await execPromise(`df -h ${rootPath} | tail -1`);
-    const parts = stdout.split(/\s+/);
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'files must be a non-empty array'
+      });
+    }
+
+    const db = req.app.locals.dbs.mainDb;
     
-    res.json({
-      status: 'success',
-      data: {
-        path: rootPath,
-        exists: true,
-        size: parts[1],
-        used: parts[2],
-        available: parts[3],
-        usePercent: parts[4]
-      }
+    // Verify scan exists
+    const scanDoc = await db.collection('nas_scans').findOne({ _id: scan_id });
+    if (!scanDoc) {
+      return res.status(404).json({
+        status: 'error',
+        message: `Scan not found: ${scan_id}`
+      });
+    }
+
+    // Process files: normalize and upsert
+    const filesCollection = db.collection('nas_files');
+    const now = new Date();
+    
+    const bulkOps = files.map(file => {
+      // Normalize path (remove trailing slashes, etc.)
+      const normalizedPath = file.path?.replace(/\/+$/, '').trim();
+      
+      // Extract filename and extension
+      const pathParts = normalizedPath?.split('/') || [];
+      const filename = pathParts.pop() || '';
+      const dirname = pathParts.join('/') || '';
+      const dotIdx = filename.lastIndexOf('.');
+      const extension = dotIdx >= 0 ? filename.slice(dotIdx + 1).toLowerCase() : '';
+
+      return {
+        updateOne: {
+          filter: { path: normalizedPath },
+          update: {
+            $set: {
+              path: normalizedPath,
+              dirname,
+              filename,
+              extension,
+              size: file.size || 0,
+              modified: file.mtime ? new Date(file.mtime * 1000) : file.modified ? new Date(file.modified) : now,
+              scan_id,
+              updated_at: now
+            },
+            $setOnInsert: {
+              created_at: now
+            }
+          },
+          upsert: true
+        }
+      };
     });
 
+    const result = await filesCollection.bulkWrite(bulkOps, { ordered: false });
+
+    // Update scan stats
+    await db.collection('nas_scans').updateOne(
+      { _id: scan_id },
+      {
+        $inc: {
+          'counts.files_processed': files.length,
+          'counts.inserted': result.upsertedCount || 0,
+          'counts.updated': result.modifiedCount || 0
+        },
+        $set: {
+          last_batch_at: now
+        }
+      }
+    );
+
+    res.json({
+      status: 'success',
+      message: `Processed ${files.length} files`,
+      data: {
+        scan_id,
+        batch: {
+          received: files.length,
+          inserted: result.upsertedCount || 0,
+          updated: result.modifiedCount || 0
+        },
+        meta: meta || {}
+      }
+    });
   } catch (error) {
-    next(error);
+    console.error('Failed to insert batch:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to insert file batch',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update scan status (used by n8n to mark complete)
+ * PATCH /api/v1/storage/scan/:scan_id
+ */
+const updateScan = async (req, res, next) => {
+  try {
+    const { scan_id } = req.params;
+    const { status, stats, completedAt } = req.body;
+
+    if (!scan_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required parameter: scan_id'
+      });
+    }
+
+    const db = req.app.locals.dbs.mainDb;
+    
+    // Build update object
+    const updateFields = {};
+    
+    if (status) {
+      updateFields.status = status;
+    }
+    
+    if (status === 'completed' || completedAt) {
+      updateFields.finished_at = completedAt ? new Date(completedAt) : new Date();
+    }
+    
+    if (stats) {
+      // Merge stats into counts
+      Object.entries(stats).forEach(([key, value]) => {
+        updateFields[`counts.${key}`] = value;
+      });
+    }
+
+    const result = await db.collection('nas_scans').updateOne(
+      { _id: scan_id },
+      { $set: updateFields }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: `Scan not found: ${scan_id}`
+      });
+    }
+
+    // Trigger n8n webhook if scan completed
+    if (status === 'completed' && process.env.N8N_WEBHOOK_URL) {
+      const fetch = require('node-fetch');
+      fetch(process.env.N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'scan_complete',
+          scan_id,
+          stats: stats || {}
+        })
+      }).catch(err => console.error('[Storage] Failed to trigger n8n webhook:', err.message));
+
+      // Log event for dashboard
+      try {
+        await db.collection('appevents').insertOne({
+          message: `NAS Scan completed: ${scan_id}`,
+          type: 'success',
+          meta: { scan_id, stats },
+          timestamp: new Date()
+        });
+      } catch (err) {
+        console.error('[Storage] Failed to log scan complete event:', err);
+      }
+    }
+
+    res.json({
+      status: 'success',
+      message: 'Scan updated',
+      data: {
+        scan_id,
+        updated: updateFields
+      }
+    });
+  } catch (error) {
+    console.error('Failed to update scan:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to update scan',
+      error: error.message
+    });
   }
 };
 
 module.exports = {
   scan,
-  getStats
+  getStatus,
+  stopScan,
+  listScans,
+  getDirectoryCount,
+  insertBatch,
+  updateScan,
+  cleanupStaleScans
 };
