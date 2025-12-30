@@ -320,7 +320,16 @@ function setup() {
   try {
     if (typeof mqttConfig !== 'undefined') {
       const config = typeof mqttConfig === 'string' ? JSON.parse(mqttConfig) : mqttConfig;
-      initFrontendMQTT(config);
+      if (config.enabled) {
+        initFrontendMQTT(config);
+      } else {
+        // Optionally update UI to show "MQTT: Disabled"
+        const statusEl = document.getElementById('mqtt-status');
+        if (statusEl) {
+          statusEl.textContent = 'Disabled';
+          statusEl.className = 'mqtt-status disconnected';
+        }
+      }
     }
   } catch (e) {
     console.warn('[live-data] MQTT config parse error:', e.message);
