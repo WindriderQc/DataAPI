@@ -43,8 +43,23 @@ class Scanner extends EventEmitter {
     let counts = { files_seen: 0, upserts: 0, skipped: 0, errors: 0, batches: 0, hashed: 0 };
     let batch = [];
 
-    const updateScan = (patch) =>
-      scansCol.updateOne({ _id: opts.scanId }, { $set: patch }, { upsert: true });
+    const updateScan = async (patch) => {
+      await scansCol.updateOne({ _id: opts.scanId }, { $set: patch }, { upsert: true });
+      
+      // Log completion to appevents if status is complete
+      if (patch.status === 'complete' || patch.status === 'stopped') {
+        try {
+          await this.db.collection('appevents').insertOne({
+            message: `NAS Scan ${patch.status}: ${opts.scanId}`,
+            type: patch.status === 'complete' ? 'success' : 'warn',
+            meta: { scan_id: opts.scanId, counts: patch.counts || counts },
+            timestamp: new Date()
+          });
+        } catch (err) {
+          console.error('[Scanner] Failed to log event:', err);
+        }
+      }
+    };
 
     await updateScan({ 
       status: 'running', 

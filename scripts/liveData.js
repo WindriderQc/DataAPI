@@ -15,6 +15,7 @@ let initialized = false; // guard to prevent double initialization
 
 // Internal state for enabled services, defaulted to config but updated from DB
 let serviceState = {
+    liveDataEnabled: false, // Master switch for all live data services
     iss: config.api.iss.enabled,
     quakes: config.api.quakes.enabled,
     weather: config.weather.api.enabled
@@ -165,11 +166,13 @@ async function init(dbConnection) {
         }
     }
 
-    // Only initialize MQTT if ISS service is enabled AND broker URL is configured
-    if (serviceState.iss && process.env.MQTT_BROKER_URL) {
+    // Only initialize MQTT if live data is enabled, ISS service is enabled, AND broker URL is configured
+    if (serviceState.liveDataEnabled && serviceState.iss && process.env.MQTT_BROKER_URL) {
         mqttClient.init();
-    } else if (serviceState.iss && !process.env.MQTT_BROKER_URL) {
+    } else if (serviceState.liveDataEnabled && serviceState.iss && !process.env.MQTT_BROKER_URL) {
         log('[liveData] ISS enabled but MQTT_BROKER_URL not configured - skipping MQTT init', 'warn');
+    } else if (!serviceState.liveDataEnabled) {
+        log('[liveData] Live Data master switch is OFF - MQTT will not connect', 'info');
     }
 
     // Do not run intervals in the test environment
@@ -181,6 +184,12 @@ async function init(dbConnection) {
 }
 
 async function setAutoUpdate(updateNow = false) {
+    // Only run if master switch is enabled
+    if (!serviceState.liveDataEnabled) {
+        log('[liveData] Live Data is disabled - no intervals will run', 'info');
+        return;
+    }
+
     const intervals = {
         quakes: config.api.quakes.interval,
         iss: config.api.iss.interval,

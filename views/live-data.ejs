@@ -45,6 +45,24 @@
                     </div>
                     <div class="card-body">
                         <p class="text-muted">Enable or disable live data services. Changes take effect immediately.</p>
+                        
+                        <!-- Master Live Data Switch -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-between p-4 bg-gradient rounded shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <div class="text-white">
+                                        <i class="fas fa-power-off fs-4 me-3"></i>
+                                        <strong class="fs-5">Live Data Master Switch</strong>
+                                        <div class="small mt-1 opacity-75">Enable to activate MQTT and start data streams</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="transform: scale(1.5);">
+                                        <input class="form-check-input" type="checkbox" id="toggleLiveData" data-service="liveDataEnabled">
+                                        <label class="form-check-label" for="toggleLiveData"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
@@ -160,6 +178,7 @@
     <script>
         // Live Data Configuration Management
         document.addEventListener('DOMContentLoaded', async () => {
+            const toggleLiveData = document.getElementById('toggleLiveData');
             const toggleISS = document.getElementById('toggleISS');
             const toggleQuakes = document.getElementById('toggleQuakes');
             const toggleWeather = document.getElementById('toggleWeather');
@@ -174,6 +193,7 @@
                     const data = await response.json();
                     
                     if (data.status === 'success') {
+                        toggleLiveData.checked = data.data.liveDataEnabled || false;
                         toggleISS.checked = data.data.iss || false;
                         toggleQuakes.checked = data.data.quakes || false;
                         toggleWeather.checked = data.data.weather || false;
@@ -199,10 +219,17 @@
                     const data = await response.json();
                     
                     if (data.status === 'success') {
-                        showStatus(`${service.toUpperCase()} service ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                        const serviceName = service === 'liveDataEnabled' ? 'Live Data' : service.toUpperCase();
+                        showStatus(`${serviceName} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+                        
                         // Update local config state so frontend logic (like fallback guards) responds immediately
                         if (typeof mqttConfig !== 'undefined' && mqttConfig.serviceState) {
                             mqttConfig.serviceState[service] = enabled;
+                        }
+                        
+                        // If toggling master switch, reload page to connect/disconnect MQTT properly
+                        if (service === 'liveDataEnabled') {
+                            setTimeout(() => window.location.reload(), 1000);
                         }
                     } else {
                         showStatus('Failed to update configuration', 'danger');
@@ -227,6 +254,10 @@
             }
 
             // Attach event listeners
+            toggleLiveData.addEventListener('change', (e) => {
+                updateConfig('liveDataEnabled', e.target.checked);
+            });
+
             toggleISS.addEventListener('change', (e) => {
                 updateConfig('iss', e.target.checked);
             });

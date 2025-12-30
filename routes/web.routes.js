@@ -177,9 +177,12 @@ router.get('/live-data', (req, res) => {
         .replace(/^http:\/\//i, 'ws://')
         .replace(/^https:\/\//i, 'wss://');
 
-    // Always provide broker URL so frontend can connect/listen immediately when services are toggled
+    // Only provide broker URL if master switch AND at least one MQTT-dependent service is enabled
+    const mqttNeeded = serviceState.liveDataEnabled && (serviceState.iss || serviceState.weather);
+
     const mqttConfig = {
-        brokerUrl: brokerUrl,
+        enabled: mqttNeeded, // Add explicit enabled flag for frontend
+        brokerUrl: mqttNeeded ? brokerUrl : null,
         issTopic: serviceState.iss ? config.mqtt.issTopic : null,
         username: config.mqtt.username,
         password: config.mqtt.password,

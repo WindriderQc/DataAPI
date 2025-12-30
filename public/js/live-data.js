@@ -148,6 +148,15 @@ function getISS_location()
 // Initialize MQTT in the browser using mqtt.js (loaded in the page)
 function initFrontendMQTT(mqttConfig) {
   if (!mqttConfig || !mqttConfig.brokerUrl) return;
+  
+  // Check if MQTT is enabled (master switch check)
+  if (!mqttConfig.enabled) {
+    console.log('[live-data] MQTT disabled by master switch - skipping connection');
+    const statusEl = document.getElementById('mqtt-status');
+    if (statusEl) { statusEl.textContent = 'Disabled'; statusEl.className = 'mqtt-status disconnected'; }
+    return;
+  }
+  
   try {
     const options = {};
     if (mqttConfig.username) options.username = mqttConfig.username;
@@ -307,13 +316,14 @@ function setup() {
   setInterval(getISS_location, 10000)
 
   // Initialize MQTT if mqttConfig is provided on the page
+  // Only initialize MQTT if config is provided and explicitly enabled
   try {
     if (typeof mqttConfig !== 'undefined') {
-      initFrontendMQTT(JSON.parse(mqttConfig));
+      const config = typeof mqttConfig === 'string' ? JSON.parse(mqttConfig) : mqttConfig;
+      initFrontendMQTT(config);
     }
   } catch (e) {
-    // mqttConfig is already an object in some render paths
-    try { initFrontendMQTT(mqttConfig); } catch (err) { console.warn('No mqttConfig available'); }
+    console.warn('[live-data] MQTT config parse error:', e.message);
   }
   
 

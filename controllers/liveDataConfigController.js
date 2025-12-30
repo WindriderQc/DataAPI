@@ -32,7 +32,7 @@ exports.getConfigs = async (req, res) => {
 exports.updateConfig = async (req, res) => {
     const { service, enabled } = req.body;
 
-    if (!['iss', 'quakes', 'weather'].includes(service)) {
+    if (!['liveDataEnabled', 'iss', 'quakes', 'weather'].includes(service)) {
         return res.status(400).json({ status: 'error', message: 'Invalid service name' });
     }
 
