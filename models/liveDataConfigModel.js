@@ -5,8 +5,8 @@ const LiveDataConfigSchema = new mongoose.Schema({
     service: {
         type: String,
         required: true,
-        unique: true, // 'iss', 'quakes', 'weather'
-        enum: ['iss', 'quakes', 'weather']
+        unique: true, // 'liveDataEnabled', 'iss', 'quakes', 'weather'
+        enum: ['liveDataEnabled', 'iss', 'quakes', 'weather']
     },
     enabled: {
         type: Boolean,
@@ -21,6 +21,7 @@ const LiveDataConfigSchema = new mongoose.Schema({
 // Static method to ensure default configuration exists
 LiveDataConfigSchema.statics.syncDefaults = async function() {
     const services = [
+        { name: 'liveDataEnabled', enabled: false }, // Master switch defaults to OFF
         { name: 'iss', enabled: config.api.iss.enabled },
         { name: 'quakes', enabled: config.api.quakes.enabled },
         { name: 'weather', enabled: config.weather.api.enabled }

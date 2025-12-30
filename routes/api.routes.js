@@ -514,7 +514,7 @@ router.get('/collection/:name/items', async (req, res, next) => {
         }
         
         // Explicit allowed list of public collections
-        const allowedList = ['nas_files', 'mews', 'userLogs', 'serverLogs', 'checkins', 'alarms', 'weatherLocations', 'pressures', 'isses', 'quakes'];
+        const allowedList = ['nas_files', 'mews', 'userLogs', 'serverLogs', 'checkins', 'alarms', 'weatherLocations', 'pressures', 'isses', 'quakes', 'appevents'];
 
         if (!allowedList.includes(name)) {
              return res.status(403).json({

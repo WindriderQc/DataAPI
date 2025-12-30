@@ -44,28 +44,6 @@ const scan = async (req, res, next) => {
       throw new Error('Main database handle missing');
     }
     console.log('[Storage] DB handle acquired:', db.databaseName || 'unknown');
-
-    if (!roots || !extensions) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Missing required fields: roots, extensions'
-      });
-    }
-
-    if (!Array.isArray(roots) || roots.length === 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'roots must be a non-empty array'
-      });
-    }
-
-    if (!Array.isArray(extensions) || extensions.length === 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'extensions must be a non-empty array'
-      });
-    }
-
     const scan_id = new ObjectId().toHexString();
 
     const scanner = new Scanner(db);
@@ -76,6 +54,10 @@ const scan = async (req, res, next) => {
     // Auto-cleanup when scan completes
     scanner.on('done', async () => {
       runningScans.delete(scan_id);
+      
+      // NOTE: n8n webhook integration moved to AgentX
+      // If you need to trigger n8n workflows on scan completion,
+      // configure AgentX to poll the scan status or use DataAPI webhooks
     });
     
     // Start the scan (fire and forget)
@@ -90,16 +72,12 @@ const scan = async (req, res, next) => {
     });
 
     // Log event for dashboard
-    try {
-      await db.collection('appevents').insertOne({
-        message: `NAS Scan started: ${roots.join(', ')}`,
-        type: 'info',
-        meta: { scan_id, roots },
-        timestamp: new Date()
-      });
-    } catch (err) {
-      console.error('[Storage] Failed to log scan start event:', err);
-    }
+    await db.collection('appevents').insertOne({
+      message: `NAS Scan started: ${roots.join(', ')}`,
+      type: 'info',
+      meta: { scan_id, roots },
+      timestamp: new Date()
+    }).catch(err => console.error('[Storage] Failed to log scan start event:', err));
 
     res.json({
       status: 'success',
@@ -428,9 +406,13 @@ const updateScan = async (req, res, next) => {
     }
 
     // Trigger n8n webhook if scan completed
-    if (status === 'completed' && process.env.N8N_WEBHOOK_URL) {
+    const n8nUrl = process.env.N8N_WEBHOOK_URL || 
+                   (process.env.N8N_WEBHOOK_BASE_URL && process.env.N8N_WEBHOOK_GENERIC ? 
+                    `${process.env.N8N_WEBHOOK_BASE_URL}/${process.env.N8N_WEBHOOK_GENERIC}` : null);
+
+    if (status === 'completed' && n8nUrl) {
       const fetch = require('node-fetch');
-      fetch(process.env.N8N_WEBHOOK_URL, {
+      fetch(n8nUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -441,16 +423,12 @@ const updateScan = async (req, res, next) => {
       }).catch(err => console.error('[Storage] Failed to trigger n8n webhook:', err.message));
 
       // Log event for dashboard
-      try {
-        await db.collection('appevents').insertOne({
-          message: `NAS Scan completed: ${scan_id}`,
-          type: 'success',
-          meta: { scan_id, stats },
-          timestamp: new Date()
-        });
-      } catch (err) {
-        console.error('[Storage] Failed to log scan complete event:', err);
-      }
+      await db.collection('appevents').insertOne({
+        message: `NAS Scan completed: ${scan_id}`,
+        type: 'success',
+        meta: { scan_id, stats },
+        timestamp: new Date()
+      }).catch(err => console.error('[Storage] Failed to log scan complete event:', err));
     }
 
     res.json({
