@@ -24,6 +24,7 @@ const chatkitController = require('../controllers/chatkitController');
 const weatherController = require('../controllers/weatherController');
 const ollamaController = require('../controllers/ollamaController');
 const liveDataConfigController = require('../controllers/liveDataConfigController');
+const systemController = require('../controllers/systemController');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -93,6 +94,9 @@ router.get('/storage/scan/:scan_id', requireEitherAuth, storageController.getSta
 // n8n Integration routes for Storage Tool
 router.get('/storage/n8n/status', requireEitherAuth, storageController.getN8nStatus);
 router.post('/storage/n8n/test', requireEitherAuth, storageController.testN8nWebhook);
+
+// System resources status
+router.get('/system/resources', requireEitherAuth, systemController.getSystemStats);
 
 // Storage summary for SBQC Ops Agent
 router.get('/storage/summary', requireEitherAuth, async (req, res, next) => {
