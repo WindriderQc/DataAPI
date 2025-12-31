@@ -379,10 +379,12 @@ const updateScan = async (req, res, next) => {
     const updateFields = {};
     
     if (status) {
-      updateFields.status = status;
+      // Normalize 'completed' to 'complete' for consistency
+      updateFields.status = status === 'completed' ? 'complete' : status;
     }
     
-    if (status === 'completed' || completedAt) {
+    // Set finished_at if status is complete/completed
+    if (status === 'complete' || status === 'completed' || completedAt) {
       updateFields.finished_at = completedAt ? new Date(completedAt) : new Date();
     }
     
