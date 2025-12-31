@@ -1,6 +1,5 @@
 const { Scanner } = require('../src/jobs/scanner/scan');
 const { ObjectId } = require('mongodb');
-const fetch = require('node-fetch');
 
 // Track running scans so they can be stopped
 const runningScans = new Map();
@@ -470,8 +469,10 @@ const getN8nStatus = async (req, res, next) => {
     if (n8nUrl) {
       try {
         const urlObj = new URL(n8nUrl);
-        // Keep protocol, host, and first 5 chars of path, mask rest
-        maskedUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname.substring(0, 5)}...`;
+        // Mask: Protocol + Host + First path segment (if any)
+        const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+        const firstSegment = pathSegments.length > 0 ? `/${pathSegments[0]}` : '';
+        maskedUrl = `${urlObj.protocol}//${urlObj.host}${firstSegment}/...`;
       } catch (e) {
         maskedUrl = 'Invalid URL Configured';
       }
@@ -488,6 +489,9 @@ const getN8nStatus = async (req, res, next) => {
         .sort({ at: -1 })
         .limit(5)
         .toArray(),
+      // Note: Regex search on message is not optimal for large collections.
+      // Ideally, all n8n events should have a specific type (e.g. 'n8n_integration').
+      // For now, we limit the search to 5 items and the collection is expected to be manageable.
       db.collection('appevents')
         .find({
            $or: [
@@ -558,7 +562,14 @@ const testN8nWebhook = async (req, res, next) => {
       user: req.user ? req.user.name : 'unknown'
     };
 
-    console.log(`[Storage] Sending test webhook to ${n8nUrl}`);
+    // Mask URL for logs
+    let logUrl = 'URL';
+    try {
+      const u = new URL(n8nUrl);
+      logUrl = `${u.protocol}//${u.host}...`;
+    } catch(e) {}
+
+    console.log(`[Storage] Sending test webhook to ${logUrl}`);
 
     try {
       const response = await fetch(n8nUrl, {
