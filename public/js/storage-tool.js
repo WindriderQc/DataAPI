@@ -226,7 +226,7 @@ async function loadExportList() {
             }
 
             tbody.innerHTML = files.map(file => {
-                const safeName = escapeHtml(file.name);
+                const safeName = escapeHtml(file.filename);
                 const safeModified = escapeHtml(new Date(file.modified).toLocaleString());
                 const safeDate = escapeHtml(new Date(file.modified).toLocaleDateString());
 
