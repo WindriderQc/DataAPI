@@ -22,22 +22,39 @@
             overflow-y: auto;
         }
         .scan-form-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+            /* Removed heavy background for cleaner tabbed look, or keep it inside the tab pane */
+            background-color: #f8f9fa;
             border-radius: 8px;
-            padding: 2rem;
-            margin-bottom: 2rem;
+            padding: 1.5rem;
         }
         .scan-form-section .form-label {
-            color: white;
+            /* color: white; */
             font-weight: 500;
         }
+        /* Overriding white text since we might move away from dark bg in tabs */
+        /* .form-text.text-white-50 { color: #6c757d !important; } */
+
         .badge-live {
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.6; }
+        }
+
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            border-top: 3px solid #0d6efd;
+        }
+
+        .compact-stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .compact-stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
         }
     </style>
 </head>
@@ -47,483 +64,278 @@
 <%- include('partials/nav') %>
 
 <div class="content-wrapper">
-    <div class="container-fluid pt-4 mt-5">
+    <div class="container-fluid pt-3">
         
-        <!-- Page Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2><i class="fa fa-hdd"></i> Storage Scanner Tool</h2>
-                <p class="text-muted">Scan directories and index files into the database</p>
+        <!-- Compact Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h4 class="mb-0"><i class="fa fa-hdd"></i> Storage Scanner</h4>
+                <small class="text-muted">Manage files, integrations, and reports</small>
+            </div>
+            <div>
+                 <small id="sysResUpdated" class="text-muted me-2">Updating...</small>
             </div>
         </div>
 
-        <!-- System Resources Card -->
-        <div class="row mb-4">
-            <div class="col-lg-8 mx-auto">
-                <div class="card bg-dark text-white">
-                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fa fa-server"></i> System Resources</h5>
-                        <small id="sysResUpdated" class="text-white-50">Updating...</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-md-3 border-end border-secondary">
-                                <h6 class="text-muted mb-2">CPU Usage</h6>
-                                <h3 class="mb-0" id="sysCpuVal">0%</h3>
-                                <small class="text-success"><i class="fa fa-microchip"></i> Process</small>
-                            </div>
-                            <div class="col-md-3 border-end border-secondary">
-                                <h6 class="text-muted mb-2">Memory (RSS)</h6>
-                                <h3 class="mb-0" id="sysMemVal">0 MB</h3>
-                                <small class="text-info"><i class="fa fa-memory"></i> Used</small>
-                            </div>
-                            <div class="col-md-3 border-end border-secondary">
-                                <h6 class="text-muted mb-2">System Load</h6>
-                                <h3 class="mb-0" id="sysLoadVal">0.00</h3>
-                                <small class="text-warning"><i class="fa fa-tachometer-alt"></i> 1 min</small>
-                            </div>
-                            <div class="col-md-3">
-                                <h6 class="text-muted mb-2">Uptime</h6>
-                                <h3 class="mb-0" id="sysUptimeVal">0h 0m</h3>
-                                <small class="text-light"><i class="fa fa-clock"></i> Process</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Scan Configuration -->
-        <div class="row mb-4">
-            <div class="col-lg-8 mx-auto">
-                <div class="scan-form-section">
-                    <h4 class="mb-4"><i class="fa fa-cog"></i> Configure New Scan</h4>
-                    
-                    <div class="mb-3">
-                        <label for="scanRoots" class="form-label">Root Directories (one per line)</label>
-                        <textarea class="form-control" id="scanRoots" rows="3" placeholder="/path/to/directory&#10;/another/path">/home/yb/Servers/DataAPI/public</textarea>
-                        <div class="form-text text-white-50">Enter the directories you want to scan</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="scanExtensions" class="form-label">File Extensions (comma-separated)</label>
-                        <input type="text" class="form-control" id="scanExtensions" placeholder="jpg,png,mkv,mp4,pdf,doc" value="jpg,png,js,css,html,json,csv">
-                        <div class="form-text text-white-50">Only files with these extensions will be scanned</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="batchSize" class="form-label">Batch Size</label>
-                        <input type="number" class="form-control" id="batchSize" value="1000" min="100" max="10000">
-                        <div class="form-text text-white-50">Number of files to process in each database batch</div>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-light btn-lg" id="startScanBtn" onclick="startScan()">
-                            <i class="fa fa-play"></i> Start Scan
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- n8n Integration Status -->
-        <div class="row mb-4">
-            <div class="col-lg-8 mx-auto">
-                <div class="card border-danger">
-                    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fa fa-bolt"></i> n8n Integration</h5>
-                        <button class="btn btn-sm btn-light text-danger" onclick="testN8nWebhook()">
-                            <i class="fa fa-paper-plane"></i> Test Connection
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="row align-items-center mb-3">
-                            <div class="col-md-6">
-                                <h6 class="text-muted mb-1">Webhook Status</h6>
-                                <div id="n8nStatusIndicator">
-                                    <span class="badge bg-secondary">Checking...</span>
-                                </div>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <h6 class="text-muted mb-1">Configured URL</h6>
-                                <code id="n8nWebhookUrl" class="text-muted">Loading...</code>
-                            </div>
-                        </div>
-
-                        <div class="accordion" id="n8nAccordion">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingEvents">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvents" aria-expanded="false" aria-controls="collapseEvents">
-                                        <i class="fa fa-list-alt me-2"></i> Recent Integration Events
-                                    </button>
-                                </h2>
-                                <div id="collapseEvents" class="accordion-collapse collapse" data-bs-parent="#n8nAccordion">
-                                    <div class="accordion-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-sm table-hover mb-0" id="n8nEventsTable">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Type</th>
-                                                        <th>Message</th>
-                                                        <th>Time</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="n8nEventsBody">
-                                                    <tr>
-                                                        <td colspan="3" class="text-center text-muted py-3">
-                                                            <small>Loading events...</small>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SMB Network Drive Helper -->
-        <div class="row mb-4">
-            <div class="col-lg-8 mx-auto">
-                <div class="card border-info">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fa fa-network-wired"></i> Mount SMB Network Drive</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted">
-                            <i class="fa fa-info-circle"></i> To scan files on a network share, you need to mount it first.
-                        </p>
-                        
-                        <div class="accordion" id="smbAccordion">
-                            <!-- Quick Mount Section -->
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingQuick">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuick">
-                                        <i class="fa fa-bolt me-2"></i> Quick Mount (Temporary)
-                                    </button>
-                                </h2>
-                                <div id="collapseQuick" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
-                                    <div class="accordion-body">
-                                        <p>Mount a network share temporarily (will unmount on reboot):</p>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-# Create mount point<br>
-sudo mkdir -p /mnt/network-share<br><br>
-# Mount the share<br>
-sudo mount -t cifs //SERVER_IP/SHARE_NAME /mnt/network-share -o username=YOUR_USERNAME,password=YOUR_PASSWORD<br><br>
-# Example:<br>
-sudo mount -t cifs //192.168.1.100/Media /mnt/media -o username=admin,password=mypass
-                                            </code>
-                                        </div>
-                                        <div class="alert alert-warning">
-                                            <i class="fa fa-exclamation-triangle"></i> <strong>Note:</strong> This mount will disappear after reboot.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Permanent Mount Section -->
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingPermanent">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePermanent">
-                                        <i class="fa fa-save me-2"></i> Permanent Mount (Survives Reboot)
-                                    </button>
-                                </h2>
-                                <div id="collapsePermanent" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
-                                    <div class="accordion-body">
-                                        <h6>Step 1: Create credentials file (recommended for security)</h6>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-# Create credentials file<br>
-sudo nano /etc/samba/credentials/share_creds<br><br>
-# Add these lines:<br>
-username=YOUR_USERNAME<br>
-password=YOUR_PASSWORD<br>
-domain=WORKGROUP<br><br>
-# Secure the file<br>
-sudo chmod 600 /etc/samba/credentials/share_creds
-                                            </code>
-                                        </div>
-
-                                        <h6>Step 2: Edit /etc/fstab</h6>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-sudo nano /etc/fstab<br><br>
-# Add this line at the end:<br>
-//SERVER_IP/SHARE_NAME /mnt/network-share cifs credentials=/etc/samba/credentials/share_creds,iocharset=utf8,file_mode=0777,dir_mode=0777 0 0<br><br>
-# Example:<br>
-//192.168.1.100/Media /mnt/media cifs credentials=/etc/samba/credentials/share_creds,iocharset=utf8,file_mode=0777,dir_mode=0777 0 0
-                                            </code>
-                                        </div>
-
-                                        <h6>Step 3: Create mount point and mount</h6>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-# Create mount point<br>
-sudo mkdir -p /mnt/network-share<br><br>
-# Mount it<br>
-sudo mount -a<br><br>
-# Verify<br>
-df -h | grep network-share
-                                            </code>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Troubleshooting Section -->
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="headingTrouble">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTrouble">
-                                        <i class="fa fa-wrench me-2"></i> Troubleshooting & Tips
-                                    </button>
-                                </h2>
-                                <div id="collapseTrouble" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
-                                    <div class="accordion-body">
-                                        <h6>Install CIFS utilities (if not installed)</h6>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-sudo apt-get update<br>
-sudo apt-get install cifs-utils
-                                            </code>
-                                        </div>
-
-                                        <h6>Common Mount Options</h6>
-                                        <ul>
-                                            <li><code>vers=3.0</code> - Force SMB version 3.0</li>
-                                            <li><code>uid=1000,gid=1000</code> - Set ownership to specific user</li>
-                                            <li><code>ro</code> - Mount read-only</li>
-                                            <li><code>noperm</code> - Disable permission checks</li>
-                                            <li><code>sec=ntlmssp</code> - Use NTLM authentication</li>
-                                        </ul>
-
-                                        <h6>Check if mounted</h6>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-mount | grep cifs<br>
-df -h
-                                            </code>
-                                        </div>
-
-                                        <h6>Unmount a share</h6>
-                                        <div class="bg-dark text-light p-3 rounded mb-3">
-                                            <code>
-sudo umount /mnt/network-share
-                                            </code>
-                                        </div>
-
-                                        <div class="alert alert-info">
-                                            <i class="fa fa-lightbulb"></i> <strong>Tip:</strong> After mounting, you can add the mount path (e.g., <code>/mnt/network-share</code>) to the "Root Directories" field above to scan it.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Current Scan Status -->
-        <div class="row mb-4" id="currentScanSection" style="display: none;">
-            <div class="col-lg-8 mx-auto">
-                <div class="card scan-card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fa fa-spinner fa-spin"></i> Current Scan</h5>
-                        <button class="btn btn-sm btn-danger" id="stopScanBtn" onclick="stopCurrentScan()">
-                            <i class="fa fa-stop"></i> Stop
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Scan ID:</strong> <code id="currentScanId"></code>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <span class="badge bg-info status-badge" id="currentScanStatus">Running</span>
-                                <span class="badge bg-success badge-live ms-2" id="currentScanLive" style="display: none;">
-                                    <i class="fa fa-circle"></i> Live
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="progress mb-3" style="height: 30px;">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                 id="scanProgress" 
-                                 role="progressbar" 
-                                 style="width: 0%">
-                                <span id="progressText">Starting...</span>
-                            </div>
-                        </div>
-
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h3 class="text-primary" id="filesSeen">0</h3>
-                                        <small class="text-muted">Files Seen</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h3 class="text-success" id="filesUpserted">0</h3>
-                                        <small class="text-muted">Files Upserted</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h3 class="text-danger" id="filesErrors">0</h3>
-                                        <small class="text-muted">Errors</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-3">
-                            <small class="text-muted">
-                                <strong>Started:</strong> <span id="scanStarted">-</span>
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Scans History -->
         <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fa fa-history"></i> Recent Scans</h5>
-                        <button class="btn btn-sm btn-primary" onclick="loadRecentScans()">
-                            <i class="fa fa-refresh"></i> Refresh
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover" id="recentScansTable">
-                                <thead>
-                                    <tr>
-                                        <th>Scan ID</th>
-                                        <th>Status</th>
-                                        <th>Files Seen</th>
-                                        <th>Upserts</th>
-                                        <th>Errors</th>
-                                        <th>Started</th>
-                                        <th>Duration</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recentScansBody">
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted">
-                                            <em>Loading recent scans...</em>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="mt-3">
-                            <h6 class="text-muted"><small>Status Legend</small></h6>
-                            <div>
-                                <span class="badge bg-primary me-2">Running</span> <small class="text-muted me-3">Scan in progress</small>
-                                <span class="badge bg-success me-2">Complete</span> <small class="text-muted me-3">Finished successfully</small>
-                                <span class="badge bg-warning me-2">Stopped</span> <small class="text-muted me-3">Manually stopped</small>
-                                <span class="badge bg-secondary me-2">Unknown</span> <small class="text-muted">Status unknown</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <!-- Left Main Column -->
+            <div class="col-lg-8">
 
-        <!-- File Export Section -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fa fa-download"></i> Export File Reports</h5>
-                        <button class="btn btn-sm btn-light" onclick="loadExportList()">
-                            <i class="fa fa-refresh"></i> Refresh
-                        </button>
+                <!-- Scan Manager (Tabs: Config & Status) -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="scanTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="config-tab" data-bs-toggle="tab" data-bs-target="#scan-config" type="button" role="tab"><i class="fa fa-cog"></i> Configure</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#scan-status" type="button" role="tab"><i class="fa fa-spinner"></i> Status</button>
+                            </li>
+                        </ul>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">
-                            Generate optimized file reports for AI analysis, sharing, or offline browsing.
-                            These files are much faster to process than querying the database directly.
-                        </p>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-8">
-                                <h6>Generate New Report</h6>
-                                <div class="row g-3">
+                        <div class="tab-content" id="scanTabsContent">
+
+                            <!-- Tab 1: Configuration -->
+                            <div class="tab-pane fade show active" id="scan-config" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="mb-3">
+                                            <label for="scanRoots" class="form-label">Root Directories</label>
+                                            <textarea class="form-control font-monospace small" id="scanRoots" rows="3">/home/yb/Servers/DataAPI/public</textarea>
+                                            <div class="form-text">One path per line</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="scanExtensions" class="form-label">Extensions</label>
+                                            <input type="text" class="form-control font-monospace small" id="scanExtensions" value="jpg,png,js,css,html,json,csv">
+                                        </div>
+                                    </div>
                                     <div class="col-md-4">
-                                        <select class="form-select" id="exportType">
-                                            <option value="full">Full Report (All Files)</option>
-                                            <option value="summary">Directory Summary</option>
-                                            <option value="media">Media Files Only</option>
-                                            <option value="large">Large Files (>100MB)</option>
-                                            <option value="stats">Statistics Report</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <select class="form-select" id="exportFormat">
-                                            <option value="json">JSON Format</option>
-                                            <option value="csv">CSV Format</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <button class="btn btn-success" onclick="generateExport()">
-                                            <i class="fa fa-cog"></i> Generate Report
-                                        </button>
-                                        <span class="ms-3 text-muted" id="exportStatus"></span>
+                                        <div class="mb-3">
+                                            <label for="batchSize" class="form-label">Batch Size</label>
+                                            <input type="number" class="form-control" id="batchSize" value="1000" min="100">
+                                        </div>
                                     </div>
                                 </div>
+                                <div class="d-grid">
+                                    <button type="button" class="btn btn-primary" id="startScanBtn" onclick="startScan()">
+                                        <i class="fa fa-play"></i> Start Scan
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="alert alert-info mb-0">
-                                    <strong>Report Types:</strong><br>
-                                    <small>
-                                        <strong>Full:</strong> Complete file listing<br>
-                                        <strong>Summary:</strong> Directory statistics<br>
-                                        <strong>Media:</strong> Images, videos, audio<br>
-                                        <strong>Large:</strong> Files over 100MB<br>
-                                        <strong>Stats:</strong> Analysis & metrics
-                                    </small>
+
+                            <!-- Tab 2: Status (Existing #currentScanSection logic adapted) -->
+                            <div class="tab-pane fade" id="scan-status" role="tabpanel">
+                                <!-- Reusing IDs for JS compatibility -->
+                                <div id="currentScanSection" style="/* display: none; handled by tab, but JS might toggle */">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <strong>ID:</strong> <code id="currentScanId">-</code>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-secondary status-badge" id="currentScanStatus">Idle</span>
+                                            <span class="badge bg-success badge-live ms-1" id="currentScanLive" style="display: none;">Live</span>
+                                            <button class="btn btn-sm btn-danger ms-2" id="stopScanBtn" onclick="stopCurrentScan()">Stop</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="progress mb-3" style="height: 25px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                             id="scanProgress" role="progressbar" style="width: 0%">
+                                            <span id="progressText" class="small">Ready</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row text-center g-2">
+                                        <div class="col-4">
+                                            <div class="p-2 border rounded bg-light">
+                                                <div class="h4 mb-0 text-primary" id="filesSeen">0</div>
+                                                <small class="text-muted">Seen</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-2 border rounded bg-light">
+                                                <div class="h4 mb-0 text-success" id="filesUpserted">0</div>
+                                                <small class="text-muted">Upserted</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-2 border rounded bg-light">
+                                                <div class="h4 mb-0 text-danger" id="filesErrors">0</div>
+                                                <small class="text-muted">Errors</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-end small text-muted">
+                                        Started: <span id="scanStarted">-</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <h6>Available Reports</h6>
+                <!-- Recent Activity -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                        <h6 class="mb-0 text-dark"><i class="fa fa-history"></i> Recent Activity</h6>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadRecentScans()">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover" id="exportsList">
-                                <thead>
+                            <table class="table table-sm table-hover mb-0" id="recentScansTable">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Filename</th>
-                                        <th>Size</th>
-                                        <th>Generated</th>
-                                        <th>Actions</th>
+                                        <th>ID</th>
+                                        <th>Status</th>
+                                        <th>Seen</th>
+                                        <th>Upsert</th>
+                                        <th>Time</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
-                                <tbody id="exportsListBody">
-                                    <tr>
-                                        <td colspan="4" class="text-center text-muted">
-                                            <em>Loading available reports...</em>
-                                        </td>
-                                    </tr>
+                                <tbody id="recentScansBody" class="small">
+                                    <tr><td colspan="6" class="text-center p-3">Loading...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
+            </div>
+
+            <!-- Right Sidebar Column -->
+            <div class="col-lg-4">
+
+                <!-- System Resources (Compact) -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 bg-dark text-white">
+                        <h6 class="mb-0"><i class="fa fa-microchip"></i> System</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center g-3">
+                            <div class="col-6">
+                                <div class="compact-stat-value" id="sysCpuVal">0%</div>
+                                <div class="compact-stat-label">CPU</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="compact-stat-value" id="sysMemVal">0MB</div>
+                                <div class="compact-stat-label">RAM</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="compact-stat-value" id="sysLoadVal">0.00</div>
+                                <div class="compact-stat-label">Load (1m)</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="compact-stat-value" id="sysUptimeVal">0h</div>
+                                <div class="compact-stat-label">Uptime</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Utilities Tabs (Exports, n8n, SMB) -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="toolsTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tool-exports" type="button"><i class="fa fa-download"></i> Reports</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tool-n8n" type="button"><i class="fa fa-bolt"></i> n8n</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tool-smb" type="button"><i class="fa fa-network-wired"></i> SMB</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="tab-content">
+
+                            <!-- Exports Tab -->
+                            <div class="tab-pane fade show active" id="tool-exports">
+                                <div class="mb-3">
+                                    <div class="input-group input-group-sm mb-2">
+                                        <select class="form-select" id="exportType">
+                                            <option value="full">Full Report</option>
+                                            <option value="summary">Summary</option>
+                                            <option value="media">Media Only</option>
+                                            <option value="large">Large Files</option>
+                                        </select>
+                                        <select class="form-select" id="exportFormat" style="max-width: 80px;">
+                                            <option value="json">JSON</option>
+                                            <option value="csv">CSV</option>
+                                        </select>
+                                        <button class="btn btn-success" id="generateExportBtn" onclick="generateExport()"><i class="fa fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <h6 class="small text-muted border-bottom pb-1">Available Reports</h6>
+                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm table-borderless small" id="exportsList">
+                                        <tbody id="exportsListBody">
+                                            <tr><td>Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- n8n Tab -->
+                            <div class="tab-pane fade" id="tool-n8n">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div id="n8nStatusIndicator"><span class="badge bg-secondary">Checking...</span></div>
+                                    <button class="btn btn-sm btn-outline-secondary" id="testN8nBtn" onclick="testN8nWebhook()">Test</button>
+                                </div>
+                                <div class="small text-muted text-break mb-3">
+                                    URL: <code id="n8nWebhookUrl">...</code>
+                                </div>
+                                <h6 class="small text-muted border-bottom pb-1">Recent Events</h6>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm small mb-0">
+                                        <tbody id="n8nEventsBody">
+                                            <tr><td>Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- SMB Tab -->
+                            <div class="tab-pane fade" id="tool-smb">
+                                <div class="accordion accordion-flush" id="smbAccordion">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="flush-headingOne">
+                                            <button class="accordion-button collapsed py-2 small" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne">
+                                                Quick Mount
+                                            </button>
+                                        </h2>
+                                        <div id="flush-collapseOne" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
+                                            <div class="accordion-body p-2 small">
+                                                <code>sudo mount -t cifs //IP/Share /mnt/path -o user=user,pass=pass</code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="flush-headingTwo">
+                                            <button class="accordion-button collapsed py-2 small" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseTwo">
+                                                Permanent Mount
+                                            </button>
+                                        </h2>
+                                        <div id="flush-collapseTwo" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
+                                            <div class="accordion-body p-2 small">
+                                                Edit <code>/etc/fstab</code> to add cifs mount with credentials file.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -532,21 +344,15 @@ sudo umount /mnt/network-share
 </div>
 
 <!-- Scan Details Modal -->
-<div class="modal fade" id="scanDetailsModal" tabindex="-1" aria-labelledby="scanDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+<div class="modal fade" id="scanDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="scanDetailsModalLabel">Scan Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header py-2">
+                <h5 class="modal-title">Scan Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="scanDetailsContent">
-                <div class="text-center py-5">
-                    <i class="fa fa-spinner fa-spin fa-3x text-primary"></i>
-                    <p class="mt-3">Loading scan details...</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <!-- Content loaded via JS -->
             </div>
         </div>
     </div>
