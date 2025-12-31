@@ -57,6 +57,42 @@
             </div>
         </div>
 
+        <!-- System Resources Card -->
+        <div class="row mb-4">
+            <div class="col-lg-8 mx-auto">
+                <div class="card bg-dark text-white">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fa fa-server"></i> System Resources</h5>
+                        <small id="sysResUpdated" class="text-white-50">Updating...</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3 border-end border-secondary">
+                                <h6 class="text-muted mb-2">CPU Usage</h6>
+                                <h3 class="mb-0" id="sysCpuVal">0%</h3>
+                                <small class="text-success"><i class="fa fa-microchip"></i> Process</small>
+                            </div>
+                            <div class="col-md-3 border-end border-secondary">
+                                <h6 class="text-muted mb-2">Memory (RSS)</h6>
+                                <h3 class="mb-0" id="sysMemVal">0 MB</h3>
+                                <small class="text-info"><i class="fa fa-memory"></i> Used</small>
+                            </div>
+                            <div class="col-md-3 border-end border-secondary">
+                                <h6 class="text-muted mb-2">System Load</h6>
+                                <h3 class="mb-0" id="sysLoadVal">0.00</h3>
+                                <small class="text-warning"><i class="fa fa-tachometer-alt"></i> 1 min</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted mb-2">Uptime</h6>
+                                <h3 class="mb-0" id="sysUptimeVal">0h 0m</h3>
+                                <small class="text-light"><i class="fa fa-clock"></i> Process</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Scan Configuration -->
         <div class="row mb-4">
             <div class="col-lg-8 mx-auto">
