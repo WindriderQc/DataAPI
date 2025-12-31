@@ -11,64 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // === Event Listeners ===
 
   // Start Scan Button
-  document.getElementById('startScanBtn').addEventListener('click', async () => {
-    const roots = document.getElementById('rootDirs').value.split('\n').filter(p => p.trim() !== '');
-    const extensions = document.getElementById('fileExts').value.split(',').map(e => e.trim());
-    const batchSize = parseInt(document.getElementById('batchSize').value, 10);
-
-    if (roots.length === 0) {
-      alert('Please specify at least one root directory.');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/v1/storage/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roots, extensions, batchSize })
-      });
-
-      const data = await res.json();
-      if (data.status === 'success') {
-        alert('Scan started successfully! Scan ID: ' + data.scanId);
-        loadRecentScans();
-      } else {
-        alert('Error starting scan: ' + (data.message || 'Unknown error'));
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Network error starting scan.');
-    }
-  });
-
-  // SMB Mount Toggle (Simple accordion behavior if needed, usually handled by Bootstrap)
-
-  // Test N8n Connection Button
-  const testN8nBtn = document.getElementById('testN8nBtn');
-  if (testN8nBtn) {
-    testN8nBtn.addEventListener('click', async () => {
-      try {
-        testN8nBtn.disabled = true;
-        testN8nBtn.textContent = 'Testing...';
-
-        const res = await fetch('/api/v1/storage/n8n/test', {
-          method: 'POST'
-        });
-        const data = await res.json();
-
-        if (data.status === 'success') {
-          alert('Test webhook sent successfully! Check n8n execution log.');
-          loadN8nStatus(); // Refresh events
-        } else {
-          alert('Error sending test webhook: ' + (data.message || 'Unknown error'));
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Network error testing connection.');
-      } finally {
-        testN8nBtn.disabled = false;
-        testN8nBtn.textContent = 'Test Connection';
-      }
+  const startBtn = document.getElementById('startScanBtn');
+  if (startBtn) {
+    startBtn.addEventListener('click', async () => {
+        // This listener is redundant if we use onclick="startScan()" but good for safety
+        // We will implement the logic in the global function and rely on that.
     });
   }
 });
@@ -95,18 +42,26 @@ async function updateSystemResources() {
     if (data.status === 'success') {
       const stats = data.data;
 
-      // Update DOM elements
-      document.getElementById('sys-cpu').textContent = stats.cpu.toFixed(1) + '%';
-      document.getElementById('sys-mem').textContent = Math.round(stats.memory / 1024 / 1024) + ' MB';
-      document.getElementById('sys-load').textContent = stats.loadAvg[0].toFixed(2);
+      // Update DOM elements (using IDs from template)
+      if (document.getElementById('sysCpuVal'))
+        document.getElementById('sysCpuVal').textContent = stats.cpu.toFixed(1) + '%';
+
+      if (document.getElementById('sysMemVal'))
+        document.getElementById('sysMemVal').textContent = Math.round(stats.memory / 1024 / 1024) + ' MB';
+
+      if (document.getElementById('sysLoadVal'))
+        document.getElementById('sysLoadVal').textContent = stats.loadAvg[0].toFixed(2);
 
       // Format uptime
       const uptimeHrs = Math.floor(stats.uptime / 3600);
       const uptimeMins = Math.floor((stats.uptime % 3600) / 60);
-      document.getElementById('sys-uptime').textContent = `${uptimeHrs}h ${uptimeMins}m`;
+
+      if (document.getElementById('sysUptimeVal'))
+        document.getElementById('sysUptimeVal').textContent = `${uptimeHrs}h ${uptimeMins}m`;
 
       // Update timestamp
-      document.getElementById('sys-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+      if (document.getElementById('sysResUpdated'))
+        document.getElementById('sysResUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
     }
   } catch (err) {
     // console.warn('Failed to fetch system resources', err);
@@ -118,23 +73,13 @@ async function loadRecentScans() {
   if (!container) return;
 
   try {
-    // Fetch generic collection items for 'scans'
-    // Note: If you have a specific endpoint for scans, use that.
-    // Otherwise we might need to use the generic collection API if allowed,
-    // or the storage controller should provide a history endpoint.
-    // Assuming /api/v1/collection/scans/items works and is allowed:
-    
-    // However, the prompt implies we might not have a direct endpoint for listing scans in the snippet provided.
-    // Let's assume we implemented one or use the generic one.
-    // The storageController in the original code didn't have a 'list' method exposed.
-    // But typically we can query the 'scans' collection via the generic API if 'scans' is in the allowlist.
-    
-    // For now, let's try to fetch from the generic endpoint.
-    const res = await fetch('/api/v1/collection/scans/items?limit=10&sort=-created_at');
+    // Use the dedicated storage scan list endpoint
+    const res = await fetch('/api/v1/storage/scans?limit=10');
     const data = await res.json();
     
     if (data.status === 'success') {
-      const scans = data.data;
+      // API returns { data: { scans: [], count: 0 } }
+      const scans = data.data.scans;
       if (scans.length === 0) {
         container.innerHTML = '<tr><td colspan="8" class="text-center">No recent scans found.</td></tr>';
         return;
@@ -144,16 +89,16 @@ async function loadRecentScans() {
         <tr>
           <td><span class="text-danger">${scan._id}</span></td>
           <td>${renderStatusBadge(scan.status)}</td>
-          <td>${scan.files_found || 0}</td>
-          <td>${scan.files_processed || 0}</td>
+          <td>${scan.files_found || (scan.counts ? scan.counts.files_processed : 0)}</td>
+          <td>${scan.counts ? scan.counts.inserted + scan.counts.updated : 0}</td>
           <td>${scan.errors || 0}</td>
-          <td>${new Date(scan.created_at).toLocaleString()}</td>
-          <td>${calculateDuration(scan.created_at, scan.finished_at)}</td>
+          <td>${new Date(scan.started_at).toLocaleString()}</td>
+          <td>${scan.duration ? scan.duration + 's' : '-'}</td>
           <td>
             <button class="btn btn-sm btn-outline-primary" onclick="viewScanDetails('${scan._id}')">
               <i class="fas fa-eye"></i>
             </button>
-             ${scan.status === 'running' ? `
+             ${scan.live ? `
               <button class="btn btn-sm btn-outline-danger" onclick="stopScan('${scan._id}')">
                 <i class="fas fa-stop"></i>
               </button>
@@ -172,48 +117,52 @@ async function loadRecentScans() {
 
 async function loadMountStatus() {
   // Placeholder for SMB mount status checking
-  // If backend supports it, fetch status here.
 }
 
 async function loadN8nStatus() {
   try {
     const res = await fetch('/api/v1/storage/n8n/status');
+
+    if (!res.ok) {
+       console.warn('Failed to load n8n status:', res.status);
+       return;
+    }
+
     const data = await res.json();
     
     if (data.status === 'success') {
       const { configured, url, events } = data.data;
 
       // Update Status Badge
-      const statusBadge = document.getElementById('n8nStatusBadge');
-      const configUrl = document.getElementById('n8nConfigUrl');
+      const statusBadge = document.getElementById('n8nStatusIndicator'); // Correct ID from EJS
+      const configUrl = document.getElementById('n8nWebhookUrl');     // Correct ID from EJS
 
-      if (configured) {
+      if (statusBadge && configured) {
         statusBadge.innerHTML = '<span class="badge bg-success">Active</span>';
-        configUrl.textContent = url;
-      } else {
+      } else if (statusBadge) {
         statusBadge.innerHTML = '<span class="badge bg-warning text-dark">Not Configured</span>';
-        configUrl.textContent = 'None';
+      }
+
+      if (configUrl) {
+          configUrl.textContent = configured ? url : 'None';
       }
 
       // Update Events Table
       const tbody = document.getElementById('n8nEventsBody');
-      if (events && events.length > 0) {
-        tbody.innerHTML = events.map(e => `
-          <tr>
-            <td>${new Date(e.created_at).toLocaleString()}</td>
-            <td>${escapeHtml(e.type)}</td>
-            <td class="text-truncate" style="max-width: 300px;" title="${escapeHtml(e.message)}">
-              ${escapeHtml(e.message)}
-            </td>
-            <td>
-              <span class="badge ${e.status === 'success' ? 'bg-success' : 'bg-danger'}">
-                ${escapeHtml(e.status)}
-              </span>
-            </td>
-          </tr>
-        `).join('');
-      } else {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No recent integration events.</td></tr>';
+      if (tbody) {
+          if (events && events.length > 0) {
+            tbody.innerHTML = events.map(e => `
+              <tr>
+                <td><span class="badge bg-${e.type === 'Incoming' ? 'info' : 'secondary'}">${escapeHtml(e.type)}</span></td>
+                <td class="text-truncate" style="max-width: 300px;" title="${escapeHtml(e.message)}">
+                  ${escapeHtml(e.message)}
+                </td>
+                <td class="small text-muted">${new Date(e.timestamp).toLocaleTimeString()}</td>
+              </tr>
+            `).join('');
+          } else {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No recent integration events.</td></tr>';
+          }
       }
     }
   } catch (err) {
@@ -257,6 +206,86 @@ async function stopScan(scanId) {
 }
 
 function viewScanDetails(scanId) {
-  // Implement scan details view if needed, or redirect
   alert('Details for scan ' + scanId);
 }
+
+// === Global Exports for onclick Handlers ===
+
+window.startScan = async function() {
+    const roots = document.getElementById('scanRoots').value.split('\n').filter(p => p.trim() !== '');
+    const extensions = document.getElementById('scanExtensions').value.split(',').map(e => e.trim());
+    const batchSize = parseInt(document.getElementById('batchSize').value, 10);
+
+    if (roots.length === 0) {
+      alert('Please specify at least one root directory.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/v1/storage/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roots, extensions, batch_size: batchSize })
+      });
+
+      const data = await res.json();
+      if (data.status === 'success') {
+        alert('Scan started successfully! Scan ID: ' + data.data.scan_id);
+        loadRecentScans();
+      } else {
+        alert('Error starting scan: ' + (data.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error starting scan.');
+    }
+};
+
+window.testN8nWebhook = async function() {
+  const btn = document.getElementById('testN8nBtn') || document.querySelector('button[onclick="testN8nWebhook()"]');
+
+  if (!btn) {
+      console.error('Test button not found');
+      return;
+  }
+
+  try {
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Testing...';
+
+    const res = await fetch('/api/v1/storage/n8n/test', {
+      method: 'POST'
+    });
+
+    if (!res.ok) {
+        let errMsg = `HTTP ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.message) errMsg = errData.message;
+        } catch (e) {}
+        throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+
+    if (data.status === 'success') {
+      alert('Test webhook sent successfully! Check n8n execution log.');
+      loadN8nStatus(); // Refresh events
+    } else {
+      alert('Error sending test webhook: ' + (data.message || 'Unknown error'));
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Error testing connection: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-paper-plane"></i> Test Connection';
+  }
+};
+
+window.loadRecentScans = loadRecentScans;
+window.stopScan = stopScan;
+window.viewScanDetails = viewScanDetails;
+window.loadExportList = function() { alert('Export feature pending implementation'); };
+window.generateExport = function() { alert('Export feature pending implementation'); };
