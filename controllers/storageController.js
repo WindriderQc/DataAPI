@@ -430,7 +430,7 @@ const updateScan = async (req, res, next) => {
     }
 
     // Trigger n8n webhook if scan completed
-    if (status === 'completed' && process.env.N8N_WEBHOOK_URL) {
+    if ((status === 'complete' || status === 'completed') && process.env.N8N_WEBHOOK_URL) {
       const fetch = require('node-fetch');
       fetch(process.env.N8N_WEBHOOK_URL, {
         method: 'POST',

@@ -134,7 +134,7 @@ async function updateScanStatus() {
             
             // Update status badge
             const statusBadge = document.getElementById('currentScanStatus');
-            statusBadge.textContent = scan.status.charAt(0).toUpperCase() + scan.status.slice(1);
+            statusBadge.textContent = scan.status === 'completed' ? 'Complete' : (scan.status.charAt(0).toUpperCase() + scan.status.slice(1));
             statusBadge.className = 'badge status-badge ' + getStatusBadgeClass(scan.status);
             
             // Update live indicator
@@ -255,7 +255,7 @@ async function loadRecentScans() {
                     <tr>
                         <td><code class="small">${scan._id}</code></td>
                         <td>
-                            <span class="badge bg-${statusClass}">${scan.status}</span>
+                            <span class="badge bg-${statusClass} text-capitalize">${scan.status === 'completed' ? 'complete' : scan.status}</span>
                             ${scan.live ? '<span class="badge bg-success ms-1"><i class="fa fa-circle"></i> Live</span>' : ''}
                         </td>
                         <td>${scan.counts?.files_seen || 0}</td>
