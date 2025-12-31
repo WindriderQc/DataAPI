@@ -3,21 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
   loadRecentScans();
   loadMountStatus();
   loadN8nStatus();
+  loadExportList(); // Trigger initial load of exports
 
   // === System Resources Polling ===
   updateSystemResources();
   setInterval(updateSystemResources, 5000); // Poll every 5 seconds
 
   // === Event Listeners ===
-
-  // Start Scan Button
-  const startBtn = document.getElementById('startScanBtn');
-  if (startBtn) {
-    startBtn.addEventListener('click', async () => {
-        // This listener is redundant if we use onclick="startScan()" but good for safety
-        // We will implement the logic in the global function and rely on that.
-    });
-  }
+  // ...
 });
 
 // === Helper Functions ===
@@ -31,6 +24,14 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 async function updateSystemResources() {
@@ -73,33 +74,29 @@ async function loadRecentScans() {
   if (!container) return;
 
   try {
-    // Use the dedicated storage scan list endpoint
     const res = await fetch('/api/v1/storage/scans?limit=10');
     const data = await res.json();
     
     if (data.status === 'success') {
-      // API returns { data: { scans: [], count: 0 } }
       const scans = data.data.scans;
       if (scans.length === 0) {
-        container.innerHTML = '<tr><td colspan="8" class="text-center">No recent scans found.</td></tr>';
+        container.innerHTML = '<tr><td colspan="6" class="text-center">No recent scans found.</td></tr>';
         return;
       }
 
       container.innerHTML = scans.map(scan => `
         <tr>
-          <td><span class="text-danger">${scan._id}</span></td>
+          <td><span class="text-danger">${scan._id.substring(0, 8)}...</span></td>
           <td>${renderStatusBadge(scan.status)}</td>
           <td>${scan.files_found || (scan.counts ? scan.counts.files_processed : 0)}</td>
           <td>${scan.counts ? scan.counts.inserted + scan.counts.updated : 0}</td>
-          <td>${scan.errors || 0}</td>
-          <td>${new Date(scan.started_at).toLocaleString()}</td>
-          <td>${scan.duration ? scan.duration + 's' : '-'}</td>
+          <td title="${new Date(scan.started_at).toLocaleString()}">${new Date(scan.started_at).toLocaleTimeString()}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="viewScanDetails('${scan._id}')">
+            <button class="btn btn-sm btn-link p-0" onclick="viewScanDetails('${scan._id}')">
               <i class="fas fa-eye"></i>
             </button>
              ${scan.live ? `
-              <button class="btn btn-sm btn-outline-danger" onclick="stopScan('${scan._id}')">
+              <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="stopScan('${scan._id}')">
                 <i class="fas fa-stop"></i>
               </button>
             ` : ''}
@@ -107,11 +104,11 @@ async function loadRecentScans() {
         </tr>
       `).join('');
     } else {
-      container.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to load scans.</td></tr>';
+      container.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load scans.</td></tr>';
     }
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading scans.</td></tr>';
+    container.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading scans.</td></tr>';
   }
 }
 
@@ -134,8 +131,8 @@ async function loadN8nStatus() {
       const { configured, url, events } = data.data;
 
       // Update Status Badge
-      const statusBadge = document.getElementById('n8nStatusIndicator'); // Correct ID from EJS
-      const configUrl = document.getElementById('n8nWebhookUrl');     // Correct ID from EJS
+      const statusBadge = document.getElementById('n8nStatusIndicator');
+      const configUrl = document.getElementById('n8nWebhookUrl');
 
       if (statusBadge && configured) {
         statusBadge.innerHTML = '<span class="badge bg-success">Active</span>';
@@ -154,14 +151,14 @@ async function loadN8nStatus() {
             tbody.innerHTML = events.map(e => `
               <tr>
                 <td><span class="badge bg-${e.type === 'Incoming' ? 'info' : 'secondary'}">${escapeHtml(e.type)}</span></td>
-                <td class="text-truncate" style="max-width: 300px;" title="${escapeHtml(e.message)}">
+                <td class="text-truncate" style="max-width: 150px;" title="${escapeHtml(e.message)}">
                   ${escapeHtml(e.message)}
                 </td>
                 <td class="small text-muted">${new Date(e.timestamp).toLocaleTimeString()}</td>
               </tr>
             `).join('');
           } else {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No recent integration events.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No recent events.</td></tr>';
           }
       }
     }
@@ -177,14 +174,6 @@ function renderStatusBadge(status) {
   if (status === 'error' || status === 'stopped') color = 'warning';
 
   return `<span class="badge bg-${color}">${status || 'undefined'}</span>`;
-}
-
-function calculateDuration(start, end) {
-  if (!start) return '-';
-  const startTime = new Date(start).getTime();
-  const endTime = end ? new Date(end).getTime() : Date.now();
-  const diff = Math.floor((endTime - startTime) / 1000);
-  return diff + 's';
 }
 
 async function stopScan(scanId) {
@@ -209,7 +198,115 @@ function viewScanDetails(scanId) {
   alert('Details for scan ' + scanId);
 }
 
-// === Global Exports for onclick Handlers ===
+// === Export Functions ===
+
+async function loadExportList() {
+    const tbody = document.getElementById('exportsListBody');
+    if (!tbody) return;
+
+    try {
+        const res = await fetch('/api/v1/files/exports');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            const files = json.data;
+            if (files.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No reports available.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = files.map(file => `
+                <tr>
+                    <td>
+                        <a href="/exports/${file.name}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 150px;" title="${file.name}">
+                            <i class="fa fa-file-alt me-1"></i> ${file.name}
+                        </a>
+                    </td>
+                    <td class="small">${formatBytes(file.size)}</td>
+                    <td class="small" title="${new Date(file.modified).toLocaleString()}">
+                        ${new Date(file.modified).toLocaleDateString()}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteExport('${file.name}')" title="Delete Report">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load reports.</td></tr>';
+        }
+    } catch (err) {
+        console.error('Error loading exports:', err);
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading reports.</td></tr>';
+    }
+}
+
+async function generateExport() {
+    const typeSelect = document.getElementById('exportType');
+    const formatSelect = document.getElementById('exportFormat');
+    const btn = document.querySelector('button[onclick="generateExport()"]'); // Find the button to disable it
+
+    if (!typeSelect || !formatSelect) return;
+
+    const type = typeSelect.value;
+    const format = formatSelect.value;
+
+    if (btn) {
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+
+        try {
+            const res = await fetch('/api/v1/files/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, format })
+            });
+
+            const json = await res.json();
+
+            if (json.status === 'success') {
+                // Refresh list
+                await loadExportList();
+                // Optional: visual feedback?
+            } else {
+                alert('Export failed: ' + (json.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Export error:', err);
+            alert('Export request failed: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
+async function deleteExport(filename) {
+    if (!confirm(`Are you sure you want to delete report "${filename}"?`)) return;
+
+    try {
+        const res = await fetch(`/api/v1/files/exports/${filename}`, {
+            method: 'DELETE'
+        });
+
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            loadExportList();
+        } else {
+            alert('Delete failed: ' + (json.message || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error('Delete error:', err);
+        alert('Delete request failed');
+    }
+}
+
+// === Global Exports ===
 
 window.startScan = async function() {
     const roots = document.getElementById('scanRoots').value.split('\n').filter(p => p.trim() !== '');
@@ -230,7 +327,18 @@ window.startScan = async function() {
 
       const data = await res.json();
       if (data.status === 'success') {
-        alert('Scan started successfully! Scan ID: ' + data.data.scan_id);
+        const statusTabTrigger = document.querySelector('#status-tab');
+        if (statusTabTrigger) {
+            const tab = new bootstrap.Tab(statusTabTrigger);
+            tab.show();
+        }
+
+        const statusBadge = document.getElementById('currentScanStatus');
+        if (statusBadge) {
+            statusBadge.textContent = 'Running';
+            statusBadge.className = 'badge bg-primary status-badge';
+        }
+
         loadRecentScans();
       } else {
         alert('Error starting scan: ' + (data.message || 'Unknown error'));
@@ -252,7 +360,7 @@ window.testN8nWebhook = async function() {
   try {
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Testing...';
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
 
     const res = await fetch('/api/v1/storage/n8n/test', {
       method: 'POST'
@@ -270,7 +378,7 @@ window.testN8nWebhook = async function() {
     const data = await res.json();
 
     if (data.status === 'success') {
-      alert('Test webhook sent successfully! Check n8n execution log.');
+      alert('Test webhook sent successfully!');
       loadN8nStatus(); // Refresh events
     } else {
       alert('Error sending test webhook: ' + (data.message || 'Unknown error'));
@@ -280,12 +388,13 @@ window.testN8nWebhook = async function() {
     alert('Error testing connection: ' + err.message);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa fa-paper-plane"></i> Test Connection';
+    btn.innerHTML = 'Test';
   }
 };
 
 window.loadRecentScans = loadRecentScans;
 window.stopScan = stopScan;
 window.viewScanDetails = viewScanDetails;
-window.loadExportList = function() { alert('Export feature pending implementation'); };
-window.generateExport = function() { alert('Export feature pending implementation'); };
+window.loadExportList = loadExportList;
+window.generateExport = generateExport;
+window.deleteExport = deleteExport;
