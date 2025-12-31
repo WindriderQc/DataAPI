@@ -90,6 +90,10 @@ router.post('/storage/scan/:scan_id/batch', requireEitherAuth, storageController
 router.patch('/storage/scan/:scan_id', requireEitherAuth, storageController.updateScan);
 router.get('/storage/scan/:scan_id', requireEitherAuth, storageController.getStatus); // Alias for status
 
+// n8n Integration routes for Storage Tool
+router.get('/storage/n8n/status', requireEitherAuth, storageController.getN8nStatus);
+router.post('/storage/n8n/test', requireEitherAuth, storageController.testN8nWebhook);
+
 // Storage summary for SBQC Ops Agent
 router.get('/storage/summary', requireEitherAuth, async (req, res, next) => {
     try {
