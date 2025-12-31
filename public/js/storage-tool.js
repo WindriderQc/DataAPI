@@ -624,10 +624,96 @@ function formatDate(dateString) {
     return date.toLocaleString();
 }
 
+// n8n Integration Logic
+async function loadN8nStatus() {
+    const statusIndicator = document.getElementById('n8nStatusIndicator');
+    const urlElement = document.getElementById('n8nWebhookUrl');
+    const eventsBody = document.getElementById('n8nEventsBody');
+
+    if (!statusIndicator) return; // Not on page or elements missing
+
+    try {
+        const response = await fetch('/api/v1/storage/n8n/status', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const { configured, url, events } = data.data;
+
+            // Update status indicator
+            if (configured) {
+                statusIndicator.innerHTML = '<span class="badge bg-success"><i class="fa fa-check"></i> Configured</span>';
+                urlElement.textContent = url;
+            } else {
+                statusIndicator.innerHTML = '<span class="badge bg-warning text-dark"><i class="fa fa-exclamation-triangle"></i> Not Configured</span>';
+                urlElement.textContent = 'None';
+            }
+
+            // Update events table
+            if (events && events.length > 0) {
+                eventsBody.innerHTML = events.map(e => `
+                    <tr>
+                        <td>
+                            <span class="badge bg-${e.type === 'Incoming' ? 'info' : 'primary'}">${e.type}</span>
+                        </td>
+                        <td class="small text-truncate" style="max-width: 200px;" title="${e.message}">
+                            ${e.message}
+                        </td>
+                        <td class="small text-muted">
+                            ${new Date(e.timestamp).toLocaleTimeString()}
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                eventsBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-3">
+                            <small>No recent events</small>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading n8n status:', error);
+        if (statusIndicator) {
+            statusIndicator.innerHTML = '<span class="badge bg-danger">Error</span>';
+        }
+    }
+}
+
+async function testN8nWebhook() {
+    if (!confirm('This will send a test event to the configured n8n webhook. Continue?')) {
+        return;
+    }
+
+    try {
+        showNotification('Sending test webhook...', 'info');
+        const response = await fetch('/api/v1/storage/n8n/test', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showNotification('Test webhook sent successfully!', 'success');
+            loadN8nStatus(); // Refresh status and events
+        } else {
+            showNotification('Webhook test failed: ' + data.message, 'danger');
+            loadN8nStatus(); // Refresh to show failure event
+        }
+    } catch (error) {
+        console.error('Error testing n8n webhook:', error);
+        showNotification('Failed to test webhook: ' + error.message, 'danger');
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadRecentScans();
     loadExportList(); // Load export list on page load
+    loadN8nStatus(); // Load n8n status
 });
 
 // Export functions to global scope for onclick handlers
@@ -638,3 +724,5 @@ window.viewScanDetails = viewScanDetails;
 window.deleteExport = deleteExport;
 window.loadRecentScans = loadRecentScans;
 window.loadExportList = loadExportList;
+window.testN8nWebhook = testN8nWebhook;
+window.loadN8nStatus = loadN8nStatus;

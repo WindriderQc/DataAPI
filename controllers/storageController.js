@@ -1,8 +1,16 @@
 const { Scanner } = require('../src/jobs/scanner/scan');
 const { ObjectId } = require('mongodb');
+const fetch = require('node-fetch');
 
 // Track running scans so they can be stopped
 const runningScans = new Map();
+
+// Helper to resolve n8n Webhook URL
+function resolveN8nUrl() {
+  return process.env.N8N_WEBHOOK_URL ||
+         (process.env.N8N_WEBHOOK_BASE_URL && process.env.N8N_WEBHOOK_GENERIC ?
+          `${process.env.N8N_WEBHOOK_BASE_URL}/${process.env.N8N_WEBHOOK_GENERIC}` : null);
+}
 
 // Cleanup stale "running" scans on module load (server restart)
 async function cleanupStaleScansFn(db) {
@@ -408,12 +416,9 @@ const updateScan = async (req, res, next) => {
     }
 
     // Trigger n8n webhook if scan completed
-    const n8nUrl = process.env.N8N_WEBHOOK_URL || 
-                   (process.env.N8N_WEBHOOK_BASE_URL && process.env.N8N_WEBHOOK_GENERIC ? 
-                    `${process.env.N8N_WEBHOOK_BASE_URL}/${process.env.N8N_WEBHOOK_GENERIC}` : null);
+    const n8nUrl = resolveN8nUrl();
 
     if (status === 'completed' && n8nUrl) {
-      const fetch = require('node-fetch');
       fetch(n8nUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,6 +456,177 @@ const updateScan = async (req, res, next) => {
   }
 };
 
+/**
+ * Get n8n Integration Status
+ * GET /api/v1/storage/n8n/status
+ */
+const getN8nStatus = async (req, res, next) => {
+  try {
+    const n8nUrl = resolveN8nUrl();
+
+    let maskedUrl = null;
+    if (n8nUrl) {
+      try {
+        const urlObj = new URL(n8nUrl);
+        // Keep protocol, host, and first 5 chars of path, mask rest
+        maskedUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname.substring(0, 5)}...`;
+      } catch (e) {
+        maskedUrl = 'Invalid URL Configured';
+      }
+    }
+
+    const db = req.app.locals.dbs.mainDb;
+
+    // Get recent events from integration_events or appevents that mention n8n
+    // We'll search in integration_events (inbox) and appevents (outbox)
+
+    const [inboxEvents, outboxEvents] = await Promise.all([
+      db.collection('integration_events')
+        .find({ src: 'n8n' })
+        .sort({ at: -1 })
+        .limit(5)
+        .toArray(),
+      db.collection('appevents')
+        .find({
+           $or: [
+             { message: { $regex: 'n8n', $options: 'i' } },
+             { type: 'n8n_test' }
+           ]
+        })
+        .sort({ timestamp: -1 })
+        .limit(5)
+        .toArray()
+    ]);
+
+    // Format events for display
+    const events = [
+      ...inboxEvents.map(e => ({
+        id: e._id,
+        type: 'Incoming',
+        message: 'Received event from n8n',
+        timestamp: e.at,
+        details: e.body
+      })),
+      ...outboxEvents.map(e => ({
+        id: e._id,
+        type: 'Outgoing',
+        message: e.message,
+        timestamp: e.timestamp,
+        details: e.meta
+      }))
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 5);
+
+    res.json({
+      status: 'success',
+      data: {
+        configured: !!n8nUrl,
+        url: maskedUrl,
+        events
+      }
+    });
+  } catch (error) {
+    console.error('Failed to get n8n status:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to get n8n status',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Test n8n Webhook
+ * POST /api/v1/storage/n8n/test
+ */
+const testN8nWebhook = async (req, res, next) => {
+  try {
+    const n8nUrl = resolveN8nUrl();
+
+    if (!n8nUrl) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'n8n Webhook URL is not configured'
+      });
+    }
+
+    const payload = {
+      event: 'test_connection',
+      source: 'DataAPI Storage Tool',
+      timestamp: new Date().toISOString(),
+      user: req.user ? req.user.name : 'unknown'
+    };
+
+    console.log(`[Storage] Sending test webhook to ${n8nUrl}`);
+
+    try {
+      const response = await fetch(n8nUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const success = response.ok;
+      const responseText = await response.text();
+
+      // Log the attempt
+      const db = req.app.locals.dbs.mainDb;
+      await db.collection('appevents').insertOne({
+        message: `n8n Webhook Test: ${success ? 'Success' : 'Failed'} (${response.status})`,
+        type: 'n8n_test',
+        meta: {
+          url: n8nUrl,
+          status: response.status,
+          response: responseText.substring(0, 200)
+        },
+        timestamp: new Date()
+      });
+
+      if (success) {
+        res.json({
+          status: 'success',
+          message: 'Webhook sent successfully',
+          data: {
+            status: response.status,
+            response: responseText
+          }
+        });
+      } else {
+        res.status(502).json({
+          status: 'error',
+          message: `Webhook failed with status ${response.status}`,
+          data: {
+            response: responseText
+          }
+        });
+      }
+    } catch (fetchError) {
+      console.error('[Storage] Webhook fetch error:', fetchError);
+
+      // Log the failure
+      const db = req.app.locals.dbs.mainDb;
+      await db.collection('appevents').insertOne({
+        message: `n8n Webhook Test Failed: ${fetchError.message}`,
+        type: 'n8n_test',
+        meta: { error: fetchError.message },
+        timestamp: new Date()
+      });
+
+      res.status(502).json({
+        status: 'error',
+        message: 'Network error sending webhook',
+        error: fetchError.message
+      });
+    }
+  } catch (error) {
+    console.error('Failed to test n8n webhook:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to test webhook',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scan,
   getStatus,
@@ -459,5 +635,7 @@ module.exports = {
   getDirectoryCount,
   insertBatch,
   updateScan,
-  cleanupStaleScans
+  cleanupStaleScans,
+  getN8nStatus,
+  testN8nWebhook
 };
