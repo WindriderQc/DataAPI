@@ -72,7 +72,7 @@ const corsOptions = {
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: false,
+    credentials: true,
     optionsSuccessStatus: 200
 };
 // CORS middleware is now applied directly to API routes.

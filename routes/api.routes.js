@@ -98,6 +98,22 @@ router.post('/storage/n8n/test', requireEitherAuth, storageController.testN8nWeb
 // System resources status
 router.get('/system/resources', requireEitherAuth, systemController.getSystemStats);
 
+// Integrations events (n8n) - Exposed via API for dashboard
+router.get('/integrations/events/n8n', requireEitherAuth, async (req, res) => {
+    try {
+        const db = req.app.locals.dbs.mainDb;
+        const limit = parseInt(req.query.limit) || 100;
+        const events = await db.collection("integration_events")
+            .find({ src: "n8n" })
+            .sort({ at: -1 })
+            .limit(limit)
+            .toArray();
+        res.json(events);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Storage summary for SBQC Ops Agent
 router.get('/storage/summary', requireEitherAuth, async (req, res, next) => {
     try {
