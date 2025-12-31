@@ -22,19 +22,13 @@
             overflow-y: auto;
         }
         .scan-form-section {
-            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
-            /* Removed heavy background for cleaner tabbed look, or keep it inside the tab pane */
             background-color: #f8f9fa;
             border-radius: 8px;
             padding: 1.5rem;
         }
         .scan-form-section .form-label {
-            /* color: white; */
             font-weight: 500;
         }
-        /* Overriding white text since we might move away from dark bg in tabs */
-        /* .form-text.text-white-50 { color: #6c757d !important; } */
-
         .badge-live {
             animation: pulse 2s infinite;
         }
@@ -42,12 +36,10 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.6; }
         }
-
         .nav-tabs .nav-link.active {
             font-weight: bold;
             border-top: 3px solid #0d6efd;
         }
-
         .compact-stat-value {
             font-size: 1.5rem;
             font-weight: bold;
@@ -129,7 +121,7 @@
                             <!-- Tab 2: Status (Existing #currentScanSection logic adapted) -->
                             <div class="tab-pane fade" id="scan-status" role="tabpanel">
                                 <!-- Reusing IDs for JS compatibility -->
-                                <div id="currentScanSection" style="/* display: none; handled by tab, but JS might toggle */">
+                                <div id="currentScanSection">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
                                             <strong>ID:</strong> <code id="currentScanId">-</code>
@@ -238,15 +230,12 @@
                     </div>
                 </div>
 
-                <!-- Utilities Tabs (Exports, n8n, SMB) -->
+                <!-- Utilities Tabs (n8n, SMB) - Moved Reports to bottom -->
                 <div class="card mb-3">
                     <div class="card-header">
                         <ul class="nav nav-tabs card-header-tabs" id="toolsTabs" role="tablist">
                             <li class="nav-item">
-                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tool-exports" type="button"><i class="fa fa-download"></i> Reports</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tool-n8n" type="button"><i class="fa fa-bolt"></i> n8n</button>
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tool-n8n" type="button"><i class="fa fa-bolt"></i> n8n</button>
                             </li>
                             <li class="nav-item">
                                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tool-smb" type="button"><i class="fa fa-network-wired"></i> SMB</button>
@@ -256,35 +245,8 @@
                     <div class="card-body p-3">
                         <div class="tab-content">
 
-                            <!-- Exports Tab -->
-                            <div class="tab-pane fade show active" id="tool-exports">
-                                <div class="mb-3">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <select class="form-select" id="exportType">
-                                            <option value="full">Full Report</option>
-                                            <option value="summary">Summary</option>
-                                            <option value="media">Media Only</option>
-                                            <option value="large">Large Files</option>
-                                        </select>
-                                        <select class="form-select" id="exportFormat" style="max-width: 80px;">
-                                            <option value="json">JSON</option>
-                                            <option value="csv">CSV</option>
-                                        </select>
-                                        <button class="btn btn-success" id="generateExportBtn" onclick="generateExport()"><i class="fa fa-plus"></i></button>
-                                    </div>
-                                </div>
-                                <h6 class="small text-muted border-bottom pb-1">Available Reports</h6>
-                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                                    <table class="table table-sm table-borderless small" id="exportsList">
-                                        <tbody id="exportsListBody">
-                                            <tr><td>Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
                             <!-- n8n Tab -->
-                            <div class="tab-pane fade" id="tool-n8n">
+                            <div class="tab-pane fade show active" id="tool-n8n">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div id="n8nStatusIndicator"><span class="badge bg-secondary">Checking...</span></div>
                                     <button class="btn btn-sm btn-outline-secondary" id="testN8nBtn" onclick="testN8nWebhook()">Test</button>
@@ -336,6 +298,62 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- Full Width Reports Section (Restored from Tab) -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fa fa-download"></i> Export File Reports</h5>
+                        <button class="btn btn-sm btn-light" onclick="loadExportList()">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-end mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Report Type</label>
+                                <select class="form-select" id="exportType">
+                                    <option value="full">Full Report (All Files)</option>
+                                    <option value="summary">Directory Summary</option>
+                                    <option value="media">Media Files Only</option>
+                                    <option value="large">Large Files (>100MB)</option>
+                                    <option value="stats">Statistics Report</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Format</label>
+                                <select class="form-select" id="exportFormat">
+                                    <option value="json">JSON</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-success w-100" id="generateExportBtn" onclick="generateExport()">
+                                    <i class="fa fa-cog"></i> Generate New Report
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="exportsList">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Filename</th>
+                                        <th>Size</th>
+                                        <th>Generated</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exportsListBody">
+                                    <tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

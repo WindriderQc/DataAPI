@@ -241,7 +241,10 @@ async function loadExportList() {
                     <td class="small" title="${safeModified}">
                         ${safeDate}
                     </td>
-                    <td>
+                    <td class="text-end">
+                        <a href="/exports/${safeName}" download class="btn btn-sm btn-link text-primary p-0 me-2" title="Download">
+                            <i class="fa fa-download"></i>
+                        </a>
                         <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteExport('${safeName}')" title="Delete Report">
                             <i class="fa fa-trash"></i>
                         </button>
@@ -272,7 +275,7 @@ async function generateExport() {
     if (btn) {
         btn.disabled = true;
         const originalHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Generating...';
 
         try {
             const res = await fetch('/api/v1/files/export', {
