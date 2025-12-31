@@ -24,3 +24,7 @@ node_modules/
 deploy.env
 
 quakes.csv
+
+# Generated Reports
+public/exports/*.json
+

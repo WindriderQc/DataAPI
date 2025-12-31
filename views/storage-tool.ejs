@@ -49,12 +49,41 @@
         }
 
         .compact-stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #2c3e50;
         }
         .compact-stat-label {
-            font-size: 0.8rem;
-            color: #6c757d;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .sys-card {
+            background: #fff;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .sys-card:hover {
+            transform: translateY(-2px);
+        }
+        .sys-icon {
+            font-size: 2rem;
+            opacity: 0.1;
+            position: absolute;
+            right: 15px;
+            top: 15px;
+        }
+        
+        /* Chevron rotation for collapse */
+        [data-bs-toggle="collapse"] .fa-chevron-down {
+            transition: transform 0.3s ease;
+        }
+        [data-bs-toggle="collapse"]:not(.collapsed) .fa-chevron-down {
+            transform: rotate(180deg);
         }
     </style>
 </head>
@@ -63,7 +92,7 @@
 
 <%- include('partials/nav') %>
 
-<div class="content-wrapper">
+<div class="content-wrapper" style="padding-top: 60px;">
     <div class="container-fluid pt-3">
         
         <!-- Compact Header -->
@@ -78,98 +107,95 @@
         </div>
 
         <div class="row">
-            <!-- Left Main Column -->
-            <div class="col-lg-8">
+            <!-- Main Column -->
+            <div class="col-12">
 
-                <!-- Scan Manager (Tabs: Config & Status) -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <ul class="nav nav-tabs card-header-tabs" id="scanTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="config-tab" data-bs-toggle="tab" data-bs-target="#scan-config" type="button" role="tab"><i class="fa fa-cog"></i> Configure</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#scan-status" type="button" role="tab"><i class="fa fa-spinner"></i> Status</button>
-                            </li>
-                        </ul>
+                <!-- Scan Manager (Side-by-Side Config & Status) -->
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0 text-primary"><i class="fa fa-tasks me-2"></i>Scan Manager</h5>
                     </div>
                     <div class="card-body">
-                        <div class="tab-content" id="scanTabsContent">
-
-                            <!-- Tab 1: Configuration -->
-                            <div class="tab-pane fade show active" id="scan-config" role="tabpanel">
+                        <div class="row">
+                            <!-- Left: Configuration -->
+                            <div class="col-lg-6 border-end">
+                                <h6 class="text-muted mb-3 text-uppercase small fw-bold">Configuration</h6>
                                 <div class="row">
                                     <div class="col-md-12">
                                         <div class="mb-3">
-                                            <label for="scanRoots" class="form-label">Root Directories</label>
-                                            <textarea class="form-control font-monospace small" id="scanRoots" rows="3">/home/yb/Servers/DataAPI/public</textarea>
-                                            <div class="form-text">One path per line</div>
+                                            <label for="scanRoots" class="form-label small text-muted">Root Directories</label>
+                                            <textarea class="form-control font-monospace small bg-light" id="scanRoots" rows="3" style="border: 1px solid #e9ecef;">/home/yb/Servers/DataAPI/public</textarea>
+                                            <div class="form-text small">One path per line</div>
                                         </div>
                                     </div>
                                     <div class="col-md-8">
                                         <div class="mb-3">
-                                            <label for="scanExtensions" class="form-label">Extensions</label>
-                                            <input type="text" class="form-control font-monospace small" id="scanExtensions" value="jpg,png,js,css,html,json,csv">
+                                            <label for="scanExtensions" class="form-label small text-muted">Extensions</label>
+                                            <input type="text" class="form-control font-monospace small bg-light" id="scanExtensions" value="jpg,png,js,css,html,json,csv" style="border: 1px solid #e9ecef;">
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="batchSize" class="form-label">Batch Size</label>
-                                            <input type="number" class="form-control" id="batchSize" value="1000" min="100">
+                                            <label for="batchSize" class="form-label small text-muted">Batch Size</label>
+                                            <input type="number" class="form-control bg-light" id="batchSize" value="1000" min="100" style="border: 1px solid #e9ecef;">
                                         </div>
                                     </div>
                                 </div>
-                                <div class="d-grid">
+                                <div class="d-grid mt-2">
                                     <button type="button" class="btn btn-primary" id="startScanBtn" onclick="startScan()">
-                                        <i class="fa fa-play"></i> Start Scan
+                                        <i class="fa fa-play me-2"></i> Start New Scan
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Tab 2: Status (Existing #currentScanSection logic adapted) -->
-                            <div class="tab-pane fade" id="scan-status" role="tabpanel">
+                            <!-- Right: Status -->
+                            <div class="col-lg-6 ps-lg-4 mt-4 mt-lg-0">
+                                <h6 class="text-muted mb-3 text-uppercase small fw-bold">Current Status</h6>
+                                
                                 <!-- Reusing IDs for JS compatibility -->
-                                <div id="currentScanSection" style="/* display: none; handled by tab, but JS might toggle */">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div id="currentScanSection">
+                                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-light">
                                         <div>
-                                            <strong>ID:</strong> <code id="currentScanId">-</code>
+                                            <small class="text-muted d-block">Scan ID</small>
+                                            <code id="currentScanId" class="text-dark">-</code>
                                         </div>
-                                        <div>
-                                            <span class="badge bg-secondary status-badge" id="currentScanStatus">Idle</span>
-                                            <span class="badge bg-success badge-live ms-1" id="currentScanLive" style="display: none;">Live</span>
-                                            <button class="btn btn-sm btn-danger ms-2" id="stopScanBtn" onclick="stopCurrentScan()">Stop</button>
+                                        <div class="text-end">
+                                            <span class="badge bg-secondary status-badge rounded-pill" id="currentScanStatus">Idle</span>
+                                            <span class="badge bg-success badge-live ms-1 rounded-pill" id="currentScanLive" style="display: none;">Live</span>
                                         </div>
                                     </div>
 
-                                    <div class="progress mb-3" style="height: 25px;">
-                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                             id="scanProgress" role="progressbar" style="width: 0%">
-                                            <span id="progressText" class="small">Ready</span>
-                                        </div>
+                                    <div class="progress mb-4" style="height: 8px; background-color: #e9ecef;">
+                                        <div class="progress-bar" id="scanProgress" role="progressbar" style="width: 0%"></div>
                                     </div>
+                                    <div class="text-center small text-muted mb-3" id="progressText">Ready to scan</div>
 
-                                    <div class="row text-center g-2">
+                                    <div class="row text-center g-3">
                                         <div class="col-4">
-                                            <div class="p-2 border rounded bg-light">
-                                                <div class="h4 mb-0 text-primary" id="filesSeen">0</div>
-                                                <small class="text-muted">Seen</small>
+                                            <div class="p-2">
+                                                <div class="h3 mb-0 text-primary fw-bold" id="filesSeen">0</div>
+                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Seen</small>
                                             </div>
                                         </div>
                                         <div class="col-4">
-                                            <div class="p-2 border rounded bg-light">
-                                                <div class="h4 mb-0 text-success" id="filesUpserted">0</div>
-                                                <small class="text-muted">Upserted</small>
+                                            <div class="p-2 border-start border-end">
+                                                <div class="h3 mb-0 text-success fw-bold" id="filesUpserted">0</div>
+                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Upserted</small>
                                             </div>
                                         </div>
                                         <div class="col-4">
-                                            <div class="p-2 border rounded bg-light">
-                                                <div class="h4 mb-0 text-danger" id="filesErrors">0</div>
-                                                <small class="text-muted">Errors</small>
+                                            <div class="p-2">
+                                                <div class="h3 mb-0 text-danger fw-bold" id="filesErrors">0</div>
+                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Errors</small>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mt-2 text-end small text-muted">
-                                        Started: <span id="scanStarted">-</span>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                                        <small class="text-muted">Started: <span id="scanStarted">-</span></small>
+                                        <button class="btn btn-sm btn-outline-danger" id="stopScanBtn" onclick="stopCurrentScan()" disabled>
+                                            <i class="fa fa-stop me-1"></i> Stop
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -206,126 +232,152 @@
                     </div>
                 </div>
 
-            </div>
-
-            <!-- Right Sidebar Column -->
-            <div class="col-lg-4">
-
                 <!-- System Resources (Compact) -->
-                <div class="card mb-3">
-                    <div class="card-header py-2 bg-dark text-white">
-                        <h6 class="mb-0"><i class="fa fa-microchip"></i> System</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center g-3">
-                            <div class="col-6">
-                                <div class="compact-stat-value" id="sysCpuVal">0%</div>
-                                <div class="compact-stat-label">CPU</div>
+                <div class="card mb-4 shadow-sm border-0" style="background: linear-gradient(to right, #f8f9fa, #ffffff);">
+                    <div class="card-body py-4">
+                        <div class="row text-center g-4">
+                            <div class="col-md-3 col-6 border-end">
+                                <div class="position-relative">
+                                    <i class="fa fa-microchip sys-icon text-primary"></i>
+                                    <div class="compact-stat-value text-primary" id="sysCpuVal">0%</div>
+                                    <div class="compact-stat-label">CPU Usage</div>
+                                </div>
                             </div>
-                            <div class="col-6">
-                                <div class="compact-stat-value" id="sysMemVal">0MB</div>
-                                <div class="compact-stat-label">RAM</div>
+                            <div class="col-md-3 col-6 border-end-md">
+                                <div class="position-relative">
+                                    <i class="fa fa-memory sys-icon text-success"></i>
+                                    <div class="compact-stat-value text-success" id="sysMemVal">0MB</div>
+                                    <div class="compact-stat-label">Memory</div>
+                                </div>
                             </div>
-                            <div class="col-6">
-                                <div class="compact-stat-value" id="sysLoadVal">0.00</div>
-                                <div class="compact-stat-label">Load (1m)</div>
+                            <div class="col-md-3 col-6 border-end">
+                                <div class="position-relative">
+                                    <i class="fa fa-tachometer-alt sys-icon text-warning"></i>
+                                    <div class="compact-stat-value text-warning" id="sysLoadVal">0.00</div>
+                                    <div class="compact-stat-label">Load Avg (1m)</div>
+                                </div>
                             </div>
-                            <div class="col-6">
-                                <div class="compact-stat-value" id="sysUptimeVal">0h</div>
-                                <div class="compact-stat-label">Uptime</div>
+                            <div class="col-md-3 col-6">
+                                <div class="position-relative">
+                                    <i class="fa fa-clock sys-icon text-info"></i>
+                                    <div class="compact-stat-value text-info" id="sysUptimeVal">0h</div>
+                                    <div class="compact-stat-label">Uptime</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Utilities Tabs (Exports, n8n, SMB) -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <ul class="nav nav-tabs card-header-tabs" id="toolsTabs" role="tablist">
-                            <li class="nav-item">
-                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tool-exports" type="button"><i class="fa fa-download"></i> Reports</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tool-n8n" type="button"><i class="fa fa-bolt"></i> n8n</button>
-                            </li>
-                            <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tool-smb" type="button"><i class="fa fa-network-wired"></i> SMB</button>
-                            </li>
-                        </ul>
+                <!-- Utilities (Reports, n8n, SMB) -->
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0 text-primary"><i class="fa fa-tools me-2"></i>Utilities</h5>
                     </div>
-                    <div class="card-body p-3">
-                        <div class="tab-content">
-
-                            <!-- Exports Tab -->
-                            <div class="tab-pane fade show active" id="tool-exports">
-                                <div class="mb-3">
-                                    <div class="input-group input-group-sm mb-2">
-                                        <select class="form-select" id="exportType">
+                    <div class="card-body">
+                        <div class="row g-4">
+                            
+                            <!-- Reports Section -->
+                            <div class="col-lg-6 border-end">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="text-muted text-uppercase small fw-bold mb-0"><i class="fa fa-download me-2"></i>Reports</h6>
+                                </div>
+                                
+                                <div class="bg-light p-3 rounded mb-3">
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select border-0" id="exportType">
                                             <option value="full">Full Report</option>
                                             <option value="summary">Summary</option>
                                             <option value="media">Media Only</option>
                                             <option value="large">Large Files</option>
                                         </select>
-                                        <select class="form-select" id="exportFormat" style="max-width: 80px;">
+                                        <select class="form-select border-0" id="exportFormat" style="max-width: 100px; border-left: 1px solid #dee2e6 !important;">
                                             <option value="json">JSON</option>
                                             <option value="csv">CSV</option>
                                         </select>
-                                        <button class="btn btn-success" id="generateExportBtn" onclick="generateExport()"><i class="fa fa-plus"></i></button>
+                                        <button class="btn btn-primary" id="generateExportBtn" onclick="generateExport()">
+                                            <i class="fa fa-plus me-1"></i> Generate
+                                        </button>
                                     </div>
                                 </div>
-                                <h6 class="small text-muted border-bottom pb-1">Available Reports</h6>
-                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                                    <table class="table table-sm table-borderless small" id="exportsList">
+
+                                <h6 class="small text-muted border-bottom pb-2 mb-2">Available Reports</h6>
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover small" id="exportsList">
                                         <tbody id="exportsListBody">
-                                            <tr><td>Loading...</td></tr>
+                                            <tr><td class="text-center text-muted py-3">Loading...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <!-- n8n Tab -->
-                            <div class="tab-pane fade" id="tool-n8n">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div id="n8nStatusIndicator"><span class="badge bg-secondary">Checking...</span></div>
-                                    <button class="btn btn-sm btn-outline-secondary" id="testN8nBtn" onclick="testN8nWebhook()">Test</button>
+                            <!-- n8n Section -->
+                            <div class="col-lg-6">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="text-muted text-uppercase small fw-bold mb-0"><i class="fa fa-bolt me-2"></i>n8n Integration</h6>
+                                    <div id="n8nStatusIndicator"><span class="badge bg-secondary rounded-pill">Checking...</span></div>
                                 </div>
-                                <div class="small text-muted text-break mb-3">
-                                    URL: <code id="n8nWebhookUrl">...</code>
+
+                                <div class="bg-light p-3 rounded mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <small class="text-muted fw-bold">Webhook URL</small>
+                                        <button class="btn btn-xs btn-outline-primary py-0" id="testN8nBtn" onclick="testN8nWebhook()">
+                                            <i class="fa fa-paper-plane me-1"></i> Test
+                                        </button>
+                                    </div>
+                                    <code class="d-block p-2 bg-white border rounded text-break small" id="n8nWebhookUrl">...</code>
                                 </div>
-                                <h6 class="small text-muted border-bottom pb-1">Recent Events</h6>
-                                <div style="max-height: 200px; overflow-y: auto;">
-                                    <table class="table table-sm small mb-0">
+
+                                <h6 class="small text-muted border-bottom pb-2 mb-2">Recent Events</h6>
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover small mb-0">
                                         <tbody id="n8nEventsBody">
-                                            <tr><td>Loading...</td></tr>
+                                            <tr><td class="text-center text-muted py-3">Loading...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <!-- SMB Tab -->
-                            <div class="tab-pane fade" id="tool-smb">
-                                <div class="accordion accordion-flush" id="smbAccordion">
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header" id="flush-headingOne">
-                                            <button class="accordion-button collapsed py-2 small" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne">
-                                                Quick Mount
-                                            </button>
-                                        </h2>
-                                        <div id="flush-collapseOne" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
-                                            <div class="accordion-body p-2 small">
-                                                <code>sudo mount -t cifs //IP/Share /mnt/path -o user=user,pass=pass</code>
+                            <!-- SMB Section (Full Width Below) -->
+                            <div class="col-12 mt-4 pt-4 border-top">
+                                <div class="d-flex align-items-center collapsed" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#smbInstructions" aria-expanded="false" aria-controls="smbInstructions">
+                                    <h6 class="text-muted text-uppercase small fw-bold mb-0"><i class="fa fa-network-wired me-2"></i>SMB Mount Instructions</h6>
+                                    <i class="fa fa-chevron-down ms-2 small text-muted"></i>
+                                </div>
+                                
+                                <div class="collapse mt-3" id="smbInstructions">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="card h-100 border-0 bg-light">
+                                                <div class="card-body">
+                                                    <h6 class="card-title text-primary small fw-bold mb-3">1. Quick Mount (Temporary)</h6>
+                                                    <p class="card-text small text-muted mb-2">Use this command to mount a share immediately. Does not persist after reboot.</p>
+                                                    <div class="bg-dark rounded p-2 mb-2 position-relative">
+                                                        <code class="text-light small d-block">sudo mount -t cifs //IP/Share /mnt/path -o user=user,pass=pass,vers=3.0</code>
+                                                    </div>
+                                                    <small class="text-muted fst-italic" style="font-size: 0.75rem;">Note: Ensure <code>cifs-utils</code> is installed.</small>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header" id="flush-headingTwo">
-                                            <button class="accordion-button collapsed py-2 small" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseTwo">
-                                                Permanent Mount
-                                            </button>
-                                        </h2>
-                                        <div id="flush-collapseTwo" class="accordion-collapse collapse" data-bs-parent="#smbAccordion">
-                                            <div class="accordion-body p-2 small">
-                                                Edit <code>/etc/fstab</code> to add cifs mount with credentials file.
+                                        <div class="col-md-6">
+                                            <div class="card h-100 border-0 bg-light">
+                                                <div class="card-body">
+                                                    <h6 class="card-title text-success small fw-bold mb-3">2. Permanent Mount (/etc/fstab)</h6>
+                                                    <p class="card-text small text-muted mb-2">Add this line to <code>/etc/fstab</code> for persistent mounting.</p>
+                                                    
+                                                    <div class="mb-2">
+                                                        <small class="fw-bold text-dark">Step A: Create Credentials File</small>
+                                                        <div class="bg-white border rounded p-2 mt-1 mb-2">
+                                                            <code class="text-dark small d-block"># /etc/samba/creds<br>username=YOUR_USER<br>password=YOUR_PASS</code>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <small class="fw-bold text-dark">Step B: Add to fstab</small>
+                                                        <div class="bg-dark rounded p-2 mt-1">
+                                                            <code class="text-light small d-block">//IP/Share /mnt/path cifs credentials=/etc/samba/creds,uid=1000,gid=1000,iocharset=utf8 0 0</code>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -359,8 +411,7 @@
 </div>
 
 <!-- MDB and dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+<!-- Scripts are already loaded in footer partial -->
 <script type="module" src="/js/storage-tool.js"></script>
 
 </body>

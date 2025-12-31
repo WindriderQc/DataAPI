@@ -210,13 +210,25 @@ const listScans = async (req, res, next) => {
       .toArray();
     
     // Add live indicator to each scan
-    const scansWithLive = scans.map(scan => ({
-      ...scan,
-      live: runningScans.has(scan._id),
-      duration: scan.finished_at && scan.started_at 
-        ? Math.round((new Date(scan.finished_at) - new Date(scan.started_at)) / 1000)
-        : null
-    }));
+    const scansWithLive = scans.map(scan => {
+      const isLive = runningScans.has(scan._id);
+      
+      // If scan says running but is not in memory map, it's stale (server restart/crash)
+      // We should probably mark it as stopped/error in DB, but for now let's just return correct status to UI
+      let status = scan.status;
+      if (status === 'running' && !isLive) {
+          status = 'stopped'; // Or 'unknown' / 'stale'
+      }
+
+      return {
+        ...scan,
+        status: status, // Override status if stale
+        live: isLive,
+        duration: scan.finished_at && scan.started_at 
+          ? Math.round((new Date(scan.finished_at) - new Date(scan.started_at)) / 1000)
+          : null
+      };
+    });
     
     res.json({
       status: 'success',

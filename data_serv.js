@@ -208,7 +208,12 @@ async function createApp() {
     const apiLimiter = rateLimit({ ...config.rateLimit, standardHeaders: true, legacyHeaders: false });
     // Exempt storage status endpoint from rate limiting (needs frequent polling)
     app.use('/api/', (req, res, next) => {
-        if (req.path.startsWith('/v1/storage/status/')) {
+        // Use originalUrl to match full path regardless of mounting
+        const url = req.originalUrl || req.url;
+        if (url.includes('/v1/storage/scans') || 
+            url.includes('/v1/system/resources') || 
+            url.includes('/v1/storage/n8n/status') ||
+            url.includes('/v1/files/exports')) {
             return next();
         }
         return apiLimiter(req, res, next);

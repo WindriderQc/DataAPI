@@ -5,9 +5,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadN8nStatus();
   loadExportList(); // Trigger initial load of exports
 
+  // === Polling ===
+  setInterval(loadRecentScans, 5000);
+
   // === System Resources Polling ===
   updateSystemResources();
-  setInterval(updateSystemResources, 5000); // Poll every 5 seconds
+  setInterval(updateSystemResources, 10000); // Poll every 10 seconds
 
   // === Event Listeners ===
   // ...
@@ -45,20 +48,27 @@ async function updateSystemResources() {
     const data = await res.json();
     if (data.status === 'success') {
       const stats = data.data;
+      // The controller returns { process: { cpu, memory, uptime }, system: { load_avg, ... } }
+      // We need to map these correctly.
+      
+      const cpu = stats.process ? stats.process.cpu : 0;
+      const memory = stats.process ? stats.process.memory : 0;
+      const loadAvg = stats.system ? stats.system.load_avg : [0, 0, 0];
+      const uptime = stats.process ? stats.process.uptime / 1000 : 0; // process uptime in seconds (was ms)
 
       // Update DOM elements (using IDs from template)
       if (document.getElementById('sysCpuVal'))
-        document.getElementById('sysCpuVal').textContent = stats.cpu.toFixed(1) + '%';
+        document.getElementById('sysCpuVal').textContent = cpu.toFixed(1) + '%';
 
       if (document.getElementById('sysMemVal'))
-        document.getElementById('sysMemVal').textContent = Math.round(stats.memory / 1024 / 1024) + ' MB';
+        document.getElementById('sysMemVal').textContent = Math.round(memory / 1024 / 1024) + ' MB';
 
       if (document.getElementById('sysLoadVal'))
-        document.getElementById('sysLoadVal').textContent = stats.loadAvg[0].toFixed(2);
+        document.getElementById('sysLoadVal').textContent = loadAvg[0].toFixed(2);
 
       // Format uptime
-      const uptimeHrs = Math.floor(stats.uptime / 3600);
-      const uptimeMins = Math.floor((stats.uptime % 3600) / 60);
+      const uptimeHrs = Math.floor(uptime / 3600);
+      const uptimeMins = Math.floor((uptime % 3600) / 60);
 
       if (document.getElementById('sysUptimeVal'))
         document.getElementById('sysUptimeVal').textContent = `${uptimeHrs}h ${uptimeMins}m`;
@@ -72,6 +82,52 @@ async function updateSystemResources() {
   }
 }
 
+function updateStatusTab(scan) {
+  const idEl = document.getElementById('currentScanId');
+  const statusEl = document.getElementById('currentScanStatus');
+  const liveEl = document.getElementById('currentScanLive');
+  const stopBtn = document.getElementById('stopScanBtn');
+  const seenEl = document.getElementById('filesSeen');
+  const upsertedEl = document.getElementById('filesUpserted');
+  const errorsEl = document.getElementById('filesErrors');
+  const startedEl = document.getElementById('scanStarted');
+  const progressEl = document.getElementById('scanProgress');
+  const progressTextEl = document.getElementById('progressText');
+
+  if (idEl) idEl.textContent = scan._id;
+  
+  if (statusEl) {
+    statusEl.textContent = scan.status;
+    statusEl.className = `badge status-badge bg-${scan.status === 'running' ? 'primary' : (scan.status === 'complete' ? 'success' : 'secondary')}`;
+  }
+  
+  if (liveEl) liveEl.style.display = scan.live ? 'inline-block' : 'none';
+  if (stopBtn) stopBtn.disabled = !scan.live;
+
+  const counts = scan.counts || {};
+  const seen = counts.files_seen || counts.files_processed || 0;
+  const upserts = (counts.inserted || 0) + (counts.updated || 0) + (counts.upserts || 0);
+  const errors = counts.errors || 0;
+
+  if (seenEl) seenEl.textContent = seen;
+  if (upsertedEl) upsertedEl.textContent = upserts;
+  if (errorsEl) errorsEl.textContent = errors;
+  
+  if (startedEl) startedEl.textContent = new Date(scan.started_at).toLocaleString();
+
+  if (progressEl) {
+      if (scan.status === 'running') {
+          progressEl.style.width = '100%';
+          progressEl.classList.add('progress-bar-striped', 'progress-bar-animated');
+          if (progressTextEl) progressTextEl.textContent = 'Scanning...';
+      } else {
+          progressEl.style.width = '100%';
+          progressEl.classList.remove('progress-bar-striped', 'progress-bar-animated');
+          if (progressTextEl) progressTextEl.textContent = scan.status === 'complete' ? 'Complete' : scan.status;
+      }
+  }
+}
+
 async function loadRecentScans() {
   const container = document.getElementById('recentScansBody');
   if (!container) return;
@@ -82,6 +138,11 @@ async function loadRecentScans() {
     
     if (data.status === 'success') {
       const scans = data.data.scans;
+
+      if (scans.length > 0) {
+        updateStatusTab(scans[0]);
+      }
+
       if (scans.length === 0) {
         container.innerHTML = '<tr><td colspan="6" class="text-center">No recent scans found.</td></tr>';
         return;
@@ -96,8 +157,8 @@ async function loadRecentScans() {
         <tr>
           <td><span class="text-danger">${safeId.substring(0, 8)}...</span></td>
           <td>${renderStatusBadge(scan.status)}</td>
-          <td>${scan.files_found || (scan.counts ? scan.counts.files_processed : 0)}</td>
-          <td>${scan.counts ? scan.counts.inserted + scan.counts.updated : 0}</td>
+          <td>${scan.files_found || (scan.counts ? (scan.counts.files_processed || scan.counts.files_seen || 0) : 0)}</td>
+          <td>${scan.counts ? ((scan.counts.inserted || 0) + (scan.counts.updated || 0) + (scan.counts.upserts || 0)) : 0}</td>
           <td title="${safeStartedAt}">${safeStartedTime}</td>
           <td>
             <button class="btn btn-sm btn-link p-0" onclick="viewScanDetails('${safeId}')">
@@ -202,8 +263,116 @@ async function stopScan(scanId) {
   }
 }
 
-function viewScanDetails(scanId) {
-  alert('Details for scan ' + scanId);
+async function viewScanDetails(scanId) {
+  const modalEl = document.getElementById('scanDetailsModal');
+  const contentEl = document.getElementById('scanDetailsContent');
+  
+  if (!modalEl || !contentEl) {
+    console.error('Modal elements not found');
+    return;
+  }
+
+  // Show loading state
+  contentEl.innerHTML = '<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Loading details...</p></div>';
+  
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  try {
+    // Fetch scan details
+    // Note: We might need a dedicated endpoint for single scan details if the list endpoint doesn't provide enough info.
+    // For now, we'll fetch the list and filter, or assume we have enough info if we passed the object.
+    // But since we only passed ID, let's fetch the list again or create a new endpoint.
+    // Let's try to find it in the recent scans list first if we have it in memory, 
+    // but better to fetch fresh data.
+    
+    // Ideally: GET /api/v1/storage/scans/:id
+    // But checking routes, we only have listScans.
+    // Let's use listScans with a limit and filter client side for now, or just display what we can.
+    // Actually, let's implement a proper fetch.
+    
+    const res = await fetch(`/api/v1/storage/scans?limit=50`); 
+    const data = await res.json();
+    
+    if (data.status === 'success') {
+        const scan = data.data.scans.find(s => s._id === scanId);
+        
+        if (scan) {
+            const counts = scan.counts || {};
+            const config = scan.config || {};
+            
+            contentEl.innerHTML = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted text-uppercase small fw-bold">Status</h6>
+                        <p>
+                            ${renderStatusBadge(scan.status)}
+                            ${scan.live ? '<span class="badge bg-success ms-1">Live</span>' : ''}
+                        </p>
+                        
+                        <h6 class="text-muted text-uppercase small fw-bold mt-3">Timing</h6>
+                        <ul class="list-unstyled small">
+                            <li><strong>Started:</strong> ${new Date(scan.started_at).toLocaleString()}</li>
+                            <li><strong>Finished:</strong> ${scan.finished_at ? new Date(scan.finished_at).toLocaleString() : '-'}</li>
+                            <li><strong>Duration:</strong> ${scan.duration ? scan.duration + 's' : '-'}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted text-uppercase small fw-bold">Statistics</h6>
+                        <ul class="list-group list-group-flush small">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                Files Seen
+                                <span class="badge bg-primary rounded-pill">${counts.files_seen || counts.files_processed || 0}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                Upserted
+                                <span class="badge bg-success rounded-pill">${(counts.inserted || 0) + (counts.updated || 0) + (counts.upserts || 0)}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                Errors
+                                <span class="badge bg-danger rounded-pill">${counts.errors || 0}</span>
+                            </li>
+                             <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                Batches
+                                <span class="badge bg-secondary rounded-pill">${counts.batches || 0}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted text-uppercase small fw-bold">Configuration</h6>
+                    <div class="bg-light p-3 rounded border small">
+                        <div class="mb-2"><strong>Roots:</strong><br><code>${(config.roots || []).join('<br>')}</code></div>
+                        <div class="mb-2"><strong>Extensions:</strong> <code>${(config.extensions || []).join(', ')}</code></div>
+                        <div><strong>Batch Size:</strong> ${config.batch_size || 'N/A'}</div>
+                    </div>
+                </div>
+
+                ${scan.last_error ? `
+                <div class="alert alert-danger small">
+                    <strong>Last Error:</strong> ${escapeHtml(scan.last_error)}
+                </div>
+                ` : ''}
+                
+                ${scan.status === 'running' ? `
+                <div class="text-end mt-3 border-top pt-3">
+                    <button class="btn btn-danger" onclick="stopScan('${scan._id}'); bootstrap.Modal.getInstance(document.getElementById('scanDetailsModal')).hide();">
+                        <i class="fa fa-stop me-1"></i> Stop Scan
+                    </button>
+                </div>
+                ` : ''}
+            `;
+        } else {
+            contentEl.innerHTML = '<div class="alert alert-warning">Scan details not found.</div>';
+        }
+    } else {
+        contentEl.innerHTML = '<div class="alert alert-danger">Failed to load scan details.</div>';
+    }
+  } catch (err) {
+    console.error(err);
+    contentEl.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+  }
 }
 
 // === Export Functions ===
@@ -242,6 +411,9 @@ async function loadExportList() {
                         ${safeDate}
                     </td>
                     <td>
+                        <a href="/exports/${safeName}" download class="btn btn-sm btn-link text-primary p-0 me-1" title="Download">
+                            <i class="fa fa-download"></i>
+                        </a>
                         <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteExport('${safeName}')" title="Delete Report">
                             <i class="fa fa-trash"></i>
                         </button>
@@ -341,12 +513,8 @@ window.startScan = async function() {
 
       const data = await res.json();
       if (data.status === 'success') {
-        const statusTabTrigger = document.querySelector('#status-tab');
-        if (statusTabTrigger) {
-            const tab = new bootstrap.Tab(statusTabTrigger);
-            tab.show();
-        }
-
+        // Removed tab switching logic since we are now side-by-side
+        
         const statusBadge = document.getElementById('currentScanStatus');
         if (statusBadge) {
             statusBadge.textContent = 'Running';

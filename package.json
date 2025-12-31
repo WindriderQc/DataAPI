@@ -1,6 +1,6 @@
 {
   "name": "data-api",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A RESTful API service for managing various data entities and providing live data feeds.",
   "main": "data_serv.js",
   "scripts": {
