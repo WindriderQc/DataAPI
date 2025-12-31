@@ -21,6 +21,7 @@ const {
     listFilesWithMeta,
     writeFileSafe
 } = require('../utils/file-operations');
+const { generateFilenameTimestamp } = require('../utils/date-utils');
 
 // Export directory
 const EXPORT_DIR = path.join(__dirname, '../public/exports');
@@ -337,10 +338,8 @@ const generateReport = async (req, res, next) => {
             throw e;
         }
 
-        // Generate timestamp for filename: YYYY-MM-DD_HH-mm-ss
-        const now = new Date();
-        const pad = (n) => n.toString().padStart(2, '0');
-        const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+        // Generate timestamp for filename: YYYY-MM-DD_HH-mm-ss (UTC)
+        const timestamp = generateFilenameTimestamp();
 
         const filename = `files_${rType}_optimized_${timestamp}.${rFormat}`;
         const filePath = path.join(EXPORT_DIR, filename);
