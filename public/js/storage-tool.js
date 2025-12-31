@@ -200,7 +200,8 @@ function updateProgressBar(scan) {
 function getStatusBadgeClass(status) {
     switch(status) {
         case 'running': return 'bg-primary';
-        case 'complete': return 'bg-success';
+        case 'complete':
+        case 'completed': return 'bg-success';
         case 'stopped': return 'bg-warning';
         default: return 'bg-secondary';
     }
@@ -242,7 +243,7 @@ async function loadRecentScans() {
         
         if (data.status === 'success' && data.data.scans.length > 0) {
             tbody.innerHTML = data.data.scans.map(scan => {
-                const statusClass = scan.status === 'complete' ? 'success' 
+                const statusClass = (scan.status === 'complete' || scan.status === 'completed') ? 'success'
                                   : scan.status === 'running' ? 'primary'
                                   : scan.status === 'stopped' ? 'warning'
                                   : 'secondary';
