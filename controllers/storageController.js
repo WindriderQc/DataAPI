@@ -30,7 +30,7 @@ const cleanupStaleScans = cleanupStaleScansFn;
 const scan = async (req, res, next) => {
   console.log('[Storage] Scan request received:', JSON.stringify(req.body));
   try {
-    const { roots, extensions, batch_size, compute_hashes, hash_max_size } = req.body;
+    const { roots, extensions, exclude_extensions, batch_size, compute_hashes, hash_max_size } = req.body;
     
     console.log('[Storage] Checking app.locals.dbs...');
     if (!req.app.locals.dbs) {
@@ -64,6 +64,7 @@ const scan = async (req, res, next) => {
     scanner.run({ 
       roots, 
       includeExt: extensions,
+      excludeExt: exclude_extensions,
       batchSize: batch_size || 1000,
       scanId: scan_id,
       // Hashing options for Datalake Janitor deduplication
@@ -86,6 +87,7 @@ const scan = async (req, res, next) => {
         scan_id,
         roots,
         extensions,
+        exclude_extensions,
         batch_size: batch_size || 1000,
         compute_hashes: compute_hashes === true,
         hash_max_size: hash_max_size || 100 * 1024 * 1024

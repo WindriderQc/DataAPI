@@ -34,6 +34,7 @@ class Scanner extends EventEmitter {
 
     const start = new Date();
     const includeExt = new Set((opts.includeExt || []).map(s => s.toLowerCase()));
+    const excludeExt = new Set((opts.excludeExt || []).map(s => s.toLowerCase()));
     const batchSize = Number(opts.batchSize || 1000);
     
     // Hashing options (for Datalake Janitor deduplication)
@@ -68,6 +69,7 @@ class Scanner extends EventEmitter {
       config: {
         roots: opts.roots,
         extensions: opts.includeExt || [],
+        exclude_extensions: opts.excludeExt || [],
         batch_size: batchSize,
         compute_hashes: computeHashes,
         hash_max_size: hashMaxSize
@@ -108,6 +110,7 @@ class Scanner extends EventEmitter {
 
         const ext = path.extname(ent.name).slice(1).toLowerCase();
         if (includeExt.size && !includeExt.has(ext)) { counts.skipped++; continue; }
+        if (excludeExt.size && excludeExt.has(ext)) { counts.skipped++; continue; }
 
         let st;
         try { st = await fs.stat(p); }
