@@ -27,10 +27,13 @@ function escapeHtml(text) {
 }
 
 function formatBytes(bytes) {
+  if (typeof bytes !== 'number' || !isFinite(bytes) || bytes < 0) return '0 B';
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  let i = Math.floor(Math.log(bytes) / Math.log(k));
+  if (i < 0) i = 0;
+  if (i >= sizes.length) i = sizes.length - 1;
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
@@ -84,25 +87,30 @@ async function loadRecentScans() {
         return;
       }
 
-      container.innerHTML = scans.map(scan => `
+      container.innerHTML = scans.map(scan => {
+        const safeId = escapeHtml(scan._id);
+        const safeStartedAt = escapeHtml(new Date(scan.started_at).toLocaleString());
+        const safeStartedTime = escapeHtml(new Date(scan.started_at).toLocaleTimeString());
+
+        return `
         <tr>
-          <td><span class="text-danger">${scan._id.substring(0, 8)}...</span></td>
+          <td><span class="text-danger">${safeId.substring(0, 8)}...</span></td>
           <td>${renderStatusBadge(scan.status)}</td>
           <td>${scan.files_found || (scan.counts ? scan.counts.files_processed : 0)}</td>
           <td>${scan.counts ? scan.counts.inserted + scan.counts.updated : 0}</td>
-          <td title="${new Date(scan.started_at).toLocaleString()}">${new Date(scan.started_at).toLocaleTimeString()}</td>
+          <td title="${safeStartedAt}">${safeStartedTime}</td>
           <td>
-            <button class="btn btn-sm btn-link p-0" onclick="viewScanDetails('${scan._id}')">
+            <button class="btn btn-sm btn-link p-0" onclick="viewScanDetails('${safeId}')">
               <i class="fas fa-eye"></i>
             </button>
              ${scan.live ? `
-              <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="stopScan('${scan._id}')">
+              <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="stopScan('${safeId}')">
                 <i class="fas fa-stop"></i>
               </button>
             ` : ''}
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     } else {
       container.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load scans.</td></tr>';
     }
@@ -173,7 +181,7 @@ function renderStatusBadge(status) {
   if (status === 'complete' || status === 'completed') color = 'success';
   if (status === 'error' || status === 'stopped') color = 'warning';
 
-  return `<span class="badge bg-${color}">${status || 'undefined'}</span>`;
+  return `<span class="badge bg-${color}">${escapeHtml(status) || 'undefined'}</span>`;
 }
 
 async function stopScan(scanId) {
@@ -217,24 +225,29 @@ async function loadExportList() {
                 return;
             }
 
-            tbody.innerHTML = files.map(file => `
+            tbody.innerHTML = files.map(file => {
+                const safeName = escapeHtml(file.name);
+                const safeModified = escapeHtml(new Date(file.modified).toLocaleString());
+                const safeDate = escapeHtml(new Date(file.modified).toLocaleDateString());
+
+                return `
                 <tr>
                     <td>
-                        <a href="/exports/${file.name}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 150px;" title="${file.name}">
-                            <i class="fa fa-file-alt me-1"></i> ${file.name}
+                        <a href="/exports/${safeName}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 150px;" title="${safeName}">
+                            <i class="fa fa-file-alt me-1"></i> ${safeName}
                         </a>
                     </td>
                     <td class="small">${formatBytes(file.size)}</td>
-                    <td class="small" title="${new Date(file.modified).toLocaleString()}">
-                        ${new Date(file.modified).toLocaleDateString()}
+                    <td class="small" title="${safeModified}">
+                        ${safeDate}
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteExport('${file.name}')" title="Delete Report">
+                        <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteExport('${safeName}')" title="Delete Report">
                             <i class="fa fa-trash"></i>
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         } else {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load reports.</td></tr>';
         }
@@ -247,7 +260,9 @@ async function loadExportList() {
 async function generateExport() {
     const typeSelect = document.getElementById('exportType');
     const formatSelect = document.getElementById('exportFormat');
-    const btn = document.querySelector('button[onclick="generateExport()"]'); // Find the button to disable it
+    // More robust selector (assuming button has an ID or using the specific onclick if unique)
+    // Adding ID in EJS plan is next step, for now use current robust selector
+    const btn = document.getElementById('generateExportBtn') || document.querySelector('button[onclick="generateExport()"]');
 
     if (!typeSelect || !formatSelect) return;
 
@@ -271,7 +286,6 @@ async function generateExport() {
             if (json.status === 'success') {
                 // Refresh list
                 await loadExportList();
-                // Optional: visual feedback?
             } else {
                 alert('Export failed: ' + (json.message || 'Unknown error'));
             }
@@ -302,7 +316,7 @@ async function deleteExport(filename) {
         }
     } catch (err) {
         console.error('Delete error:', err);
-        alert('Delete request failed');
+        alert('Delete request failed: ' + err.message);
     }
 }
 
