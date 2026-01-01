@@ -121,3 +121,9 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
 -   **Code Duplication**: Review the code for duplication and opportunities to refactor. For example, the user creation logic in the API and the web registration form could be consolidated.
 -   **Frontend Build Process**: Introduce a build step for the frontend (e.g., using Webpack or Vite) to bundle assets, minify code, and enable modern JavaScript features more robustly.
 -   **API Documentation**: Generate formal API documentation using a tool like Swagger or Postman to make the API easier for developers to consume.
+
+Validation checks:
+1.  **Tests**: Run `npm test` to ensure all tests pass.
+2.  **Linting**: Run `npm run lint` to check for code style issues.
+3.  **Security**: Check for any hardcoded secrets or sensitive information.
+4.  **Documentation**: Ensure any new features or changes are documented in `README.md` or `AGENTS.md`.

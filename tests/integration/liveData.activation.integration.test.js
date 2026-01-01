@@ -68,7 +68,15 @@ describe('LiveData activation flow', () => {
   });
 
   test('activates ISS updates when enabled, persisting and broadcasting data', async () => {
+    // We must ensure the master switch is ON, otherwise updates are ignored
+    // or we must update the master switch in the DB.
+    // The test setup in beforeEach created { service: 'iss', enabled: false }...
+    // But LiveData.init creates 'liveDataEnabled' if missing, defaulting to false.
+
+    // So let's enable both master switch and ISS
+    await LiveDataConfig.updateOne({ service: 'liveDataEnabled' }, { $set: { enabled: true } }, { upsert: true });
     await LiveDataConfig.updateOne({ service: 'iss' }, { $set: { enabled: true } });
+
     await liveDatas.reloadConfig();
 
     await liveDatas.setAutoUpdate(true);

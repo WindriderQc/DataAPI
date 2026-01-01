@@ -13,7 +13,7 @@ describe('Auth Flow', () => {
     // 'app' is global
     const res = await request(app)
       .post('/register')
-      .send({ name: 'Test User', email: 'test@example.com', password: 'password' });
+      .send({ name: 'Test User', email: 'test@example.com', password: 'password', confirmPassword: 'password' });
 
     expect(res.statusCode).toBe(302);
     expect(res.header.location).toBe('/login');
