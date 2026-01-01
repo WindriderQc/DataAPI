@@ -46,7 +46,14 @@ Quick navigation for DataAPI documentation.
   - Protected endpoints reference
   - Usage examples
 
-## 📖 General
+## �️ Feature Documentation
+
+- **[docs/STORAGE_AND_FILE_BROWSER.md](docs/STORAGE_AND_FILE_BROWSER.md)** - Storage Tool & File Browser API
+  - File Browser UI guide
+  - Storage API reference (Browse, Stats, Tree)
+  - Deduplication & Janitor workflows
+
+## �📖 General
 
 - **[README.md](README.md)** - Project overview and features
 - **[CODEBASE_REVIEW.md](CODEBASE_REVIEW.md)** - Architecture review and refactoring report

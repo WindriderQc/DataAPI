@@ -3,83 +3,85 @@
 
 <head>
     <%- include('partials/mainHead', { title: 'File Browser' }) %>
+    <link href="/css/sbqc.css" rel="stylesheet">
     <style>
-        .file-browser-container {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: calc(100vh - 200px);
+        /* Custom tweaks for compactness and aesthetics */
+        body {
+            background-color: #f8f9fa;
+            padding-top: 56px; /* Ensure space for fixed navbar */
         }
         
-        .search-section {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            color: white;
+        @media (min-width: 992px) {
+            body {
+                padding-top: 70px;
+            }
         }
         
-        .stats-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 8px;
-            transition: transform 0.2s;
+        .content-wrapper {
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+
+        .table-sm td, .table-sm th { 
+            vertical-align: middle; 
         }
         
-        .stats-card:hover {
+        .file-icon-cell { 
+            width: 40px; 
+            text-align: center; 
+            font-size: 1.2rem; 
+        }
+        
+        .stats-mini-card { 
+            border-left: 4px solid; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .stats-mini-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
         }
-        
+
+        .stats-mini-card.primary { border-color: #0d6efd; }
+        .stats-mini-card.success { border-color: #198754; }
+        .stats-mini-card.info { border-color: #0dcaf0; }
+        .stats-mini-card.warning { border-color: #ffc107; }
+
         .file-item {
-            transition: background-color 0.2s;
             cursor: pointer;
+            transition: background-color 0.1s;
         }
         
-        .file-item:hover {
-            background-color: rgba(0, 0, 0, 0.05);
+        .file-path-text {
+            font-size: 0.85em;
+            color: #6c757d;
         }
-        
-        .file-icon {
-            width: 24px;
-            height: 24px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .ext-img { background: #e3f2fd; color: #1976d2; }
-        .ext-vid { background: #f3e5f5; color: #7b1fa2; }
-        .ext-doc { background: #e8f5e8; color: #388e3c; }
-        .ext-code { background: #fff3e0; color: #f57c00; }
-        .ext-archive { background: #fce4ec; color: #c2185b; }
-        .ext-other { background: #f5f5f5; color: #757575; }
-        
-        .breadcrumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-        
-        .breadcrumb-item + .breadcrumb-item::before {
-            content: ">";
-            color: white;
-        }
-        
+
         .loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(2px);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
         }
-        
-        .pagination-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+
+        /* Pagination styling tweaks */
+        .pagination { margin-bottom: 0; }
+        .page-link { border: none; color: #6c757d; border-radius: 4px; margin: 0 2px; }
+        .page-link:hover { background-color: #e9ecef; color: #0d6efd; }
+        .page-item.active .page-link { background-color: #0d6efd; color: white; }
+        .page-item.disabled .page-link { color: #adb5bd; background: transparent; }
+
+        /* Toolbar inputs */
+        .toolbar-select {
+            min-width: 100px;
+            max-width: 140px;
         }
     </style>
 </head>
@@ -89,140 +91,152 @@
 <%- include('partials/nav') %>
 
 <div class="content-wrapper">
-    <div class="file-browser-container p-4">
+    <div class="container-fluid p-4">
         
-        <!-- Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2 class="text-white mb-0"><i class="fa fa-folder-open"></i> File Browser</h2>
-                <p class="text-white-50">Browse and search your indexed files</p>
+        <!-- Header & Stats Row -->
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-4">
+                <h2 class="mb-0 text-dark fw-light"><i class="fas fa-folder-open me-2 text-primary"></i>File Browser</h2>
+                <p class="text-muted mb-0 small">Manage and explore your indexed data</p>
+                <span id="resultsTitle" class="d-none"></span>
             </div>
-        </div>
-
-        <!-- Stats Overview -->
-        <div class="row mb-4" id="statsSection">
-            <div class="col-md-3">
-                <div class="stats-card p-3 text-center">
-                    <h3 class="text-primary mb-1" id="totalFiles">-</h3>
-                    <small class="text-muted">Total Files</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stats-card p-3 text-center">
-                    <h3 class="text-success mb-1" id="totalSize">-</h3>
-                    <small class="text-muted">Total Size</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stats-card p-3 text-center">
-                    <h3 class="text-info mb-1" id="totalExtensions">-</h3>
-                    <small class="text-muted">File Types</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stats-card p-3 text-center">
-                    <h3 class="text-warning mb-1" id="totalDirectories">-</h3>
-                    <small class="text-muted">Directories</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search and Filters -->
-        <div class="search-section p-4 mb-4">
-            <div class="row">
-                <div class="col-md-4">
-                    <label class="form-label">Search Files</label>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="searchInput" placeholder="Search filenames or paths...">
-                        <button class="btn btn-light" type="button" onclick="performSearch()">
-                            <i class="fa fa-search"></i>
-                        </button>
+            <div class="col-md-8">
+                <div class="row g-2">
+                    <!-- Compact Stats -->
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100 stats-mini-card primary border-0">
+                            <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                                <div>
+                                    <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Files</small>
+                                    <span class="h5 mb-0 fw-bold text-dark" id="totalFiles">-</span>
+                                </div>
+                                <div class="bg-primary bg-opacity-10 p-2 rounded">
+                                    <i class="fas fa-file text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100 stats-mini-card success border-0">
+                            <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                                <div>
+                                    <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Size</small>
+                                    <span class="h5 mb-0 fw-bold text-dark" id="totalSize">-</span>
+                                </div>
+                                <div class="bg-success bg-opacity-10 p-2 rounded">
+                                    <i class="fas fa-hdd text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100 stats-mini-card info border-0">
+                            <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                                <div>
+                                    <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Types</small>
+                                    <span class="h5 mb-0 fw-bold text-dark" id="totalExtensions">-</span>
+                                </div>
+                                <div class="bg-info bg-opacity-10 p-2 rounded">
+                                    <i class="fas fa-layer-group text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100 stats-mini-card warning border-0">
+                            <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                                <div>
+                                    <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Dirs</small>
+                                    <span class="h5 mb-0 fw-bold text-dark" id="totalDirectories">-</span>
+                                </div>
+                                <div class="bg-warning bg-opacity-10 p-2 rounded">
+                                    <i class="fas fa-folder text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">File Type</label>
-                    <select class="form-select" id="extensionFilter">
-                        <option value="">All Types</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Sort By</label>
-                    <select class="form-select" id="sortBy">
-                        <option value="filename">Name</option>
-                        <option value="size">Size</option>
-                        <option value="mtime">Modified</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Order</label>
-                    <select class="form-select" id="sortDir">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Per Page</label>
-                    <select class="form-select" id="limitSelect">
-                        <option value="25">25</option>
-                        <option value="50" selected>50</option>
-                        <option value="100">100</option>
-                        <option value="200">200</option>
-                    </select>
+            </div>
+        </div>
+
+        <!-- Main Content Card -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 border-bottom">
+                <!-- Toolbar -->
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 bg-light" id="searchInput" placeholder="Search filenames or paths...">
+                        </div>
+                    </div>
+                    <div class="col-md-8 d-flex justify-content-md-end gap-2 flex-wrap">
+                        <select class="form-select form-select-sm toolbar-select" id="extensionFilter">
+                            <option value="">All Types</option>
+                        </select>
+                        <div class="d-flex gap-1">
+                            <select class="form-select form-select-sm toolbar-select" id="sortBy">
+                                <option value="filename">Name</option>
+                                <option value="size">Size</option>
+                                <option value="mtime">Modified</option>
+                            </select>
+                            <select class="form-select form-select-sm" style="width: 80px;" id="sortDir">
+                                <option value="asc">Asc</option>
+                                <option value="desc">Desc</option>
+                            </select>
+                        </div>
+                        <select class="form-select form-select-sm" style="width: 70px;" id="limitSelect">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-light border" onclick="browseFiles()" title="Refresh">
+                                <i class="fas fa-sync-alt text-muted"></i>
+                            </button>
+                            <button class="btn btn-light border" onclick="clearFilters()" title="Clear Filters">
+                                <i class="fas fa-times text-muted"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <div class="row mt-3">
-                <div class="col-12">
-                    <button class="btn btn-light me-2" onclick="browseFiles()">
-                        <i class="fa fa-refresh"></i> Refresh
-                    </button>
-                    <button class="btn btn-outline-light" onclick="clearFilters()">
-                        <i class="fa fa-times"></i> Clear Filters
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Breadcrumb Navigation -->
-        <nav class="breadcrumb p-3 mb-4" id="breadcrumbNav" style="display: none;">
-            <ol class="breadcrumb mb-0" id="breadcrumbList">
-            </ol>
-        </nav>
-
-        <!-- Results Section -->
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0" id="resultsTitle">Files</h5>
-                <div class="pagination-controls" id="paginationTop">
-                    <!-- Pagination controls will be inserted here -->
-                </div>
-            </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" id="filesTable">
-                        <thead class="table-light">
+                    <table class="table table-hover table-sm mb-0 align-middle" id="filesTable">
+                        <thead class="bg-light text-muted small text-uppercase">
                             <tr>
-                                <th width="40"></th>
+                                <th class="ps-4" style="width: 50px;"></th>
                                 <th>Name</th>
-                                <th width="100">Size</th>
-                                <th width="150">Modified</th>
-                                <th width="120">Actions</th>
+                                <th style="width: 120px;">Size</th>
+                                <th style="width: 160px;">Modified</th>
+                                <th class="text-end pe-4" style="width: 80px;">Action</th>
                             </tr>
                         </thead>
-                        <tbody id="filesTableBody">
+                        <tbody id="filesTableBody" class="border-top-0">
                             <tr>
-                                <td colspan="5" class="text-center p-4">
-                                    <i class="fa fa-spinner fa-spin"></i> Loading files...
+                                <td colspan="5" class="text-center p-5 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                                    <div>Loading files...</div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="card-footer d-flex justify-content-between align-items-center" id="resultsFooter">
-                <span id="resultsInfo">Loading...</span>
-                <div class="pagination-controls" id="paginationBottom">
-                    <!-- Pagination controls will be inserted here -->
+            
+            <div class="card-footer bg-white py-2 border-top">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <small class="text-muted" id="resultsInfo">Loading...</small>
+                    
+                    <!-- Hidden elements required by JS logic but maybe not needed in UI if we have bottom pagination -->
+                    <div id="paginationTop" class="d-none"></div>
+                    
+                    <div id="paginationBottom">
+                        <!-- Pagination controls will be inserted here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -233,22 +247,25 @@
 
 <!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-    <div class="text-center text-white">
-        <i class="fa fa-spinner fa-spin fa-3x mb-3"></i>
-        <h4>Loading files...</h4>
+    <div class="text-center">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <h5 class="text-dark fw-light">Loading...</h5>
     </div>
 </div>
 
 <!-- File Details Modal -->
 <div class="modal fade" id="fileDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">File Details</h5>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold">File Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="fileDetailsBody">
+            <div class="modal-body pt-3" id="fileDetailsBody">
                 <!-- File details will be loaded here -->
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
