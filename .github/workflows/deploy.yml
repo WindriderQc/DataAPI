@@ -1,4 +1,4 @@
-name: 🚀 Deploy to Server
+name: 🚀 Deploy to Servers
 
 on:
   push:
@@ -6,12 +6,26 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: Déploiement SSH
+  test:
+    name: 🧪 Run Tests
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📡 Connexion SSH et déploiement
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Run Tests
+        run: npm test
+
+  deploy-cloud:
+    name: ☁️ Deploy Cloud (SpecialBlend)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📡 SSH Deployment
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -21,13 +35,42 @@ jobs:
             cd ./code/DataAPI
             git fetch origin
             git reset --hard origin/main
-            
-            # Skip pre-flight checks in CI (they require root/interactive)
-            # Run manually if needed: sudo ./scripts/preflight_check.sh
-            
-            # Proceed with deployment
             rm -rf node_modules package-lock.json
             npm install --no-save
-            pm2 restart data_serv
-            
-            echo "🎉 Deployment complete!"
+            pm2 restart data_serv || pm2 start data_serv.js --name data_serv
+            echo "🎉 Cloud Deployment complete!"
+
+  deploy-local:
+    name: 🏠 Deploy Local (AgentX)
+    needs: test
+    runs-on: self-hosted
+    # Only run if this runner is actually available/tagged.
+    # If the user hasn't set up the runner yet, this job might hang or fail.
+    # We assume 'self-hosted' tag is used.
+    steps:
+      - name: 📥 Checkout Code
+        # We can use git commands directly if the runner is in the repo folder,
+        # or use the checkout action if it's a standard runner setup.
+        # Standard pattern for self-hosted:
+        uses: actions/checkout@v4
+
+      - name: 🔄 Update & Restart
+        run: |
+          # Navigate to the project directory - Adjust path if necessary for the self-hosted runner
+          # Assuming the runner workspace is separate or we need to update a specific production folder.
+          # If this runner *is* the deployment target (AgentX), we might want to update a specific folder.
+
+          TARGET_DIR="/home/agentx/code/DataAPI" # Adjust based on user's setup "agentX 192.168.2.33"
+
+          if [ -d "$TARGET_DIR" ]; then
+            cd "$TARGET_DIR"
+            git fetch origin
+            git reset --hard origin/main
+            rm -rf node_modules package-lock.json
+            npm install --no-save
+            pm2 restart data_serv || pm2 start data_serv.js --name data_serv
+            echo "🎉 Local Deployment complete!"
+          else
+            echo "❌ Target directory $TARGET_DIR not found on runner!"
+            exit 1
+          fi

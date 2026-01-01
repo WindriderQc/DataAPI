@@ -186,6 +186,10 @@ async function init(dbConnection) {
 async function setAutoUpdate(updateNow = false) {
     // Only run if master switch is enabled
     if (!serviceState.liveDataEnabled) {
+        // If master switch is off, do we perform the 'updateNow'?
+        // The original code returned immediately.
+        // But for testing individual functions, we need to bypass this check or enable the master switch.
+        // Let's log and return, unless we change how tests set up the state.
         log('[liveData] Live Data is disabled - no intervals will run', 'info');
         return;
     }
