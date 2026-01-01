@@ -2,13 +2,14 @@
 
 Quick navigation for DataAPI documentation.
 
+**Last Updated:** January 1, 2026
+
 ## 🚀 Deployment (Start Here)
 
 - **[QUICK_START.md](QUICK_START.md)** - Fast deployment guide with common issues
 - **[DEPLOY_PREREQUISITES.md](DEPLOY_PREREQUISITES.md)** - TrueNAS/VM setup requirements  
 - **[DEPLOY_CONFIG_GUIDE.md](DEPLOY_CONFIG_GUIDE.md)** - Configuration with environment variables
-- **[DEPLOY_MINT.md](DEPLOY_MINT.md)** - Original Linux Mint deployment guide
-- **[DEPLOYMENT_FIXES_SUMMARY.md](DEPLOYMENT_FIXES_SUMMARY.md)** - Technical details of recent fixes
+- **[DEPLOY_MINT.md](DEPLOY_MINT.md)** - ⚠️ Legacy deployment guide (dedicated user mode)
 
 **Deployment Scripts:**
 - `deploy.sh` - Main deployment wrapper (loads config from `deploy.env`)
@@ -53,10 +54,21 @@ Quick navigation for DataAPI documentation.
   - Storage API reference (Browse, Stats, Tree)
   - Deduplication & Janitor workflows
 
-## �📖 General
+## 📖 General
 
 - **[README.md](README.md)** - Project overview and features
-- **[CODEBASE_REVIEW.md](CODEBASE_REVIEW.md)** - Architecture review and refactoring report
+- **[CI_CD_SETUP.md](CI_CD_SETUP.md)** - GitHub Actions CI/CD pipeline documentation
+
+## 🔍 Reviews & Technical Debt
+
+- **[docs/PEER_REVIEW_2025-12-31.md](docs/PEER_REVIEW_2025-12-31.md)** - Comprehensive code review and recommendations
+
+## 🗃️ Archives
+
+- **[docs/archive/](docs/archive/)** - Historical documentation
+  - `n8n-legacy/` - Old n8n integration docs (migrated to AgentX)
+  - `deployment/` - Resolved deployment fix summaries
+  - `reviews/` - Previous code review documents
 
 ---
 
@@ -74,8 +86,8 @@ Quick navigation for DataAPI documentation.
 
 ### "Deployment failed, now what?"
 1. Run `sudo ./scripts/preflight_check.sh`
-2. Check [DEPLOYMENT_FIXES_SUMMARY.md](DEPLOYMENT_FIXES_SUMMARY.md)
-3. Review [QUICK_START.md](QUICK_START.md) Common Issues section
+2. Review [QUICK_START.md](QUICK_START.md) Common Issues section
+3. Check archived fixes at [docs/archive/deployment/](docs/archive/deployment/)
 
 ### "I'm an AI agent working on this codebase"
 1. Read [AGENTS.md](AGENTS.md) first

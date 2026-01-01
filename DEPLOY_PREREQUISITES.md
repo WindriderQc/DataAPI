@@ -192,13 +192,13 @@ MongoDB is **NOT** installed by the deployment script. Install manually first.
 
 ```bash
 # Import MongoDB GPG key
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
-  sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg
+curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
+  sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
 
 # Add repository
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] \
-  https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
-  sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] \
+  https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | \
+  sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
 
 # Install
 sudo apt update
@@ -209,13 +209,13 @@ sudo systemctl enable --now mongod
 
 # Verify
 sudo systemctl status mongod
-mongosh --eval 'db.version()'  # Should show 7.x.x
+mongosh --eval 'db.version()'  # Should show 8.x.x
 ```
 
 ### Verify AVX Support:
 
 ```bash
-# MongoDB will crash without AVX
+# MongoDB 5.0+ requires AVX CPU instructions - it will crash without them
 sudo journalctl -u mongod -n 100 | grep -i illegal
 
 # If you see "Illegal instruction", fix VM CPU mode (see section 2)
