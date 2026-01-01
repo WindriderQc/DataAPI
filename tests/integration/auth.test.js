@@ -1,7 +1,7 @@
 const request = require('supertest');
 const bcrypt = require('bcrypt');
 
-describe.skip('Auth Flow', () => {
+describe('Auth Flow', () => {
   // No beforeAll/afterAll needed, handled by global setup
 
   beforeEach(async () => {
