@@ -238,6 +238,9 @@ async function createApp() {
     // User management API (session-based, available to authenticated users)
     app.use('/api/v1', requireAuth, require("./routes/user.routes"));
 
+    // Janitor routes (requires either auth)
+    app.use('/api/v1/janitor', cors(corsOptions), requireEitherAuth, require("./routes/janitor.routes"));
+
     // Web routes (session-based authentication)
     app.use('/', require("./routes/auth.routes"));
     app.use('/', require("./routes/web.routes"));
