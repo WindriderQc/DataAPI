@@ -47,7 +47,10 @@ Quick navigation for DataAPI documentation.
   - Protected endpoints reference
   - Usage examples
 
-## �️ Feature Documentation
+## 🛠️ Feature Documentation
+
+- **[docs/JANITOR_README.md](docs/JANITOR_README.md)** - Datalake Janitor API
+
 
 - **[docs/STORAGE_AND_FILE_BROWSER.md](docs/STORAGE_AND_FILE_BROWSER.md)** - Storage Tool & File Browser API
   - File Browser UI guide

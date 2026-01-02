@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs').promises;
+const fsNative = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { log } = require('../utils/logger');
@@ -57,12 +58,17 @@ async function analyzeDirectory(dirPath) {
   let totalFiles = 0;
   let totalSize = 0;
   let scannedFiles = 0;
+  const MAX_FILES = 2000; // Safety limit
 
   async function scan(dir) {
+    if (totalFiles >= MAX_FILES) return;
+
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
+        if (totalFiles >= MAX_FILES) break;
+        
         const fullPath = path.join(dir, entry.name);
 
         if (entry.isDirectory()) {
@@ -77,10 +83,15 @@ async function analyzeDirectory(dirPath) {
             continue;
           }
 
-          // Hash file
+          // Hash file using stream
           try {
-            const content = await fs.readFile(fullPath);
-            const hash = crypto.createHash('sha256').update(content).digest('hex');
+            const hash = await new Promise((resolve, reject) => {
+                const hashSum = crypto.createHash('sha256');
+                const stream = fsNative.createReadStream(fullPath);
+                stream.on('error', reject);
+                stream.on('data', chunk => hashSum.update(chunk));
+                stream.on('end', () => resolve(hashSum.digest('hex')));
+            });
 
             if (!fileMap.has(hash)) fileMap.set(hash, []);
             fileMap.get(hash).push({
@@ -98,7 +109,7 @@ async function analyzeDirectory(dirPath) {
       }
     } catch (scanErr) {
       // Skip directories we can't access
-      log(`Cannot scan ${dir}: ${scanErr.message}`, 'warn');
+      log(`Cannot scan dir ${dir}: ${scanErr.message}`, 'warn');
     }
   }
 
