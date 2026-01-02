@@ -25,6 +25,7 @@ const weatherController = require('../controllers/weatherController');
 const ollamaController = require('../controllers/ollamaController');
 const liveDataConfigController = require('../controllers/liveDataConfigController');
 const systemController = require('../controllers/systemController');
+const networkController = require('../controllers/networkController');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -495,6 +496,12 @@ router.post('/livedata/config', requireAuth, liveDataConfigController.updateConf
 // Ollama routes
 router.get('/ollama/models', requireAuth, ollamaController.listModels);
 router.post('/ollama/chat', requireAuth, ollamaController.chat);
+
+// Network Scanner Routes (Protected)
+router.get('/network/devices', requireEitherAuth, networkController.getAllDevices);
+router.post('/network/scan', requireEitherAuth, networkController.scanNetwork);
+router.patch('/network/devices/:id', requireEitherAuth, networkController.updateDevice);
+router.post('/network/devices/:id/enrich', requireEitherAuth, networkController.enrichDevice);
 
 // External API / live-data helpers
 router.get('/weather', externalApiController.getWeather);
