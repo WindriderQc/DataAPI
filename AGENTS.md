@@ -109,9 +109,44 @@ This is a full-stack application built with Node.js, Express, and MongoDB. It se
     ```
     See `SSE_PROXY_CONFIG.md` for complete configuration details.
 
-## 5. Considerations for Future Improvements
+## 5. Automated Deployment (CI/CD)
+
+This project uses GitHub Actions for continuous integration and deployment. A self-hosted runner is installed on the production server to handle deployments automatically.
+
+### Workflow
+1.  **Trigger**: Push to `main` branch.
+2.  **Tests**: Runs `npm test` on GitHub's cloud runners.
+3.  **Deploy**: If tests pass, the self-hosted runner updates the code and reloads PM2.
+
+### Self-Hosted Runner
+- **Location**: `/home/yb/codes/DataAPI/actions-runner/`
+- **Service Status**: Check with `ps aux | grep Runner`
+- **Logs**: `/home/yb/codes/DataAPI/actions-runner/_diag/`
+
+### Runner Maintenance
+If the runner goes offline:
+1.  Navigate to the runner directory:
+    ```bash
+    cd /home/yb/codes/DataAPI/actions-runner
+    ```
+2.  Check status:
+    ```bash
+    ./svc.sh status
+    ```
+3.  Restart service:
+    ```bash
+    ./svc.sh stop
+    ./svc.sh start
+    ```
+
+### Required GitHub Secrets
+Ensure these secrets are set in the GitHub Repository Settings:
+- `AGENTX_DEPLOY_PATH`: Absolute path to the project (e.g., `/home/yb/codes/DataAPI`)
+
+## 6. Considerations for Future Improvements
 
 -   **Environment Variables:** Currently, some configuration (like the port number) is hardcoded. These should be moved to a `.env` file for better configuration management.
+
 -   **Frontend Dependencies:** Frontend libraries like MDBootstrap are loaded via CDN. For better reliability and version control, they should be managed via npm.
 -   **Test Coverage:** While tests exist, coverage could be improved, especially for controller logic and edge cases.
 -   **Input Validation:** Enhance and standardize input validation using `express-validator` across all relevant routes.
