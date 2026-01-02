@@ -5,6 +5,7 @@ const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: true });
 class NetworkScanner {
     constructor() {
         this.isScanning = false;
+        this.scanTimeout = 600000; // 10 minutes default timeout
     }
 
     /**
@@ -77,6 +78,7 @@ class NetworkScanner {
      */
     scanNetwork(targetCIDR) {
         return new Promise((resolve, reject) => {
+            // Use a proper lock to prevent race conditions
             if (this.isScanning) {
                 return reject(new Error('Scan already in progress'));
             }
@@ -85,6 +87,17 @@ class NetworkScanner {
             const nmap = spawn('nmap', ['-sn', '-oX', '-', targetCIDR]);
             let xmlOutput = '';
             let errorOutput = '';
+            let scanCompleted = false;
+
+            // Set a timeout to prevent hanging scans
+            const timeoutId = setTimeout(() => {
+                if (!scanCompleted) {
+                    console.error('Scan timeout exceeded. Terminating nmap process.');
+                    nmap.kill('SIGTERM');
+                    this.isScanning = false;
+                    reject(new Error('Scan timeout: operation exceeded maximum allowed time'));
+                }
+            }, this.scanTimeout);
 
             nmap.stdout.on('data', (data) => {
                 xmlOutput += data.toString();
@@ -95,7 +108,10 @@ class NetworkScanner {
             });
 
             nmap.on('close', async (code) => {
+                scanCompleted = true;
+                clearTimeout(timeoutId);
                 this.isScanning = false;
+                
                 if (code !== 0) {
                     console.error('Nmap Error:', errorOutput);
                     return reject(new Error(`Nmap exited with code ${code}`));
@@ -110,6 +126,8 @@ class NetworkScanner {
             });
 
             nmap.on('error', (err) => {
+                scanCompleted = true;
+                clearTimeout(timeoutId);
                 this.isScanning = false;
                 reject(err);
             });
@@ -127,14 +145,21 @@ class NetworkScanner {
             // Note: -O requires root privileges.
             const nmap = spawn('nmap', ['-O', '-sV', '--top-ports', '100', '-oX', '-', ip]);
             let xmlOutput = '';
+            let errorOutput = '';
 
             nmap.stdout.on('data', (data) => {
                 xmlOutput += data.toString();
             });
 
+            nmap.stderr.on('data', (data) => {
+                errorOutput += data.toString();
+            });
+
             nmap.on('close', async (code) => {
                 if (code !== 0) {
-                     // Non-critical if enrichment fails, resolve null
+                    // Non-critical if enrichment fails, but log error details for debugging
+                    console.error('Nmap enrichment error output:', errorOutput);
+                    console.error(`Nmap enrichment exited with code ${code}`);
                     return resolve(null);
                 }
 
