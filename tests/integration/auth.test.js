@@ -1,7 +1,7 @@
 const request = require('supertest');
 const bcrypt = require('bcrypt');
 
-describe.skip('Auth Flow', () => {
+describe('Auth Flow', () => {
   // No beforeAll/afterAll needed, handled by global setup
 
   beforeEach(async () => {
@@ -13,7 +13,7 @@ describe.skip('Auth Flow', () => {
     // 'app' is global
     const res = await request(app)
       .post('/register')
-      .send({ name: 'Test User', email: 'test@example.com', password: 'password' });
+      .send({ name: 'Test User', email: 'test@example.com', password: 'password', confirmPassword: 'password' });
 
     expect(res.statusCode).toBe(302);
     expect(res.header.location).toBe('/login');

@@ -49,6 +49,7 @@ describe('LiveData integration (DB write + MQTT publish)', () => {
     // Since defaults are false, we must enable them for this test
     await LiveDataConfig.deleteMany({});
     await LiveDataConfig.create([
+      { service: 'liveDataEnabled', enabled: true },
       { service: 'iss', enabled: true },
       { service: 'quakes', enabled: true },
       { service: 'weather', enabled: true }
