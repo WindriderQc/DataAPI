@@ -1,5 +1,16 @@
 # DataAPI Deployment (Linux Mint + PM2) — 192.168.2.33
+> ⚠️ **LEGACY DOCUMENT** (January 2026)
+> 
+> This document describes the **legacy deployment workflow** using `/opt/servers/DataAPI` and a dedicated `dataapi` Linux user.
+> 
+> **For new deployments, use the recommended approach:**
+> - Run DataAPI from your workspace directory (e.g., `/home/yb/codes/DataAPI`)
+> - Manage both AgentX and DataAPI from AgentX's `ecosystem.config.js`
+> - See [QUICK_START.md](QUICK_START.md) for the current workflow
+> 
+> This file is retained for reference and for environments using the legacy dedicated-user setup.
 
+---
 Note: this document describes the legacy “deploy script to `/opt/servers/DataAPI`” workflow. In the current architecture, DataAPI is a headless tool server for AgentX (no UI). For the simplest setup (run from your workspace and manage in the same PM2 list as AgentX), see `README.md` + `QUICK_START.md`.
 
 This setup runs `WindriderQc/DataAPI` on Linux Mint using:

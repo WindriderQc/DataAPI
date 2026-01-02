@@ -213,13 +213,29 @@ This document specifies n8n workflows needed to complete Priority 1 (SBQC Ops Ag
 
 4. **HTTP Request: Suggest Deletions**
    - Method: `POST`
-   - URL: `http://192.168.2.33:3003/api/v1/janitor/suggest-deletions`
+   - URL: `http://192.168.2.33:3003/api/v1/janitor/suggest`
    - Authentication: Header Auth (DataAPI-Key)
    - Body:
      ```json
      {
-       "duplicates": "{{ $json }}",
-       "strategy": "keep_newest"
+       "path": "/mnt/nas/media",
+       "policies": ["delete_duplicates"]
+     }
+     ```
+   - Expected Response:
+     ```json
+     {
+       "suggestions_count": 10,
+       "total_space_saved": 1073741824,
+       "suggestions": [
+         {
+           "policy": "delete_duplicates",
+           "action": "delete",
+           "files": ["/path/to/duplicate.mp4"],
+           "reason": "Duplicate of /path/to/original.mp4",
+           "space_saved": 104857600
+         }
+       ]
      }
      ```
 
@@ -257,29 +273,48 @@ This document specifies n8n workflows needed to complete Priority 1 (SBQC Ops Ag
 
 ---
 
-### Workflow: Manual Deletion Confirmation
+### Workflow: Execute Cleanup
 
-**Purpose:** Review and confirm pending deletions from Janitor suggestions.
+**Purpose:** Execute file deletions from Janitor suggestions (with dry_run safety).
 
 **Trigger:** Manual OR Webhook from admin UI
 
 **Nodes:**
 
-1. **HTTP Request: Get Pending Deletions**
-   - Method: `GET`
-   - URL: `http://192.168.2.33:3003/api/v1/janitor/pending-deletions`
+1. **Code Node: Collect Files to Delete**
+   - Collect file paths from previous suggestion workflow
+   - Filter based on human approval if needed
+
+2. **HTTP Request: Execute Dry Run**
+   - Method: `POST`
+   - URL: `http://192.168.2.33:3003/api/v1/janitor/execute`
    - Authentication: Header Auth (DataAPI-Key)
+   - Body:
+     ```json
+     {
+       "files": ["{{ $json.files }}"],
+       "dry_run": true
+     }
+     ```
+   - Review response to verify what would be deleted
 
-2. **Manual Approval Node** (requires human review)
-   - Present list of files to be deleted
-   - Approve/Reject per file
+3. **Manual Approval Node** (requires human review)
+   - Present list of files that would be deleted
+   - Approve/Reject
 
-3. **HTTP Request: Confirm Deletion** (for each approved)
-   - Method: `DELETE`
-   - URL: `http://192.168.2.33:3003/api/v1/janitor/confirm-deletion/{{ $json._id }}`
+4. **HTTP Request: Execute Deletion** (if approved)
+   - Method: `POST`
+   - URL: `http://192.168.2.33:3003/api/v1/janitor/execute`
    - Authentication: Header Auth (DataAPI-Key)
+   - Body:
+     ```json
+     {
+       "files": ["{{ $json.files }}"],
+       "dry_run": false
+     }
+     ```
 
-4. **HTTP Request: Log Deletion Event**
+5. **HTTP Request: Log Deletion Event**
    - Method: `POST`
    - URL: `http://192.168.2.33:3003/integrations/events/n8n`
    - Body:

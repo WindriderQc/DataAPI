@@ -112,6 +112,15 @@ router.get('/storage-tool', requireAuth, (req, res) => {
     });
 });
 
+router.get('/network-scanner', requireAuth, (req, res) => {
+    res.render('network-scanner', {
+        title: "Network Scanner",
+        menuId: 'tools', // Keeping menuId generic for highlighting
+        user: res.locals.user,
+        appVersion: require('../package.json').version
+    });
+});
+
 router.get('/file-browser', requireAuth, (req, res) => {
     const title = "File Browser";
     res.render('file-browser', {

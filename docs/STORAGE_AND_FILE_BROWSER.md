@@ -114,38 +114,89 @@ Get automated recommendations for freeing up space.
 
 These endpoints are designed for automated cleanup workflows (e.g., via n8n or AgentX).
 
-#### `POST /janitor/suggest-deletions`
-Analyze duplicates and suggest which copies to delete.
+> **Note:** The Janitor API is at `/api/v1/janitor/*` (not `/api/v1/files/janitor/*`)
 
-**Body:**
--   `strategy`: `keep_oldest` (default) or `keep_newest`.
--   `minSize`: (number) Minimum size to consider.
--   `sha256`: (optional) Specific hash to analyze.
-
-#### `POST /janitor/mark-for-deletion`
-Soft-delete: Mark files for deletion without removing them immediately.
+#### `POST /janitor/analyze`
+Analyze a directory for duplicates and wasted space.
 
 **Body:**
 ```json
 {
-  "files": [
-    { "fileId": "...", "path": "...", "reason": "duplicate" }
-  ]
+  "path": "/mnt/nas/media"
 }
 ```
 
-#### `GET /janitor/pending-deletions`
-List files marked for deletion.
+**Response:**
+- `total_files`: Total files found
+- `scanned_files`: Files that were hashed (excludes >100MB)
+- `total_size`: Total size in bytes
+- `duplicates_count`: Number of duplicate groups
+- `wasted_space`: Bytes that could be reclaimed
+- `duplicate_groups`: Array of duplicate file groups (max 50)
 
-#### `DELETE /janitor/confirm-deletion/:id`
-**DESTRUCTIVE**: Permanently delete a file from disk and database.
-
-**Params:**
--   `id`: The ID of the *pending deletion record* (not the file ID).
+#### `POST /janitor/suggest`
+Generate cleanup suggestions based on policies.
 
 **Body:**
 ```json
-{ "confirm": true }
+{
+  "path": "/mnt/nas/media",
+  "policies": ["delete_duplicates", "remove_temp_files"]
+}
+```
+
+**Available Policies:**
+- `delete_duplicates` - Keep oldest copy, delete newer duplicates
+- `remove_temp_files` - Delete files in temp directories older than 7 days
+- `remove_large_files` - Flag files larger than 1GB for review
+
+**Response:**
+- `suggestions_count`: Number of suggested actions
+- `total_space_saved`: Bytes that would be freed
+- `suggestions`: Array of suggested file deletions with reasons
+
+#### `POST /janitor/execute`
+Execute cleanup operations (delete files).
+
+**Body:**
+```json
+{
+  "files": ["/path/to/file1.txt", "/path/to/file2.txt"],
+  "dry_run": true
+}
+```
+
+**Parameters:**
+- `files`: Array of absolute file paths to delete
+- `dry_run`: (boolean, default: `true`) If true, simulates deletion without removing files
+
+**⚠️ Safety Features:**
+- Defaults to dry_run mode
+- Blocks deletion of system directories (/, /home, /usr, etc.)
+- Requires absolute paths
+- Logs all operations
+
+**Response:**
+- `deleted`: Array of successfully deleted files
+- `failed`: Array of files that couldn't be deleted with reasons
+- `space_freed`: Bytes freed (or would be freed in dry_run)
+
+#### `GET /janitor/policies`
+List available cleanup policies.
+
+**Response:**
+```json
+{
+  "policies": [
+    {
+      "id": "delete_duplicates",
+      "name": "Delete Duplicate Files",
+      "description": "Keep the oldest copy, delete newer duplicates",
+      "enabled": true,
+      "safe_mode": true
+    }
+  ]
+}
 ```
 
 ### 3.4 File Management
@@ -162,12 +213,11 @@ Update file metadata (e.g., after calculating a hash externally).
 ## 4. Usage Examples
 
 ### Agent Task: Find and Clean Duplicates
-1.  Call `GET /files/duplicates?method=hash` to identify duplicates.
-2.  Call `POST /janitor/suggest-deletions` with `strategy='keep_oldest'` to get a list of files to remove.
-3.  Review the suggestions.
-4.  Call `POST /janitor/mark-for-deletion` for the chosen files.
-5.  (Optional) Human review of pending deletions.
-6.  Call `DELETE /janitor/confirm-deletion/:id` to execute.
+1.  Call `POST /janitor/analyze` with `{ "path": "/mnt/nas/media" }` to scan for duplicates.
+2.  Call `POST /janitor/suggest` with `{ "path": "/mnt/nas/media", "policies": ["delete_duplicates"] }` to get deletion suggestions.
+3.  Review the suggestions in the response.
+4.  Call `POST /janitor/execute` with `{ "files": [...], "dry_run": true }` to simulate cleanup.
+5.  If satisfied, call `POST /janitor/execute` with `{ "files": [...], "dry_run": false }` to delete.
 
 ### Agent Task: Analyze Storage Usage
 1.  Call `GET /files/stats` to get a high-level overview.

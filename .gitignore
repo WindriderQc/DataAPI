@@ -28,3 +28,18 @@ quakes.csv
 # Generated Reports
 public/exports/*.json
 
+# GitHub Actions self-hosted runner
+actions-runner/
+
+# Deployment helper scripts
+check-workflow.sh
+
+# Data API service files
+data-api@*
+
+# Jest test cache
+jest
+
+# Configuration backups
+Configuring
+

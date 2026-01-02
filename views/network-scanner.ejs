@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include('partials/mainHead', { title: 'Network Scanner' }) %>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .status-online { color: green; font-weight: bold; }
+        .status-offline { color: red; }
+        .device-row { cursor: pointer; }
+        .device-row:hover { background-color: #f8f9fa; }
+    </style>
+</head>
+
+<body class="fixed-nav sticky-footer bg-light sidenav-toggled" id="page-top">
+    <%- include('partials/nav') %>
+
+    <div class="content-wrapper">
+        <div class="container-fluid pt-4 mt-5">
+            <h1 class="mb-4"><i class="fa fa-network-wired"></i> Network Scanner</h1>
+
+            <!-- Control Panel -->
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span>Scan Controls</span>
+                    <span id="scanStatus" class="badge bg-secondary">Idle</span>
+                </div>
+                <div class="card-body">
+                    <form id="scanForm" class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <label for="scanTarget" class="col-form-label">Target CIDR:</label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="text" id="scanTarget" class="form-control" value="192.168.2.0/24">
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" id="scanBtn" class="btn btn-primary">
+                                <i class="fa fa-radar"></i> Scan Now
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Device List -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="fa fa-desktop"></i> Discovered Devices
+                    <button class="btn btn-sm btn-outline-secondary float-end" id="refreshBtn"><i class="fa fa-sync"></i> Refresh List</button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="deviceTable">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>IP Address</th>
+                                    <th>MAC Address</th>
+                                    <th>Hostname</th>
+                                    <th>Vendor</th>
+                                    <th>Alias</th>
+                                    <th>Last Seen</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deviceListBody">
+                                <!-- Devices will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Device Modal -->
+    <div class="modal fade" id="editDeviceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Device</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editDeviceId">
+                    <div class="mb-3">
+                        <label class="form-label">MAC Address</label>
+                        <input type="text" class="form-control" id="editDeviceMac" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Alias</label>
+                        <input type="text" class="form-control" id="editDeviceAlias">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-control" id="editDeviceLocation">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="editDeviceNotes"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" id="editDeviceType">
+                            <option value="unknown">Unknown</option>
+                            <option value="workstation">Workstation</option>
+                            <option value="server">Server</option>
+                            <option value="mobile">Mobile</option>
+                            <option value="iot">IoT</option>
+                            <option value="network">Network Gear</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveDeviceBtn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
+
+    <script src="/js/network-scanner.js"></script>
+</body>
+</html>
