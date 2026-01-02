@@ -57,6 +57,7 @@ describe('LiveData Configuration', () => {
     it('should not start intervals when all disabled', async () => {
         // We mock find to return disabled config
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true }, // Master switch ON, but services OFF
             { service: 'iss', enabled: false },
             { service: 'quakes', enabled: false },
             { service: 'weather', enabled: false }
@@ -71,6 +72,7 @@ describe('LiveData Configuration', () => {
 
     it('should start ISS interval when enabled', async () => {
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true },
             { service: 'iss', enabled: true },
             { service: 'quakes', enabled: false },
             { service: 'weather', enabled: false }
@@ -85,6 +87,7 @@ describe('LiveData Configuration', () => {
 
     it('should start Quakes interval when enabled', async () => {
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true },
             { service: 'iss', enabled: false },
             { service: 'quakes', enabled: true },
             { service: 'weather', enabled: false }
@@ -99,6 +102,7 @@ describe('LiveData Configuration', () => {
 
     it('should start Pressure interval when enabled', async () => {
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true },
             { service: 'iss', enabled: false },
             { service: 'quakes', enabled: false },
             { service: 'weather', enabled: true }
@@ -113,6 +117,7 @@ describe('LiveData Configuration', () => {
 
     it('should start multiple intervals when multiple enabled', async () => {
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true },
             { service: 'iss', enabled: true },
             { service: 'quakes', enabled: false },
             { service: 'weather', enabled: true }
@@ -126,6 +131,7 @@ describe('LiveData Configuration', () => {
 
     it('should not execute getISS when disabled even if called', async () => {
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true },
             { service: 'iss', enabled: false },
             { service: 'quakes', enabled: false },
             { service: 'weather', enabled: false }
@@ -138,6 +144,7 @@ describe('LiveData Configuration', () => {
 
     it('should execute getISS when enabled and called via updateNow', async () => {
         mockLiveDataConfig.find.mockResolvedValue([
+            { service: 'liveDataEnabled', enabled: true },
             { service: 'iss', enabled: true },
             { service: 'quakes', enabled: false },
             { service: 'weather', enabled: false }
