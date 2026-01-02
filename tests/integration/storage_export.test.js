@@ -6,6 +6,10 @@ const fs = require('fs/promises');
 // Ensure export directory exists for tests
 const EXPORT_DIR = path.join(__dirname, '../../public/exports');
 
+// Get the API key from the environment
+// We rely on test-setup.js to populate process.env.DATAAPI_API_KEY
+const API_KEY = process.env.DATAAPI_API_KEY;
+
 describe('Storage Export API', () => {
     let app;
     let server;
@@ -36,7 +40,10 @@ describe('Storage Export API', () => {
 
     describe('GET /files/exports', () => {
         it('should list available export files', async () => {
-            const res = await request(app).get('/api/v1/files/exports');
+            const res = await request(app)
+                .get('/api/v1/files/exports')
+                .set('x-api-key', API_KEY); // Add API Key
+
             // If auth fails, we'll get 401/403.
             if (res.status === 401 || res.status === 403) {
                 console.warn('Skipping test due to auth requirement not met in test harness');
@@ -52,6 +59,7 @@ describe('Storage Export API', () => {
         it('should generate a new export report', async () => {
             const res = await request(app)
                 .post('/api/v1/files/export')
+                .set('x-api-key', API_KEY) // Add API Key
                 .send({ type: 'summary', format: 'json' });
 
             if (res.status === 401 || res.status === 403) return;
@@ -68,6 +76,7 @@ describe('Storage Export API', () => {
             // First create one
             const createRes = await request(app)
                 .post('/api/v1/files/export')
+                .set('x-api-key', API_KEY) // Add API Key
                 .send({ type: 'summary', format: 'json' });
 
             if (createRes.status !== 200) return;
@@ -76,14 +85,17 @@ describe('Storage Export API', () => {
 
             // Then delete it
             const deleteRes = await request(app)
-                .delete(`/api/v1/files/exports/${filename}`);
+                .delete(`/api/v1/files/exports/${filename}`)
+                .set('x-api-key', API_KEY); // Add API Key
 
             expect(deleteRes.status).toBe(200);
             expect(deleteRes.body.status).toBe('success');
         });
 
         it('should return 404 for non-existent file', async () => {
-            const res = await request(app).delete('/api/v1/files/exports/nonexistent_file.json');
+            const res = await request(app)
+                .delete('/api/v1/files/exports/nonexistent_file.json')
+                .set('x-api-key', API_KEY); // Add API Key
             if (res.status === 401 || res.status === 403) return;
             expect(res.status).toBe(404);
         });
