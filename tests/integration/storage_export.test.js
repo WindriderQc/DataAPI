@@ -7,7 +7,7 @@ const fs = require('fs/promises');
 const EXPORT_DIR = path.join(__dirname, '../../public/exports');
 
 // Get the API key from the environment
-const API_KEY = process.env.DATAAPI_API_KEY || 'test-dataapi-api-key';
+const API_KEY = process.env.DATAAPI_API_KEY;
 
 describe('Storage Export API', () => {
     let app;
