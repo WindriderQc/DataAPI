@@ -1,7 +1,7 @@
 # n8n Workflows Requirements for SBQC Stack
 
 **Last Updated:** December 26, 2025  
-**n8n Instance:** https://n8n.specialblend.icu (192.168.2.199:5678)
+**n8n Instance:** https://n8n.specialblend.icu (LAN fallback: http://192.168.2.199:5678)
 
 ---
 

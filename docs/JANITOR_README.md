@@ -93,4 +93,6 @@ curl -X POST http://localhost:3003/api/v1/janitor/execute \
 
 ## UI Access
 
-The Janitor UI is available in the **AgentX** application under the **Personas** tab (`/personas.html`). It communicates with DataAPI via a secure proxy.
+The Janitor UI is available in the **AgentX** application under the **Prompts** tab (`/prompts.html`).
+
+Note: legacy `/personas.html` links are redirected to `/prompts.html`.
