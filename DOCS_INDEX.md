@@ -1,53 +1,12 @@
-# Documentation Index
+# Moved
 
-Quick navigation for DataAPI documentation.
+The canonical documentation entrypoint for DataAPI is:
 
-**Last Updated:** January 1, 2026
+- `docs/INDEX.md`
 
-## 🚀 Deployment (Start Here)
+This file remains as a stable pointer for older links/bookmarks.
 
-- **[QUICK_START.md](QUICK_START.md)** - Fast deployment guide with common issues
-- **[DEPLOY_PREREQUISITES.md](DEPLOY_PREREQUISITES.md)** - TrueNAS/VM setup requirements  
-- **[DEPLOY_CONFIG_GUIDE.md](DEPLOY_CONFIG_GUIDE.md)** - Configuration with environment variables
-- **[DEPLOY_MINT.md](DEPLOY_MINT.md)** - ⚠️ Legacy deployment guide (dedicated user mode)
-
-**Deployment Scripts:**
-- `deploy.sh` - Main deployment wrapper (loads config from `deploy.env`)
-- `deploy_dataapi_mint.sh` - Core deployment script
-- `scripts/preflight_check.sh` - Pre-deployment validation
-- `deploy.env.example` - Configuration template
-
-## 📡 Integration Guides
-
-### n8n Automation
-
-> **⚠️ IMPORTANT:** n8n trigger routes have been **migrated to AgentX** at `/api/n8n/*`.
-> DataAPI only provides the event sink endpoint for receiving events FROM n8n.
-
-- **[docs/N8N_WORKFLOWS_REQUIREMENTS.md](docs/N8N_WORKFLOWS_REQUIREMENTS.md)** - Current n8n requirements
-- DataAPI endpoint: `POST /integrations/events/n8n` - Event sink (receives FROM n8n)
-- For n8n triggers, see **AgentX** `/api/n8n/*` routes
-
-**Archived (legacy):** See [docs/archive/n8n-legacy/](docs/archive/n8n-legacy/) for old docs
-
-### Real-time Features
-- **[SSE_PROXY_CONFIG.md](SSE_PROXY_CONFIG.md)** - Server-Sent Events with Nginx
-- **[REALTIME_VOICE_SETUP.md](REALTIME_VOICE_SETUP.md)** - OpenAI Realtime API voice chat
-- **[VOICE_COMMANDS_CONFIG.md](VOICE_COMMANDS_CONFIG.md)** - Voice command configuration
-
-## 🤖 AI Agent Instructions
-
-- **[AGENTS.md](AGENTS.md)** - Guidelines for AI agents working on this codebase
-
-## 🔐 Security & Access Control
-
-- **[RBAC_MATRIX.md](RBAC_MATRIX.md)** - Role-based access control documentation
-  - Role definitions (admin, editor, user, guest)
-  - Permission matrix
-  - Protected endpoints reference
-  - Usage examples
-
-## 🛠️ Feature Documentation
+SBQC stack lead: AgentX (`AgentX/docs/INDEX.md` in this workspace).
 
 - **[docs/JANITOR_README.md](docs/JANITOR_README.md)** - Datalake Janitor API
 
@@ -60,7 +19,7 @@ Quick navigation for DataAPI documentation.
 ## 📖 General
 
 - **[README.md](README.md)** - Project overview and features
-- **[CI_CD_SETUP.md](CI_CD_SETUP.md)** - GitHub Actions CI/CD pipeline documentation
+- **[CI_CD_SETUP.md](docs/deployment/CI_CD_SETUP.md)** - GitHub Actions CI/CD pipeline documentation
 
 ## 🔍 Reviews & Technical Debt
 

@@ -2,6 +2,8 @@
 
 Data Acquisition and Visualization Platform.
 
+**Documentation:** Start at `docs/INDEX.md` (canonical index).
+
 ## Overview
 
 DataAPI is a comprehensive system for gathering, storing, and visualizing data. It acts as a central hub for various data streams and provides both a web interface for users and an API for external tools and integrations.
@@ -105,6 +107,31 @@ npm run agent
 3. Verify:
    *   Open browser: `http://localhost:3003` (Login/Register)
    *   API Check: `curl -sS http://localhost:3003/health`
+
+---
+
+## Testing
+
+The test suite uses Jest + Supertest and runs against an in-memory MongoDB instance (mongodb-memory-server).
+
+```bash
+npm test
+```
+
+Useful variants:
+
+```bash
+# Unit tests only
+npm run test:unit
+
+# Integration tests only
+npm run test:integration
+
+# Debugging (detect open handles; slower)
+npm run test:debug:handles
+```
+
+Note: In `NODE_ENV=test`, external API proxy endpoints return `503` to avoid slow/flaky outbound network calls during tests.
 
 ---
 

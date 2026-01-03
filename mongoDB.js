@@ -5,14 +5,20 @@ const config = require('./config/config');
 const { log } = require('./utils/logger');
 
 let mongoServer;
+let ownsMongoServer = false;
 
 const init = async () => {
     let mongourl;
 
-    // For 'test' environment, always use an isolated in-memory server.
-    if (config.env === 'test') {
+    // In tests, prefer an externally-provided URI (e.g., Jest globalSetup shared server).
+    // Fall back to an isolated in-memory server only when MONGO_URL is not set.
+    if (config.env === 'test' && process.env.MONGO_URL) {
+        mongourl = process.env.MONGO_URL;
+        log(`Using provided MONGO_URL for test environment: ${mongourl}`);
+    } else if (config.env === 'test') {
         if (!mongoServer) {
             mongoServer = await MongoMemoryServer.create();
+            ownsMongoServer = true;
         }
         mongourl = mongoServer.getUri();
         log(`Using mongodb-memory-server for test environment: ${mongourl}`);
@@ -63,9 +69,11 @@ const init = async () => {
 };
 
 const closeServer = async () => {
-    if (mongoServer) {
+    // Only stop the in-memory server if this module created/owns it.
+    if (mongoServer && ownsMongoServer) {
         await mongoServer.stop();
         mongoServer = null;
+        ownsMongoServer = false;
     }
 };
 

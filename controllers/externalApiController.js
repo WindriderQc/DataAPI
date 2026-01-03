@@ -11,6 +11,8 @@ const { fetchWithTimeoutAndRetry } = require('../utils/fetch-utils');
 const { BadRequest, GeneralError } = require('../utils/errors');
 const querystring = require('querystring');
 
+const DISABLE_EXTERNAL_CALLS_IN_TEST = process.env.NODE_ENV === 'test';
+
 // Helper to construct URL with query params
 const buildUrl = (baseUrl, params) => {
     const query = querystring.stringify(params);
@@ -48,6 +50,10 @@ const proxyRequest = async (serviceName, url, res, next, transformFn = null) => 
 };
 
 exports.getWeather = async (req, res, next) => {
+    if (DISABLE_EXTERNAL_CALLS_IN_TEST) {
+        return res.status(503).json({ status: 'error', message: 'External API calls disabled in test environment' });
+    }
+
     const { lat, lon, city } = req.query;
     const apiKey = config.weather.apiKey;
 
@@ -81,6 +87,10 @@ exports.getWeather = async (req, res, next) => {
 };
 
 exports.getTides = async (req, res, next) => {
+    if (DISABLE_EXTERNAL_CALLS_IN_TEST) {
+        return res.status(503).json({ status: 'error', message: 'External API calls disabled in test environment' });
+    }
+
     const { lat, lon } = req.query;
 
     if (!lat || !lon) {
@@ -106,6 +116,10 @@ exports.getTides = async (req, res, next) => {
 };
 
 exports.getTle = async (req, res, next) => {
+    if (DISABLE_EXTERNAL_CALLS_IN_TEST) {
+        return res.status(503).json({ status: 'error', message: 'External API calls disabled in test environment' });
+    }
+
     // Proxy for Celestrak
     // Supported params: CATNR, GROUP, INTDES, NAME
     const params = {
@@ -125,6 +139,10 @@ exports.getTle = async (req, res, next) => {
 };
 
 exports.getPressure = async (req, res, next) => {
+    if (DISABLE_EXTERNAL_CALLS_IN_TEST) {
+        return res.status(503).json({ status: 'error', message: 'External API calls disabled in test environment' });
+    }
+
     // Reuse weather API for pressure but filter the result
     const { lat, lon } = req.query;
     const apiKey = config.weather.apiKey;
@@ -153,6 +171,10 @@ exports.getPressure = async (req, res, next) => {
 };
 
 exports.getEcWeather = async (req, res, next) => {
+    if (DISABLE_EXTERNAL_CALLS_IN_TEST) {
+        return res.status(503).json({ status: 'error', message: 'External API calls disabled in test environment' });
+    }
+
     // Environment Canada MSC GeoMet API
     // Complex OGC API, usually requires bbox or point
     // We pass through query params

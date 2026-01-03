@@ -38,7 +38,9 @@ app.locals.appVersion = pjson.version;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/data', express.static(path.join(__dirname, 'data'), { index: false, dotfiles: 'deny' }));
 app.use('/exports', express.static(path.join(__dirname, 'public', 'exports'), { index: false, dotfiles: 'deny' }));
-app.use(morgan('dev'));
+if (config.env !== 'test') {
+    app.use(morgan('dev'));
+}
 // Configure CORS to be more restrictive in production
 const corsOptions = {
     origin: (origin, callback) => {
@@ -108,20 +110,22 @@ async function createApp() {
             log("Boot log inserted.");
         }
 
-        // Fetch and log collection info for all dbs
-        app.locals.collectionInfo = [];
-        for (const dbName in app.locals.dbs) {
-            const db = app.locals.dbs[dbName];
-            if (db) {
-                const collections = await db.listCollections().toArray();
-                for (const coll of collections) {
-                    const count = await db.collection(coll.name).countDocuments();
-                    const resolvedName = db.databaseName || dbName;
-                    app.locals.collectionInfo.push({ db: resolvedName, collection: coll.name, count: count });
+        // Fetch and log collection info for all dbs (skip in tests for speed)
+        if (config.env !== 'test') {
+            app.locals.collectionInfo = [];
+            for (const dbName in app.locals.dbs) {
+                const db = app.locals.dbs[dbName];
+                if (db) {
+                    const collections = await db.listCollections().toArray();
+                    for (const coll of collections) {
+                        const count = await db.collection(coll.name).countDocuments();
+                        const resolvedName = db.databaseName || dbName;
+                        app.locals.collectionInfo.push({ db: resolvedName, collection: coll.name, count: count });
+                    }
                 }
             }
+            log(`Collection Info for all dbs has been gathered.`);
         }
-        log(`Collection Info for all dbs has been gathered.`);
 
         // Initialize and attach models to app.locals
         app.locals.models = {
@@ -142,17 +146,22 @@ async function createApp() {
     }
 
     // Session setup
-    const mongoStore = new MongoDBStore({
-        uri: dbConnection.getMongoUrl(),
-        databaseName: config.db.mainDb,
-        collection: 'mySessions',
-        client: dbConnection.client,
-    });
-    mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
+    // In tests, prefer MemoryStore to avoid extra Mongo store handles (faster, fewer open handles).
+    let mongoStore;
+    if (config.env !== 'test') {
+        mongoStore = new MongoDBStore({
+            uri: dbConnection.getMongoUrl(),
+            databaseName: config.db.mainDb,
+            collection: 'mySessions',
+            client: dbConnection.client,
+        });
+        mongoStore.on('error', (error) => log(`MongoStore Error: ${error}`, 'error'));
+    }
 
     const sessionOptions = {
+        name: config.session.name,
         secret: config.session.secret,
-        store: mongoStore,
+        ...(mongoStore ? { store: mongoStore } : {}),
         resave: false,
         saveUninitialized: false,
         cookie: {
@@ -170,6 +179,8 @@ async function createApp() {
         }
     }
 
+    const sessionMiddleware = session(sessionOptions);
+
     // Apply session middleware, but skip it for tool API requests (n8n, API key)
     app.use((req, res, next) => {
         // Skip session for requests with x-api-key header (n8n, tool APIs)
@@ -180,7 +191,7 @@ async function createApp() {
         }
 
         // Apply session middleware for web/browser requests
-        session(sessionOptions)(req, res, next);
+        sessionMiddleware(req, res, next);
     });
 
     // Attach user to res.locals for all routes (web pages need this for templates)

@@ -1,5 +1,4 @@
 const request = require('supertest');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 const express = require('express');
 const { createNetworkDeviceModel } = require('../models/networkDevice');
@@ -15,13 +14,21 @@ const networkScanner = require('../services/networkScanner');
 
 describe('Network Controller', () => {
     let app;
-    let mongoServer;
     let connection;
 
     beforeAll(async () => {
-        mongoServer = await MongoMemoryServer.create();
-        const mongoUri = mongoServer.getUri();
-        connection = await mongoose.createConnection(mongoUri).asPromise();
+        // Use the shared MongoMemoryServer started by Jest globalSetup.
+        // Isolate this suite by using a unique dbName.
+        const mongoUri = process.env.MONGO_URL;
+        if (!mongoUri) {
+            throw new Error('MONGO_URL is not set. Ensure Jest globalSetup is configured.');
+        }
+
+        connection = await mongoose
+            .createConnection(mongoUri, {
+                dbName: `network_test_${process.env.JEST_WORKER_ID || '0'}`
+            })
+            .asPromise();
 
         app = express();
         app.use(express.json());
@@ -41,7 +48,6 @@ describe('Network Controller', () => {
 
     afterAll(async () => {
         await connection.close();
-        await mongoServer.stop();
     });
 
     beforeEach(async () => {

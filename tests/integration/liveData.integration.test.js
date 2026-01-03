@@ -1,5 +1,9 @@
 jest.setTimeout(30000);
 
+jest.mock('../../utils/fetch-utils', () => ({
+  fetchWithTimeoutAndRetry: jest.fn(),
+}));
+
 const liveDatas = require('../../scripts/liveData');
 const mqttClient = require('../../scripts/mqttClient');
 const fetchUtils = require('../../utils/fetch-utils');
@@ -27,7 +31,7 @@ describe('LiveData integration (DB write + MQTT publish)', () => {
     mqttClient.publish = jest.fn();
 
     // stub fetchWithTimeoutAndRetry
-    jest.spyOn(fetchUtils, 'fetchWithTimeoutAndRetry').mockImplementation(async (url) => {
+    fetchUtils.fetchWithTimeoutAndRetry.mockImplementation(async (url) => {
       if (url && url.includes('iss')) {
         return {
           ok: true,

@@ -8,7 +8,10 @@
     "agent": "node data_serv.js",
     "geocode-worker": "node scripts/geocodeWorkerRunner.js",
     "start": "node data_serv.js",
-    "test": "NODE_ENV=test jest --detectOpenHandles --forceExit",
+    "test": "NODE_ENV=test jest",
+    "test:unit": "NODE_ENV=test jest --selectProjects unit",
+    "test:integration": "NODE_ENV=test jest --selectProjects integration",
+    "test:debug:handles": "NODE_ENV=test jest --runInBand --detectOpenHandles",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -22,15 +25,6 @@
     "url": "https://github.com/WindriderQc/DataAPI/issues"
   },
   "homepage": "https://github.com/WindriderQc/DataAPI#readme",
-  "jest": {
-    "setupFilesAfterEnv": [
-      "<rootDir>/tests/test-setup.js"
-    ],
-    "testPathIgnorePatterns": [
-      "<rootDir>/actions-runner/"
-    ],
-    "testEnvironment": "node"
-  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "connect-mongodb-session": "^5.0.0",
