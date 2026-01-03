@@ -26,6 +26,7 @@ const ollamaController = require('../controllers/ollamaController');
 const liveDataConfigController = require('../controllers/liveDataConfigController');
 const systemController = require('../controllers/systemController');
 const networkController = require('../controllers/networkController');
+const alertsRouter = require('./alerts');
 
 // A default API response to check if the API is up
 router.get('/', (req, res) => {
@@ -34,6 +35,9 @@ router.get('/', (req, res) => {
         message: 'DataAPI tool server is running'
     });
 });
+
+// Alerts
+router.use('/alerts', alertsRouter);
 
 // Deterministic geolocation response for tests; real fetch in non-test env.
 router.get('/geolocation', async (req, res) => {
