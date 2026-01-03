@@ -26,6 +26,9 @@
     "setupFilesAfterEnv": [
       "<rootDir>/tests/test-setup.js"
     ],
+    "testPathIgnorePatterns": [
+      "<rootDir>/actions-runner/"
+    ],
     "testEnvironment": "node"
   },
   "dependencies": {
