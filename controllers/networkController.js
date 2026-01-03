@@ -6,7 +6,7 @@ const AppError = require('../utils/errors');
 // Helper to get the model from the request context
 const getModel = (req) => {
     // Assuming mainDb is where we store network data
-    const db = req.app.locals.dbs.mainDb;
+    const db = req.app.locals.mongoose;
     return createNetworkDeviceModel(db);
 };
 
