@@ -28,6 +28,7 @@ async function setupAppContext(app, dbConnection) {
         }
 
         // Initialize and attach models
+        app.locals.mongoose = dbConnection.mongooseConnection;
         app.locals.models = {
             User: createUserModel(dbConnection.mongooseConnection)
         };

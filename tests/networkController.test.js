@@ -28,6 +28,7 @@ describe('Network Controller', () => {
 
         // Mock app.locals structure
         app.locals = {
+            mongoose: connection,
             dbs: {
                 mainDb: connection
             }
