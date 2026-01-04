@@ -2,7 +2,7 @@
 
 Data Acquisition and Visualization Platform.
 
-**Documentation:** Start at `docs/INDEX.md` (canonical index).
+**Documentation:** Start at [docs/INDEX.md](docs/INDEX.md) (canonical index).
 
 ## Overview
 
@@ -58,7 +58,7 @@ For automated deployment on Linux Mint / Ubuntu (especially TrueNAS SCALE VMs):
 
 ```bash
 # 1. Review prerequisites
-cat DEPLOY_PREREQUISITES.md
+cat docs/deployment/DEPLOY_PREREQUISITES.md
 
 # 2. Run preflight check
 sudo ./scripts/preflight_check.sh
@@ -72,10 +72,10 @@ set -a; source deploy.env; set +a; sudo -E ./deploy_dataapi_mint.sh
 ```
 
 **Documentation:**
-- 📋 [`DEPLOY_PREREQUISITES.md`](DEPLOY_PREREQUISITES.md) - TrueNAS/VM setup requirements
-- ⚡ [`QUICK_START.md`](QUICK_START.md) - Quick deployment guide  
-- 🔧 [`DEPLOY_CONFIG_GUIDE.md`](DEPLOY_CONFIG_GUIDE.md) - Environment variable configuration
-- 📝 [`DEPLOYMENT_FIXES_SUMMARY.md`](DEPLOYMENT_FIXES_SUMMARY.md) - What was fixed
+- 📋 [docs/deployment/DEPLOY_PREREQUISITES.md](docs/deployment/DEPLOY_PREREQUISITES.md) - TrueNAS/VM setup requirements
+- ⚡ [docs/deployment/QUICK_START.md](docs/deployment/QUICK_START.md) - Quick deployment guide  
+- 🔧 [docs/deployment/DEPLOY_CONFIG_GUIDE.md](docs/deployment/DEPLOY_CONFIG_GUIDE.md) - Environment variable configuration
+- 📝 [docs/archive/deployment/DEPLOYMENT_FIXES_SUMMARY.md](docs/archive/deployment/DEPLOYMENT_FIXES_SUMMARY.md) - What was fixed
 
 ### Running Locally (Simple)
 

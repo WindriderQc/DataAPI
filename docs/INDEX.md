@@ -8,14 +8,14 @@
 
 **SBQC Stack canonical lead:** AgentX is the system-of-record for the full stack roadmap and architecture.
 
-- Stack-level docs + roadmap (AgentX, in this workspace): `AgentX/docs/INDEX.md`
+- Stack-level docs + roadmap (AgentX, in this workspace): [../../AgentX/docs/INDEX.md](../../AgentX/docs/INDEX.md)
 - Repo overview: [README.md](../README.md)
 - Agent instructions (important): [project/AGENTS.md](project/AGENTS.md)
 
 ## Roadmap & Progression
 - DataAPI roadmap: [planning/ROADMAP.md](planning/ROADMAP.md)
 - Progression log: [planning/PROGRESSION_LOG.md](planning/PROGRESSION_LOG.md)
-- Stack-wide roadmap (canonical, AgentX): `AgentX/docs/planning/ROADMAP.md`
+- Stack-wide roadmap (canonical, AgentX): [../../AgentX/docs/planning/ROADMAP.md](../../AgentX/docs/planning/ROADMAP.md)
 
 ## Deployment
 - Quick start: [deployment/QUICK_START.md](deployment/QUICK_START.md)
