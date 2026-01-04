@@ -17,17 +17,22 @@ DataAPI is a comprehensive system for gathering, storing, and visualizing data. 
 
 ---
 
-## Live Data Services
+## Data Services
 
-The application includes a powerful "Live Data" engine that autonomously tracks and records real-time information:
+DataAPI provides two types of data services:
 
+### 1. Background Ingestion (Live Data)
+Autonomous services that continuously fetch and archive data for historical analysis:
 *   **ISS Tracker**: Real-time position of the International Space Station.
-*   **Weather**: Local weather conditions and barometric pressure tracking.
 *   **Earthquakes**: USGS earthquake data ingestion.
-*   **Tides & Marine**: Ocean conditions and wave heights.
 *   **Satellite Data**: TLE (Two-Line Element) set tracking via CelesTrak.
 
-These services run in the background and populate the database, making historical data available for visualization and analysis.
+### 2. On-Demand Proxies
+Real-time data fetching triggered by user requests (via AgentX):
+*   **Weather**: Current local weather conditions.
+*   **Tides & Marine**: Ocean conditions and wave heights.
+
+These services populate the database or provide real-time context for AgentX.
 
 ---
 
