@@ -35,6 +35,8 @@ var Iss;
 var CityX = 0.0000;
 var CityY = 0.0000;
 
+let _issTimerId = null;
+
 // MQTT client (browser) - will be initialized with mqttConfig injected by the page
 let _mqttClient = null;
 let _mqttConnected = false;
@@ -143,6 +145,23 @@ function getISS_location()
         if (lonEl) lonEl.textContent = Iss.longitude;
   })
 }
+
+function startIssPolling() {
+  if (_issTimerId) return;
+  _issTimerId = setInterval(getISS_location, 10000);
+}
+
+function stopIssPolling() {
+  if (!_issTimerId) return;
+  clearInterval(_issTimerId);
+  _issTimerId = null;
+}
+
+// Pause polling while tab is hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopIssPolling();
+  else startIssPolling();
+});
 
 
 // Initialize MQTT in the browser using mqtt.js (loaded in the page)
@@ -313,7 +332,7 @@ function setup() {
   drawBase()
 
   getISS_location()
-  setInterval(getISS_location, 10000)
+  startIssPolling()
 
   // Initialize MQTT if mqttConfig is provided on the page
   // Only initialize MQTT if config is provided and explicitly enabled

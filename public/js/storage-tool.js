@@ -1,16 +1,23 @@
+import { PollingController } from './utils/polling-controller.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+  const poller = new PollingController();
+
   // === Initial Load ===
   loadRecentScans();
   loadMountStatus();
   loadN8nStatus();
   loadExportList(); // Trigger initial load of exports
 
-  // === Polling ===
-  setInterval(loadRecentScans, 5000);
+  // === Polling (pause on blur) ===
+  poller
+    .addTask('recentScans', loadRecentScans, 5000, { runOnStart: false })
+    .addTask('systemResources', updateSystemResources, 10000, { runOnStart: false });
 
-  // === System Resources Polling ===
   updateSystemResources();
-  setInterval(updateSystemResources, 10000); // Poll every 10 seconds
+  poller.start();
+
+  window.addEventListener('beforeunload', () => poller.destroy(), { once: true });
 
   // === Event Listeners ===
   // ...

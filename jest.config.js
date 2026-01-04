@@ -1,6 +1,10 @@
 module.exports = {
   testEnvironment: 'node',
 
+  // Limit crawling to the real source + tests. This avoids jest-haste-map module
+  // name collisions caused by CI runner checkouts under actions-runner/_work.
+  roots: ['<rootDir>/tests', '<rootDir>/controllers', '<rootDir>/src', '<rootDir>/utils', '<rootDir>/routes', '<rootDir>/middleware', '<rootDir>/models', '<rootDir>/services', '<rootDir>/config'],
+
   // Keep CI runner artifacts out of test discovery.
   testPathIgnorePatterns: ['<rootDir>/actions-runner/'],
 
