@@ -1,3 +1,4 @@
+const path = require('path');
 const { formatFileSize } = require('../utils/file-operations');
 const { BadRequestError, NotFoundError } = require('../utils/errors');
 
@@ -79,7 +80,7 @@ class FileBrowserController {
       // Format results
       const formattedResults = results.map(file => ({
         ...file,
-        path: file.dirname + file.filename,
+        path: FileBrowserController._formatFilePath(file),
         sizeFormatted: formatFileSize(file.size),
         mtimeFormatted: new Date(file.mtime * 1000).toISOString()
       }));
@@ -349,7 +350,7 @@ class FileBrowserController {
               message: `Found ${largeFiles.length} files over 100MB`,
               potentialSavings: largeFiles.reduce((sum, f) => sum + f.size, 0),
               files: largeFiles.map(f => ({
-                path: f.dirname + f.filename,
+                path: FileBrowserController._formatFilePath(f),
                 size: f.size,
                 sizeFormatted: formatFileSize(f.size)
               }))
@@ -359,7 +360,7 @@ class FileBrowserController {
               priority: 'medium',
               message: `Found ${oldFiles.length} files older than 2 years`,
               files: oldFiles.map(f => ({
-                path: f.dirname + f.filename,
+                path: FileBrowserController._formatFilePath(f),
                 age: Math.floor((Date.now() / 1000 - f.mtime) / 86400) + ' days',
                 size: formatFileSize(f.size)
               }))
@@ -395,6 +396,16 @@ class FileBrowserController {
     const boundaries = [0, 1024, 10240, 102400, 1048576, 10485760, 104857600];
     const index = boundaries.indexOf(boundary);
     return labels[index] || 'other';
+  }
+
+  static _formatFilePath(file) {
+    if (file.path) {
+      return file.path;
+    }
+    if (!file.dirname) {
+      return file.filename || '';
+    }
+    return path.join(file.dirname, file.filename || '');
   }
 
   // ==========================================

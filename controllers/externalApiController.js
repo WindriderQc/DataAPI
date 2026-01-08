@@ -19,8 +19,23 @@ const buildUrl = (baseUrl, params) => {
     return `${baseUrl}?${query}`;
 };
 
+const parseJsonOrText = async (response) => {
+    const contentType = response.headers.get('content-type') || '';
+    const body = await response.text();
+
+    if (contentType.includes('application/json')) {
+        try {
+            return JSON.parse(body);
+        } catch (error) {
+            return body;
+        }
+    }
+
+    return body;
+};
+
 // Generic proxy handler
-const proxyRequest = async (serviceName, url, res, next, transformFn = null) => {
+const proxyRequest = async (serviceName, url, res, next, transformFn = null, parseFn = null) => {
     try {
         const response = await fetchWithTimeoutAndRetry(url, {
             name: serviceName,
@@ -28,7 +43,7 @@ const proxyRequest = async (serviceName, url, res, next, transformFn = null) => 
             retries: config.api.defaultFetchRetries
         });
 
-        let data = await response.json();
+        let data = parseFn ? await parseFn(response) : await response.json();
 
         if (transformFn) {
             data = transformFn(data);
@@ -135,7 +150,7 @@ exports.getTle = async (req, res, next) => {
 
     // Custom proxy because Celestrak might return text (TLE standard) unless format=json is strictly supported/respected
     // But we requested JSON above.
-    await proxyRequest('Celestrak TLE', url, res, next);
+    await proxyRequest('Celestrak TLE', url, res, next, null, parseJsonOrText);
 };
 
 exports.getPressure = async (req, res, next) => {

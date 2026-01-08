@@ -150,7 +150,7 @@ const FileBrowser = {
             <small>${formatDate(new Date(file.mtime * 1000))}</small>
           </td>
           <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="FileBrowser.showFileDetails('${this.escapeHtml(file.dirname)}', '${this.escapeHtml(file.filename)}')">
+            <button class="btn btn-sm btn-outline-primary" onclick="FileBrowser.showFileDetails('${this.escapeHtml(file.dirname)}', '${this.escapeHtml(file.filename)}', '${this.escapeHtml(file.path || '')}')">
               <i class="fa fa-info-circle"></i>
             </button>
           </td>
@@ -283,9 +283,9 @@ const FileBrowser = {
     return 'fa-file';
   },
 
-  showFileDetails(dirname, filename) {
+  showFileDetails(dirname, filename, fullPath) {
     const modalBody = document.getElementById('fileDetailsBody');
-    const fullPath = dirname + filename;
+    const resolvedPath = fullPath || this.joinPath(dirname, filename);
     
     modalBody.innerHTML = `
       <div class="row">
@@ -298,7 +298,7 @@ const FileBrowser = {
       </div>
       <div class="row mt-2">
         <div class="col-md-4"><strong>Full Path:</strong></div>
-        <div class="col-md-8"><code>${this.escapeHtml(fullPath)}</code></div>
+        <div class="col-md-8"><code>${this.escapeHtml(resolvedPath)}</code></div>
       </div>
     `;
     
@@ -318,6 +318,14 @@ const FileBrowser = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  },
+
+  joinPath(dirname, filename) {
+    if (!dirname) {
+      return filename || '';
+    }
+    const normalizedDir = dirname.endsWith('/') ? dirname : `${dirname}/`;
+    return `${normalizedDir}${filename || ''}`;
   },
 
   showError(message) {

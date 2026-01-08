@@ -297,7 +297,7 @@ const FileBrowser = {
             <p><strong>Locations:</strong></p>
             <ul class="list-unstyled">
               ${dup.locations.map(loc => `
-                <li><code>${this.escapeHtml(loc.dirname + dup.filename)}</code></li>
+                <li><code>${this.escapeHtml(loc.path || this.joinPath(loc.dirname, dup.filename))}</code></li>
               `).join('')}
             </ul>
           </div>
@@ -384,6 +384,14 @@ const FileBrowser = {
       "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+  },
+
+  joinPath(dirname, filename) {
+    if (!dirname) {
+      return filename || '';
+    }
+    const normalizedDir = dirname.endsWith('/') ? dirname : `${dirname}/`;
+    return `${normalizedDir}${filename || ''}`;
   },
 
   showError(message) {

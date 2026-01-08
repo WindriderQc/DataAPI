@@ -304,9 +304,18 @@ const insertBatch = async (req, res, next) => {
     const filesCollection = db.collection('nas_files');
     const now = new Date();
     
+    for (const [index, file] of files.entries()) {
+      if (!file || typeof file.path !== 'string' || file.path.trim() === '') {
+        return res.status(400).json({
+          status: 'error',
+          message: `files[${index}].path must be a non-empty string`
+        });
+      }
+    }
+
     const bulkOps = files.map(file => {
       // Normalize path (remove trailing slashes, etc.)
-      const normalizedPath = file.path?.replace(/\/+$/, '').trim();
+      const normalizedPath = file.path.replace(/\/+$/, '').trim();
       
       // Extract filename and extension
       const pathParts = normalizedPath?.split('/') || [];
@@ -323,6 +332,7 @@ const insertBatch = async (req, res, next) => {
               path: normalizedPath,
               dirname,
               filename,
+              ext: extension,
               extension,
               size: file.size || 0,
               modified: file.mtime ? new Date(file.mtime * 1000) : file.modified ? new Date(file.modified) : now,
