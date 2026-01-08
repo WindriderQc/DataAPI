@@ -32,6 +32,16 @@ class OptimizedExportController {
         this.nasDirectories = db.collection('nas_directories');
     }
 
+    static formatFilePath(file) {
+        if (file.path) {
+            return file.path;
+        }
+        if (!file.dirname) {
+            return file.filename || '';
+        }
+        return path.join(file.dirname, file.filename || '');
+    }
+
     /**
      * Generate optimized full report
      */
@@ -51,7 +61,7 @@ class OptimizedExportController {
             const file = await cursor.next();
 
             // Reconstruct path from dirname + filename
-            const fullPath = (file.dirname || '') + '/' + (file.filename || '');
+            const fullPath = OptimizedExportController.formatFilePath(file);
 
             files.push({
                 path: fullPath,
@@ -156,7 +166,7 @@ class OptimizedExportController {
             const file = await cursor.next();
 
             mediaFiles.push({
-                path: (file.dirname || '') + '/' + (file.filename || ''),
+                path: OptimizedExportController.formatFilePath(file),
                 filename: file.filename,
                 dirname: file.dirname,
                 ext: file.ext,
@@ -195,7 +205,7 @@ class OptimizedExportController {
             const file = await cursor.next();
 
             largeFiles.push({
-                path: (file.dirname || '') + '/' + (file.filename || ''),
+                path: OptimizedExportController.formatFilePath(file),
                 filename: file.filename,
                 dirname: file.dirname,
                 ext: file.ext,
