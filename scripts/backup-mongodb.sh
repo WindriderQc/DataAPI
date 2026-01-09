@@ -4,7 +4,7 @@ set -e
 # MongoDB Backup Script for AgentX
 # Usage: ./scripts/backup-mongodb.sh [backup_dir]
 
-BACKUP_DIR="${1:-/mnt/backups/mongodb}"
+BACKUP_DIR="${1:-/mnt/datalake/backups/mongodb}"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_NAME="agentx_${DATE}"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"

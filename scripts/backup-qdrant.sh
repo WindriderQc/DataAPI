@@ -6,7 +6,7 @@ set -e
 
 QDRANT_URL="${QDRANT_URL:-http://localhost:6333}"
 COLLECTION="${QDRANT_COLLECTION:-agentx_rag}"
-BACKUP_DIR="${1:-/mnt/backups/qdrant}"
+BACKUP_DIR="${1:-/mnt/datalake/backups/qdrant}"
 DATE=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=7
 

@@ -8,7 +8,7 @@ if [ -z "$1" ]; then
   echo "Usage: ./scripts/restore-qdrant.sh <snapshot_file>"
   echo ""
   echo "Available snapshots:"
-  find /mnt/backups/qdrant -name "*.snapshot" -printf "%T@ %p\n" | sort -rn | cut -d' ' -f2- | head -10
+  find /mnt/datalake/backups/qdrant -name "*.snapshot" -printf "%T@ %p\n" | sort -rn | cut -d' ' -f2- | head -10
   exit 1
 fi
 

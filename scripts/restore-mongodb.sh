@@ -8,7 +8,7 @@ if [ -z "$1" ]; then
   echo "Usage: ./scripts/restore-mongodb.sh <backup_file.tar.gz>"
   echo ""
   echo "Available backups:"
-  find /mnt/backups/mongodb -name "agentx_*.tar.gz" -printf "%T@ %p\n" | sort -rn | cut -d' ' -f2- | head -10
+  find /mnt/datalake/backups/mongodb -name "agentx_*.tar.gz" -printf "%T@ %p\n" | sort -rn | cut -d' ' -f2- | head -10
   exit 1
 fi
 

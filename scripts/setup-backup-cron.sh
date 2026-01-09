@@ -4,9 +4,9 @@
 CRON_FILE="/tmp/agentx-backup-cron"
 
 # Keep paths/env in sync with AgentX dashboard defaults.
-# - AgentX API defaults BACKUP_DIR to /home/yb/backups
+# - AgentX API defaults BACKUP_DIR to /mnt/datalake/backups
 # - Backup scripts accept an explicit target dir argument
-DEFAULT_BACKUP_ROOT="/home/yb/backups"
+DEFAULT_BACKUP_ROOT="/mnt/datalake/backups"
 LOG_FILE="/home/yb/agentx-backup.log"
 
 cat > "$CRON_FILE" <<EOF
